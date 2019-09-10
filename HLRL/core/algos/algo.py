@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 class RLAlgo(ABC):
     """
-    An abstract reinforcement learning algorithm
+    An abstract reinforcement learning algorithm.
     """
     def __init__(self, logger=None):
         """

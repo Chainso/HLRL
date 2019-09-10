@@ -54,14 +54,29 @@ class Env(ABC):
         return self._info
 
     @abstractmethod
-    def step(self, action):
+    def step(self, action, repeat=1):
         """
         Takes 1 step into the environment using the given action.
 
         Args:
             action (object): The action to take in the environment.
+
+        If repeat = 1, returns (next state, reward, terminal, info) else returns
+        an array of (next state, reward, terminal, info) tuples
         """
         pass
+
+    def n_steps(self, actions):
+        """
+        Takes 1 step into the environment using the given action.
+
+        Args:
+            action (object): The action to take in the environment.
+
+        Returns:
+            An array of (next state, reward, terminal, info) tuples
+        """
+        return [self.step(action) for action in actions]
 
     @abstractmethod
     def reset(self):
