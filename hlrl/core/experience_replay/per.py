@@ -8,7 +8,7 @@ class PER():
     https://arxiv.org/abs/1511.05952
     """
     def __init__(self, capacity: int, alpha: float, beta: float,
-                 beta_increment: float, epsilon: float, device: str):
+                 beta_increment: float, epsilon: float):
         """
         Creates a new PER buffer with the given parameters
 
@@ -20,7 +20,6 @@ class PER():
                           between 0 and 1 inclusive
             beta_increment (float): The value to increment the beta by
             epsilon (float): The value of epsilon to add to the priority
-            device (str): The device of the tensors in the replay buffer
         """
         self.capacity = capacity
         self.alpha = alpha
@@ -45,6 +44,13 @@ class PER():
         """
         return (error + self.epsilon) ** self.alpha
 
+    def _get_error(self, q_val, discounted_next_q):
+        """
+        Computes the error (absolute difference) between the Q-value and the
+        discounted Q-value of the next state
+        """
+        return np.abs(q_val - discounted_next_q)
+
     def add(self, experience, q_val, discounted_next_q):
         """
         Adds the given experience to the replay buffer with the priority being
@@ -59,7 +65,7 @@ class PER():
             discounted_next_q (float): The discounted Q-value of the "optimal"
                                        next action
         """
-        error = np.abs(q_val - discounted_next_q)
+        error = self._get_error(q_val, discounted_next_q)
 
         current_index = self.priorities.next_index()
         self.experiences[current_index] = np.array(experience)
@@ -122,7 +128,7 @@ class PER():
             discounted_next_qs (float): The discounted Q-value of the "optimal"
                                        next actions
         """
-        errors = np.abs(q_vals - discounted_next_q)
+        errors = self._get_error(q_vals, discounted_next_q)
 
         for index, error in zip(indices, errors):
             self.update_priority(index, error)

@@ -11,6 +11,7 @@ if(__name__ == "__main__"):
     from hlrl.torch.algos.sac.sac import SAC
     from hlrl.core.envs.gym.gym_env import GymEnv
     from hlrl.torch.agents import OffPolicyAgent
+    from hlrl.torch.experience_replay import TorchPER
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(description = "Twin Q-Function SAC example on "
@@ -40,7 +41,19 @@ if(__name__ == "__main__"):
     parser.add_argument("--lr", type=float, default=3e-4,
                         help="the learning rate")
     parser.add_argument("--twin", type=bool, default=True,
-                        help="true if SAC should use twin Q-networks")
+                        help="true if SAC should use twin Q-networks")     
+
+    # Experience Replay args
+    parser.add_argument("--er_capacity", type=float, default=50000,
+                        help="The alpha value for PER")
+    parser.add_argument("--er_alpha", type=float, default=0.6,
+                        help="The alpha value for PER")
+    parser.add_argument("--er_beta", type=float, default=0.4,
+                        help="The alpha value for PER")
+    parser.add_argument("--er_beta_increment", type=float, default=1e-3,
+                        help="The alpha value for PER")
+    parser.add_argument("--er_epsilon", type=float, default=1e-2,
+                        help="The epsilon value for PER")
     args = vars(parser.parse_args())
     print(args)
     # Initialize the environment
@@ -66,6 +79,10 @@ if(__name__ == "__main__"):
                args["entropy"], args["polyak"], optim, optim, optim,
                args["twin"], logger)
 
+    # Experience replay
+    experience_replay = TorchPER(args["er_alpha"], args["er_beta"],
+                                 args["er_beta_increment"], args["er_epsilon"],
+                                 args["device"])
     # Initialize agent
-    
-
+    agent = OffPolicyAgent(env, algo, experience_replay, logger)
+   

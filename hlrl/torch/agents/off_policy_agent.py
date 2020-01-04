@@ -23,7 +23,7 @@ class OffPolicyAgent(RLAgent):
             logger (Logger, optional) : The logger to log results while
                                         interacting with the environment.
         """
-        super(self).__init__(env, algo, logger)
+        super().__init__(env, algo, logger)
 
         self.experience_replay = experience_replay
 
