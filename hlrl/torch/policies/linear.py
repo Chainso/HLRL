@@ -56,5 +56,5 @@ class LinearSAPolicy(LinearPolicy):
                          activation_fn)
 
     def forward(self, state, actions):
-        lin_in = torch.concat([state, actions])
-        return super()(lin_in)
+        lin_in = torch.cat([state, actions], dim=1)
+        return super().forward(lin_in)

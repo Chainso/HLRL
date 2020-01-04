@@ -24,7 +24,7 @@ class Env(ABC):
         self._action_space = ()
         self._state = None
         self._reward = 0
-        self._terminal = True
+        self._terminal = False
         self._info = None
 
     @property
@@ -80,6 +80,12 @@ class Env(ABC):
 
         If repeat = 1, returns (next state, reward, terminal, info) else returns
         an array of (next state, reward, terminal, info) tuples
+        """
+        pass
+
+    def render(self):
+        """
+        If applicable, the environment will render to the screen.
         """
         pass
 

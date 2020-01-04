@@ -1,6 +1,7 @@
 import torch
+import numpy as np
 
-from hlrl.core.experience_replay.per import PER
+from hlrl.core.experience_replay import PER
 from .binary_sum_tree import TorchBinarySumTree
 
 class TorchPER(PER):
@@ -31,15 +32,8 @@ class TorchPER(PER):
         self.beta_increment = beta_increment
         self.epsilon = epsilon
 
-        self.experiences = torch.zeros(capacity, dtype=object)
-        self.priorities = TorchBinarySumTree(capacity)
-
-    def _get_error(self, q_val, discounted_next_q):
-        """
-        Computes the error (absolute difference) between the Q-value and the
-        discounted Q-value of the next state
-        """
-        return torch.abs(q_val - discounted_next_q)
+        self.experiences = np.zeros(capacity, dtype=object)
+        self.priorities = TorchBinarySumTree(capacity, device)
 
     def add(self, experience, q_val, discounted_next_q):
         """

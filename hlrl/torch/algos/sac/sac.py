@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from copy import deepcopy
 
-from hlrl.core.algos.algo import RLAlgo
+from hlrl.core.algos import RLAlgo
 
 class SAC(RLAlgo):
     """
@@ -85,6 +85,22 @@ class SAC(RLAlgo):
             new_q, new_q_targ = self.train_batch((s, a, r, n_s, t))
             experience_replay.update_priorities(idxs, new_q, new_q_targ)
 
+    def foward(self, observation):
+        """
+        Get the model output for a batch of observations
+
+        Args:
+            observation (torch.FloatTensor): A batch of observations from the
+                                             environment.
+
+        Returns:
+            The action, Q-value and state value.
+        """
+        action = self.policy(observation)
+        q_val = self.q_func1(observation, action)
+
+        return action, q_val
+
     def step(self, observation):
         """
         Get the model action for a single observation of gameplay.
@@ -94,12 +110,12 @@ class SAC(RLAlgo):
                                              environment.
 
         Returns:
-            The action from for the observation given.
+            The action and Q-value of the action.
         """
-        action = self.policy(observation, False)
+        action = self.policy(observation)
         q_val = self.q_func1(observation, action)
 
-        return action.item(), q_val.item()
+        return action.detach(), q_val.detach()
 
     def train_batch(self, rollouts):
         """

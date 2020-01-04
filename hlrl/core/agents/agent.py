@@ -5,7 +5,7 @@ class RLAgent():
     An agent that collects (state, action, reward, next state) tuple
     observations
     """
-    def __init__(self, env, algo, logger=None):
+    def __init__(self, env, algo, render=False, logger=None):
         """
         Creates an agent that interacts with the given environment using the
         algorithm given.
@@ -15,10 +15,20 @@ class RLAgent():
 
             algo (RLAlgo): The algorithm the agent will use the explore the
                            environment.
+            render (bool): If the environment is to be rendered (if applicable)
             logger (Logger, optional) : The logger to log results while
                                         interacting with the environment.
         """
-        super().__init__(env, algo, logger)
+        self.env = env
+        self.algo = algo
+        self.render = render
+        self.logger = logger
+
+    def _make_input_from_state(self, state):
+        """
+        Creates the algorithm input from the env state (does nothing by default)
+        """
+        return state
 
     def step(self):
         """
@@ -30,8 +40,12 @@ class RLAgent():
         if(self.env.terminal == True):
             self.env.reset()
 
+        if(self.render):
+            self.env.render()
+
         state = self.env.state
-        algo_step = self.algo.step(state)
+        algo_inp = self._make_input_from_state(state)
+        algo_step = self.algo.step(algo_inp)
         action = algo_step[0]
 
         # Get additional information if it is there
@@ -42,8 +56,8 @@ class RLAgent():
 
         next_state, reward, terminal, info = self.env.step(action)
 
-        return (state, action, reward, next_state, terminal, add_algo_rets,
-                info)
+        return (algo_inp, action, reward, next_state, terminal, info,
+                add_algo_rets)
 
     def play(self, num_episodes):
         """
@@ -58,7 +72,7 @@ class RLAgent():
         for episode in range(1, num_episodes + 1):
             self.env.reset()
             ep_reward = 0
-
+            
             while(self.env.terminal == False):
                 ep_reward += self.step()[2]
 

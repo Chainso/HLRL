@@ -1,30 +1,29 @@
-from hlrl.core.agents.agent import RLAgent
+from .agent import TorchRLAgent
 
-class OffPolicyAgent(RLAgent):
+class OffPolicyAgent(TorchRLAgent):
     """
     An agent that collects (state, action, reward, next state) tuple
     observations
     """
-    def __init__(self, env, algo, experience_replay, logger=None):
+    def __init__(self, env, algo, experience_replay, render=False, logger=None,
+                 device="cpu"):
         """
         Creates an agent that interacts with the given environment using the
         algorithm given.
 
         Args:
             env (Env): The environment the agent will explore in.
-
             algo (TorchRLAlgo): The algorithm the agent will use the explore the
-                           environment.
-
+                                environment.
             experience_replay (ExperienceReplay): The experience replay to store
                                                   (state, action, reward,
                                                    next state) tuples in.
-
+            render (bool): If the environment is to be rendered (if applicable).
             logger (Logger, optional) : The logger to log results while
                                         interacting with the environment.
+            device (str): The device for the agent to run on.
         """
-        super().__init__(env, algo, logger)
-
+        super().__init__(env, algo, render, logger, device)
         self.experience_replay = experience_replay
 
     def train(self, num_episodes):
