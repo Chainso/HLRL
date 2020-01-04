@@ -1,6 +1,6 @@
-from .base import TorchRLAgent
+from hlrl.core.agents.agent import RLAgent
 
-class OffPolicyAgent(TorchRLAgent):
+class OffPolicyAgent(RLAgent):
     """
     An agent that collects (state, action, reward, next state) tuple
     observations

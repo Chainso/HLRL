@@ -9,8 +9,9 @@ class Env(ABC):
         Creates the environment and allows an agent to interact with it.
 
         Properties:
+            state_space (tuple): The dimensions of the input state.
+            action_space (tuple): The dimensions of the output actions.
             state (object): The current state of the environment.
-
             reward (float): The reward of the last action taken in the
                             environment.
 
@@ -19,10 +20,26 @@ class Env(ABC):
             info (object): Any additional information of the environment.
         """
         # The current information for the environment
+        self._state_space = ()
+        self._action_space = ()
         self._state = None
         self._reward = 0
         self._terminal = True
         self._info = None
+
+    @property
+    def state_space(self):
+        """
+        Returns the dimensions of the input state.
+        """
+        return self._state_space
+
+    @property
+    def action_space(self):
+        """
+        Returns the number of actions in the environment.
+        """
+        return self._action_space
 
     @property
     def state(self):

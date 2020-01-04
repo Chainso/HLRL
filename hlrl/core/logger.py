@@ -1,4 +1,4 @@
-import tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 class Logger(dict):
     """
@@ -18,17 +18,17 @@ class Logger(dict):
             **kwargs (list): All additional keyword arguments for a python
                              dictionary.
         """
-        super(self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._on_update = on_update
 
     def __setitem__(self, key, value):
         # The value is likely to be a tuple of a number and step/episode/epoch
         # count
-        super(self).__setitem__(key, value)
+        super().__setitem__(key, value)
         self._on_update(key, value)
 
-def make_tensorboardX_logger(logs_path):
+def make_tensorboard_logger(logs_path):
     """
     Creates a logger using tensorboardX summary writer and add scalar on update.
 

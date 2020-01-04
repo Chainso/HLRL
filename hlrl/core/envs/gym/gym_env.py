@@ -1,6 +1,6 @@
 import gym
 
-from HLRL.core.envs.base import Env
+from hlrl.core.envs.env import Env
 
 class GymEnv(Env):
     """
@@ -15,8 +15,10 @@ class GymEnv(Env):
 
             env_args (list): Any additional arguments for the environment
         """
-        self._gym = gym.make(env_name, env_args)
-
+        self._gym = gym.make(env_name, *env_args).env
+        self._state_space = self._gym.observation_space.shape
+        self._action_space = self._gym.action_space.shape
+    
     def step(self, action):
         """
         Takes 1 step into the environment using the given action.

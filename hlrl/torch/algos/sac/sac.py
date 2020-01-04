@@ -3,21 +3,18 @@ import torch.nn as nn
 
 from copy import deepcopy
 
-from HLRL.torch.algos.base import TorchRLAlgo
+from hlrl.core.algos.algo import RLAlgo
 
-class SAC(TorchRLAlgo):
+class SAC(RLAlgo):
     """
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
-    def __init__(self, device, q_func, policy, value, discount, ent_coeff,
-                 polyak, q_optim, q_optim_args, p_optim, p_optim_args, v_optim,
-                 v_optim_args, twin=True, logger=None):
+    def __init__(self, q_func, policy, value, discount, ent_coeff,
+                 polyak, q_optim, p_optim, v_optim,twin=True, logger=None):
         """
         Creates the soft actor-critic algorithm with the given parameters
 
         Args:
-            device (str): The device for the algorithm to run on. "cpu" for
-                          cpu, and "cuda" for gpu.
             q_func (torch.nn.Module) : The Q-function that takes in the
                                        observation and action.
             policy (torch.nn.Module) : The action policy that takes in the
@@ -31,25 +28,16 @@ class SAC(TorchRLAlgo):
             polyak (float) : The coefficient for polyak averaging (0 < x < 1).
             q_optim (torch.nn.Module) : The class of the optimizer for the
                                         Q-function.
-            q_optim_args (dict) : The dictionary of arguments for the optimizer
-                                  of the Q-function except for the module
-                                  parameters.
             p_optim (torch.nn.Module) : The class of the optimizer for the
                                         action policy.
-            p_optim_args (dict) : The dictionary of arguments for the optimizer
-                                  of the policy except for the module
-                                  parameters.
             v_optim (torch.nn.Module) : The class of the optimizer for the
                                         Q-function.
-            v_optim_args (dict) : The dictionary of arguments for the optimizer
-                                  of the value function except for the module
-                                  parameters.
             twin (bool, optional) : If the twin Q-function algorithm should be
                                     used, default True.
             logger (Logger, optional) : The logger to log results while training
                                         and evaluating, default None.
         """
-        super(self).__init__(device, logger)
+        super().__init__(logger)
 
         # All constants
         self._discount = discount
@@ -60,23 +48,25 @@ class SAC(TorchRLAlgo):
         # The networks
         self.q_func1 = q_func
         self.q_func_targ1 = deepcopy(self.q_func1)
-        self.q_optim1 = q_optim(self.q_func1.parameters(), **q_optim_args)
+        self.q_optim1 = q_optim(self.q_func1.parameters())
 
         # Instantiate a second Q-function for twin SAC
         if(self._twin):
-            # Re-initialize the weights
-            re_init = lambda m: nn.init.xavier_uniform(m.weight.data)
+            def init_weights(m):
+                if hasattr(m, "weight"):
+                    nn.init.xavier_uniform_(m.weight.data)
 
-            self.q_func2 = deepcopy(q_func).apply(re_init)
+
+            self.q_func2 = deepcopy(q_func).apply(init_weights)
             self.q_func_targ2 = deepcopy(self.q_func2)
-            self.q_optim2 = q_optim(self.q_func2.parameters(), **q_optim_args)
+            self.q_optim2 = q_optim(self.q_func2.parameters())
 
         self.policy = policy
-        self.p_optim = p_optim(self.policy.parameters(), **p_optim_args)
+        self.p_optim = p_optim(self.policy.parameters())
 
         self.value = value
         self.value_targ = deepcopy(value)
-        self.v_optim = v_optim(self.value.parameters(), **v_optim_args)
+        self.v_optim = v_optim(self.value.parameters())
 
     def start_training(self, experience_replay, batch_size):
         """
@@ -117,11 +107,10 @@ class SAC(TorchRLAlgo):
         terminals) rollouts.
 
         Args:
-            rollouts (tuple) : The (s, a, r, s', t, idx, is_weights) of training data for the
-                               network.
+            rollouts (tuple) : The (s, a, r, s', t, idx, is_weights) of
+                               training data for the network.
         """
         # Get all the parameters from the rollouts
-        rollouts = [torch.from_numpy(roll).to(self.device) for roll in rollouts]
         states, actions, rewards, next_states, terminals = rollouts
 
         q_loss_func = nn.MSELoss()
@@ -138,7 +127,6 @@ class SAC(TorchRLAlgo):
         q_loss1 = q_loss_func(self.q_func1(states, actions), q_targ)
 
         self.q_optim1.zero_grad()
-        q_loss1.backward()
         self.q_optim1.step()
 
         # Only get the loss for q_func2 if using the twin Q-function algorithm
@@ -173,7 +161,7 @@ class SAC(TorchRLAlgo):
             self.logger["Value Loss"] = v_loss, self.training_steps
 
         # Only log the Q2 
-        if(self._twin and and self.logger is not None):  
+        if(self._twin and self.logger is not None):  
             self.logger["Q2 Loss"] = q_loss2, self.training_steps
 
         new_qs = self.online(states)
@@ -181,3 +169,47 @@ class SAC(TorchRLAlgo):
         new_q_targ = rewards + self._discount * value_targ_next_pred
 
         return new_qs, new_q_targ
+
+    def save(self, save_path):
+        # Save all the dicts
+        state = {
+            "training_episodes": self.training_episodes,
+            "training_steps": self.training_steps,
+            "q_func1": self.q_func1.state_dict(),
+            "q_func_targ1": self.q_func_targ1.state_dict(),
+            "q_optim1": self.q_optim1.state_dict(),
+            "policy": self.policy.state_dict(),
+            "p_optim": self.p_optim.state_dict(),
+            "value": self.value.state_dict(),
+            "value_targ": self.value_targ.state_dict(),
+            "v_optim": self.v_optim.state_dict()
+        }
+
+        # Save second q function if this is twin sac
+        if (self._twin):
+            state["q_func2"] = self.q_func2.state_dict()
+            state["q_func_targ2"] = self.q_func_targ2.state_dict()
+            state["q_optim2"] = self.q_optim2.state_dict()
+
+        torch.save(state, save_path)
+
+    def load(self, load_path):
+        state = torch.load(load_path)
+
+        # Load all the dicts
+        self.training_episodes = state["training_episodes"]
+        self.training_steps = state["training_steps"]
+        self.q_func1.load_state_dict(state["q_func1"])
+        self.q_func_targ1.load_state_dict(state["q_func_targ1"])
+        self.q_optim1.load_state_dict(state["q_optim1"])
+        self.policy.load_state_dict(state["policy"])
+        self.p_optim.load_state_dict(state["p_optim"])
+        self.value.load_state_dict(state["value"])
+        self.value_targ.load_state_dict(state["value_targ"])
+        self.v_optim.load_state_dict(state["v_optim"])
+
+        # Loadsecond q function if this is twin sac
+        if (self._twin):
+            self.q_func2.load_state_dict(state["q_func2"])
+            self.q_func_targ2.load_state_dict(state["q_func_targ2"])
+            self.q_optim2.load_state_dict(state["q_optim2"])

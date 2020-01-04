@@ -9,8 +9,8 @@ class RLAlgo(ABC):
         Creates the reinforcement learning algorithm.
 
         Args:
-            logger (Logger, optional) : The logger to log results while training
-                                        and evaluating.
+            logger (Logger, optional): The logger to log results while training
+                                       and evaluating.
 
         Properties:
             logger (Logger): The logger to log results while training and
@@ -72,7 +72,7 @@ class RLAlgo(ABC):
         pass
 
     @abstractmethod
-    def load(self, loads_path):
+    def load(self, load_path):
         """
         Loads the algorithm from a given save path.
         """

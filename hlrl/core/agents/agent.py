@@ -1,8 +1,6 @@
-from abc import ABC
+from abc import abstractmethod
 
-from HLRL.core.agents.base import RLAgent
-
-class TorchRLAgent(RLAgent, ABC):
+class RLAgent():
     """
     An agent that collects (state, action, reward, next state) tuple
     observations
@@ -15,12 +13,12 @@ class TorchRLAgent(RLAgent, ABC):
         Args:
             env (Env): The environment the agent will explore in.
 
-            algo (TorchRLAlgo): The algorithm the agent will use the explore the
+            algo (RLAlgo): The algorithm the agent will use the explore the
                            environment.
             logger (Logger, optional) : The logger to log results while
                                         interacting with the environment.
         """
-        super(self).__init__(env, algo, logger)
+        super().__init__(env, algo, logger)
 
     def step(self):
         """
@@ -73,3 +71,14 @@ class TorchRLAgent(RLAgent, ABC):
             self.logger["Play/Average"] = avg_reward
 
         return avg_reward
+
+    @abstractmethod
+    def train(self, num_episodes):
+        """
+        Trains the algorithm for the number of episodes specified on the
+        environment.
+
+        Args:
+            num_episodes (int): The number of episodes to train for.
+        """
+        pass

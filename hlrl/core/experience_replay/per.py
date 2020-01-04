@@ -2,22 +2,25 @@ import numpy as np
 
 from .binary_sum_tree import BinarySumTree
 
-class PrioritzedExperienceReplay():
+class PER():
     """
     A Prioritized Experience Replay implementation
     https://arxiv.org/abs/1511.05952
     """
-    def __init__(self, capacity, alpha, beta, beta_increment, epsilon):
+    def __init__(self, capacity: int, alpha: float, beta: float,
+                 beta_increment: float, epsilon: float, device: str):
         """
         Creates a new PER buffer with the given parameters
 
-        capacity : The capacity of the replay buffer
-        alpha : The alpha value for the prioritization, between 0 and 1
-                inclusive
-        beta : The beta value for the importance sampling, between 0 and 1
-               inclusive
-        beta_increment : The value to increment the beta by
-        epsilon : The value of epsilon to add to the priority
+        Args:
+            capacity (int): The capacity of the replay buffer
+            alpha (float): The alpha value for the prioritization,
+                           between 0 and 1 inclusive
+            beta (float): The beta value for the importance sampling,
+                          between 0 and 1 inclusive
+            beta_increment (float): The value to increment the beta by
+            epsilon (float): The value of epsilon to add to the priority
+            device (str): The device of the tensors in the replay buffer
         """
         self.capacity = capacity
         self.alpha = alpha
