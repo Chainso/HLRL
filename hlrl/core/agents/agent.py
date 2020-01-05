@@ -50,14 +50,15 @@ class RLAgent():
 
         # Get additional information if it is there
         if(len(algo_step) > 1):
-            add_algo_rets = algo_step[1:]
+            add_algo_ret = algo_step[1:]
         else:
-            add_algo_rets = []
+            add_algo_ret = []
 
         next_state, reward, terminal, info = self.env.step(action)
+        next_state = self._make_input_from_state(next_state)
 
         return (algo_inp, action, reward, next_state, terminal, info,
-                add_algo_rets)
+                add_algo_ret)
 
     def play(self, num_episodes):
         """

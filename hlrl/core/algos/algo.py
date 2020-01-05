@@ -21,19 +21,15 @@ class RLAlgo(ABC):
 
             training_steps (int): The number of steps the algorithm has been
                                   training for.
+
+            env_steps (int): The number of environment steps the algorithm has
+                             been training for
         """
         self.logger = logger
 
-        self.training_episodes = 0
+        self.env_episodes = 0
         self.training_steps = 0
-
-    def routine_save(self):
-        """
-        Checks to see if the number of steps done is a multiple of the save
-        interval and will save the model if it is
-        """
-        if(self.steps_done % self.save_interval == 0 and self.training):
-            self.save(self.save_path)
+        self.env_steps = 0
 
     @abstractmethod
     def start_training(self):

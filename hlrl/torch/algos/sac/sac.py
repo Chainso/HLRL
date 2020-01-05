@@ -4,13 +4,15 @@ import torch.nn as nn
 from copy import deepcopy
 
 from hlrl.core.algos import RLAlgo
+from hlrl.torch.util import polyak_average
 
 class SAC(RLAlgo):
     """
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
     def __init__(self, q_func, policy, value, discount, ent_coeff,
-                 polyak, q_optim, p_optim, v_optim,twin=True, logger=None):
+                 polyak, target_update_interval, q_optim, p_optim, v_optim,
+                 twin=True, logger=None):
         """
         Creates the soft actor-critic algorithm with the given parameters
 
@@ -26,6 +28,8 @@ class SAC(RLAlgo):
             ent_coeff (float) : The coefficient of the entropy reward
                                 (0 < x < 1).
             polyak (float) : The coefficient for polyak averaging (0 < x < 1).
+            target_update_interval (int): The number of training steps in
+                                          between target updates.
             q_optim (torch.nn.Module) : The class of the optimizer for the
                                         Q-function.
             p_optim (torch.nn.Module) : The class of the optimizer for the
@@ -43,6 +47,7 @@ class SAC(RLAlgo):
         self._discount = discount
         self._ent_coeff = ent_coeff
         self._polyak = polyak
+        self._target_update_interval = target_update_interval
         self._twin = twin
 
         # The networks
@@ -184,13 +189,20 @@ class SAC(RLAlgo):
         new_value_targ = (1 - terminals) * self.value_targ(next_states)
         new_q_targ = rewards + self._discount * value_targ_next_pred
 
+        # Update the target
+        if (self.training_steps % self._target_update_interval == 0):
+            polyak_average(self.q_func1, self.q_func_targ1, self.polyak)
+            polyak_average(self.q_func2, self.q_func_targ2, self.polyak)
+
+        self.training_steps += 1
         return new_qs, new_q_targ
 
     def save(self, save_path):
         # Save all the dicts
         state = {
-            "training_episodes": self.training_episodes,
+            "env_episodes": self.env_episodes,
             "training_steps": self.training_steps,
+            "env_steps": self.env_steps,
             "q_func1": self.q_func1.state_dict(),
             "q_func_targ1": self.q_func_targ1.state_dict(),
             "q_optim1": self.q_optim1.state_dict(),
@@ -213,8 +225,9 @@ class SAC(RLAlgo):
         state = torch.load(load_path)
 
         # Load all the dicts
-        self.training_episodes = state["training_episodes"]
+        self.env_episodes = state["env_episodes"]
         self.training_steps = state["training_steps"]
+        self.env_steps = state["env_steps"]
         self.q_func1.load_state_dict(state["q_func1"])
         self.q_func_targ1.load_state_dict(state["q_func_targ1"])
         self.q_optim1.load_state_dict(state["q_optim1"])

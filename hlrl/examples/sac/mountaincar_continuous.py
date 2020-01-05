@@ -39,25 +39,35 @@ if(__name__ == "__main__"):
                         help="the next state reward discount factor")
     parser.add_argument("--entropy", type=float, default=0.5,
                         help="the coefficient of entropy for SAC")
-    parser.add_argument("--polyak", type=float, default=0.8,
+    parser.add_argument("--polyak", type=float, default=0.995,
                         help="the polyak constant for the target network "
                              + "updates")
-    parser.add_argument("--lr", type=float, default=3e-4,
+    parser.add_argument("--target_update_interval", type=float, default=1,
+                        help="the number of training steps inbetween target "
+                             + "network updates")
+    parser.add_argument("--lr", type=float, default=1e-3,
                         help="the learning rate")
     parser.add_argument("--twin", type=bool, default=True,
                         help="true if SAC should use twin Q-networks")     
 
+    # Agent args
+    parser.add_argument("--episodes", type=int, default=1,
+                        help="the number of episodes to train for")
+    parser.add_argument("--decay", type=float, default=0.99,
+                        help="the gamma decay for the target Q-values")
+    parser.add_argument("--n_steps", type=int, default=1,
+                        help="the number of decay steps")
     # Experience Replay args
     parser.add_argument("--er_capacity", type=float, default=50000,
-                        help="The alpha value for PER")
+                        help="the alpha value for PER")
     parser.add_argument("--er_alpha", type=float, default=0.6,
-                        help="The alpha value for PER")
+                        help="the alpha value for PER")
     parser.add_argument("--er_beta", type=float, default=0.4,
-                        help="The alpha value for PER")
+                        help="the alpha value for PER")
     parser.add_argument("--er_beta_increment", type=float, default=1e-3,
-                        help="The alpha value for PER")
+                        help="the alpha value for PER")
     parser.add_argument("--er_epsilon", type=float, default=1e-2,
-                        help="The epsilon value for PER")
+                        help="the epsilon value for PER")
 
     args = vars(parser.parse_args())
 
@@ -82,8 +92,8 @@ if(__name__ == "__main__"):
 
     optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
     algo = SAC(qfunc, policy, value_func, args["discount"],
-               args["entropy"], args["polyak"], optim, optim, optim,
-               args["twin"], logger)
+               args["entropy"], args["polyak"], args["target_update_interval"],
+               optim, optim, optim, args["twin"], logger)
 
     # Experience replay
     experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
@@ -92,5 +102,4 @@ if(__name__ == "__main__"):
 
     # Initialize agent
     agent = OffPolicyAgent(env, algo, experience_replay, args["render"], logger)
-    agent.play(1)
-   
+    agent.train(args["episodes"], args["decay"], args["n_steps"])

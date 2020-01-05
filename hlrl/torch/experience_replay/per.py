@@ -35,24 +35,30 @@ class TorchPER(PER):
         self.experiences = np.zeros(capacity, dtype=object)
         self.priorities = TorchBinarySumTree(capacity, device)
 
-    def add(self, experience, q_val, discounted_next_q):
+    def _get_error(self, q_val, q_target):
+        """
+        Computes the error (absolute difference) between the Q-value and the
+        target Q-value
+        """
+        return torch.abs(q_val - q_target).item()
+
+    def add(self, experience, q_val, q_target):
         """
         Adds the given experience to the replay buffer with the priority being
         the given error added to the epsilon value.
 
         Args:
-            experience (tuple) : The (s, a, r, s', t) experience to add to the
+            experience (tuple) : The (s, a, r, ...) experience to add to the
                                  buffer
 
-            q_val (float): The Q-value of the action taken in the experience
+            q_val (float): The Q-value of the action taken
 
-            discounted_next_q (float): The discounted Q-value of the "optimal"
-                                       next action
+            q_target (float): The target Q-value
         """
-        error = self._get_error(q_val, discounted_next_q)
+        error = self._get_error(q_val, q_target)
 
         current_index = self.priorities.next_index()
-        self.experiences[current_index] = torch.array(experience)
+        self.experiences[current_index] = np.array(experience, dtype=object)
 
         priority = self._get_priority(error)
         self.priorities.add(priority)
@@ -66,14 +72,14 @@ class TorchPER(PER):
         priorities = self.priorities.get_leaves() / self.priorities.sum()
         indices = torch.multinomial(priorities, size)
 
-        batch = torch.stack(self.experiences[indices])
+        batch = np.array(self.experiences[indices], dtype=object)
 
         probabilities = priorities[indices]
 
-        is_weights = torch.power(len(self.priorities) * probabilities,
-                                 -self.beta)
+        is_weights = torch.pow(len(self.priorities) * probabilities,
+                               -self.beta)
         is_weights /= is_weights.max()
 
-        self.beta = torch.min([1.0, self.beta + self.beta_increment])
+        self.beta = np.min([1.0, self.beta + self.beta_increment])
 
         return batch, indices, is_weights

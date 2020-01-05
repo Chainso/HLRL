@@ -44,28 +44,27 @@ class PER():
         """
         return (error + self.epsilon) ** self.alpha
 
-    def _get_error(self, q_val, discounted_next_q):
+    def _get_error(self, q_val, q_target):
         """
-        Computes the error (absolute difference) between the Q-value and the
-        discounted Q-value of the next state
+        Computes the error (absolute difference) between the Q-value plus the
+        reward and the discounted Q-value of the next state
         """
-        return np.abs(q_val - discounted_next_q)
+        return np.abs(q_val - q_target)
 
-    def add(self, experience, q_val, discounted_next_q):
+    def add(self, experience, q_val, q_target):
         """
         Adds the given experience to the replay buffer with the priority being
         the given error added to the epsilon value.
 
         Args:
-            experience (tuple) : The (s, a, r, s', t) experience to add to the
+            experience (tuple) : The (s, a, r, ...) experience to add to the
                                  buffer
 
-            q_val (float): The Q-value of the action taken in the experience
+            q_val (float): The Q-value of the action taken
 
-            discounted_next_q (float): The discounted Q-value of the "optimal"
-                                       next action
+            q_target (float): The target Q-value
         """
-        error = self._get_error(q_val, discounted_next_q)
+        error = self._get_error(q_val, q_target)
 
         current_index = self.priorities.next_index()
         self.experiences[current_index] = np.array(experience)
@@ -117,18 +116,17 @@ class PER():
         priority = self._get_priority(error)
         self.priorities.set(priority, index)
 
-    def update_priorities(self, indices, q_vals, discounted_next_q):
+    def update_priorities(self, indices, q_vals, q_targets):
         """
         Updates the priority of the experiences at the given indices, using the
         errors given.
 
         Args:
-            q_val (float): The Q-value of the actions taken
+            q_val ([float]): The Q-values of the actions taken
 
-            discounted_next_qs (float): The discounted Q-value of the "optimal"
-                                       next actions
+            discounted_next_qs ([float]): The target Q-values
         """
-        errors = self._get_error(q_vals, discounted_next_q)
+        errors = self._get_error(q_vals, q_targets)
 
         for index, error in zip(indices, errors):
             self.update_priority(index, error)
