@@ -7,11 +7,15 @@ from hlrl.torch.policies import LinearPolicy, LinearSAPolicy
 if(__name__ == "__main__"):
     from argparse import ArgumentParser
 
+    import torch.multiprocessing as mp
+
     from hlrl.core.logger import make_tensorboard_logger
     from hlrl.torch.algos.sac.sac import SAC
     from hlrl.core.envs import GymEnv
     from hlrl.torch.agents import OffPolicyAgent
     from hlrl.torch.experience_replay import TorchPER
+
+    mp.set_start_method("forkserver")
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(description = "Twin Q-Function SAC example on "
@@ -28,7 +32,7 @@ if(__name__ == "__main__"):
     # Model arg
     parser.add_argument("--hidden_size", type=int, default=16,
                         help="the size of each hidden layer")
-    parser.add_argument("--num_hidden", type=int, default=16,
+    parser.add_argument("--num_hidden", type=int, default=1,
                         help="the number of hidden layers before the output "
                              + "layers")
 
@@ -48,7 +52,15 @@ if(__name__ == "__main__"):
     parser.add_argument("--lr", type=float, default=1e-3,
                         help="the learning rate")
     parser.add_argument("--twin", type=bool, default=True,
-                        help="true if SAC should use twin Q-networks")     
+                        help="true if SAC should use twin Q-networks")
+
+    # Training args
+    parser.add_argument("--batch_size", type=int, default=32,
+                        help="the batch size of the training set")
+    parser.add_argument("--save_path", type=str, default=None,
+                        help="the path to save the model to")
+    parser.add_argument("--save_interval", type=int, default=10000,
+                        help="the number of batches in between saves")
 
     # Agent args
     parser.add_argument("--episodes", type=int, default=1,
@@ -57,6 +69,7 @@ if(__name__ == "__main__"):
                         help="the gamma decay for the target Q-values")
     parser.add_argument("--n_steps", type=int, default=1,
                         help="the number of decay steps")
+
     # Experience Replay args
     parser.add_argument("--er_capacity", type=float, default=50000,
                         help="the alpha value for PER")
@@ -77,7 +90,7 @@ if(__name__ == "__main__"):
     # The logger
     logger = args["logs_path"]
     logger = None if logger is None else make_tensorboard_logger(logger)
-
+    logger = None
     # Initialize SAC
     activation_fn = nn.ReLU
     qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
@@ -93,7 +106,11 @@ if(__name__ == "__main__"):
     optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
     algo = SAC(qfunc, policy, value_func, args["discount"],
                args["entropy"], args["polyak"], args["target_update_interval"],
-               optim, optim, optim, args["twin"], logger)
+               optim, optim, optim, args["twin"], logger).to(torch.device(args["device"]))
+    algo.train()
+    algo.share_memory()
+
+    buffer_queue = mp.Queue()
 
     # Experience replay
     experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
@@ -101,5 +118,18 @@ if(__name__ == "__main__"):
                                  args["er_epsilon"], args["device"])
 
     # Initialize agent
-    agent = OffPolicyAgent(env, algo, experience_replay, args["render"], logger)
-    agent.train(args["episodes"], args["decay"], args["n_steps"])
+    agent = OffPolicyAgent(env, algo, experience_replay, args["render"],
+                           logger=logger, device=args["device"])
+
+    agent_train_proc = mp.Process(target=agent.train,
+                                  args=(args["episodes"], args["decay"],
+                                        args["n_steps"], buffer_queue))
+
+    agent_train_proc.start()
+
+    while agent_train_proc.is_alive():
+         experience_replay.get_from_queue(buffer_queue)
+         algo.train_from_buffer(experience_replay, args["batch_size"],
+                                args["save_path"], args["save_interval"])
+
+    agent_train_proc.join()

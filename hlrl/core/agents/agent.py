@@ -37,7 +37,7 @@ class RLAgent():
         env info) tuple. Resets the environment if the current state is a
         terminal.
         """
-        if(self.env.terminal == True):
+        if(self.env.terminal):
             self.env.reset()
 
         if(self.render):
@@ -45,8 +45,11 @@ class RLAgent():
 
         state = self.env.state
         algo_inp = self._make_input_from_state(state)
+
         algo_step = self.algo.step(algo_inp)
+
         action = algo_step[0]
+        env_act = action[0].cpu().numpy()
 
         # Get additional information if it is there
         if(len(algo_step) > 1):
@@ -54,7 +57,7 @@ class RLAgent():
         else:
             add_algo_ret = []
 
-        next_state, reward, terminal, info = self.env.step(action)
+        next_state, reward, terminal, info = self.env.step(env_act)
         next_state = self._make_input_from_state(next_state)
 
         return (algo_inp, action, reward, next_state, terminal, info,
@@ -74,7 +77,7 @@ class RLAgent():
             self.env.reset()
             ep_reward = 0
             
-            while(self.env.terminal == False):
+            while(not self.env.terminal):
                 ep_reward += self.step()[2]
 
             if(self.logger is not None):

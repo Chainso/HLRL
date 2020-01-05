@@ -72,6 +72,12 @@ class PER():
         priority = self._get_priority(error)
         self.priorities.add(priority)
 
+    def get_from_queue(self, queue):
+        """
+        Retrieve samples from a queue.
+        """
+        self.add(*queue.get())
+
     def sample(self, size):
         """
         Samples "size" number of experiences from the buffer

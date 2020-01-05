@@ -69,11 +69,12 @@ class TorchPER(PER):
 
         size : The number of experiences to sample
         """
+        size = 3
         priorities = self.priorities.get_leaves() / self.priorities.sum()
         indices = torch.multinomial(priorities, size)
-
-        batch = np.array(self.experiences[indices], dtype=object)
-
+        print(type(self.experiences))
+        print(self.experiences.take(indices, axis=0))
+        batch = np.stack(self.experiences[indices])
         probabilities = priorities[indices]
 
         is_weights = torch.pow(len(self.priorities) * probabilities,

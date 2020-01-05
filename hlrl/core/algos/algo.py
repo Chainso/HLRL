@@ -32,13 +32,6 @@ class RLAlgo(ABC):
         self.env_steps = 0
 
     @abstractmethod
-    def start_training(self):
-        """
-        Starts training the network.
-        """
-        pass
-
-    @abstractmethod
     def train_batch(self, rollouts):
         """
         Trains the network for a batch of rollouts.

@@ -23,7 +23,7 @@ class TorchRLAgent(RLAgent):
             device (str): The device for the agent to run on.
         """
         super().__init__(env, algo, render, logger)
-        self.device = device
+        self.device = torch.device(device)
 
     def _make_input_from_state(self, state):
         """

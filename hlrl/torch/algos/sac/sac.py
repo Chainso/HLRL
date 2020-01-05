@@ -3,10 +3,10 @@ import torch.nn as nn
 
 from copy import deepcopy
 
-from hlrl.core.algos import RLAlgo
+from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.util import polyak_average
 
-class SAC(RLAlgo):
+class SAC(TorchRLAlgo):
     """
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
@@ -73,24 +73,31 @@ class SAC(RLAlgo):
         self.value_targ = deepcopy(value)
         self.v_optim = v_optim(self.value.parameters())
 
-    def start_training(self, experience_replay, batch_size):
+    def train_from_buffer(self, experience_replay, batch_size, save_path=None,
+                          save_interval=10000):
         """
         Starts training the network.
 
         Args:
             experience_replay (ExperienceReplay): The experience replay buffer
                                                   to sample experiences from.
-
-            batch_size (int): The batch size of the experiences to train on
+            num_batches (int): The number of batches to train for.
+            batch_size (int): The batch size of the experiences to train on.
+            save_path (Optional, str): The path to save the model to.
+            save_interval (int): The number of batches between saves.
         """
-        while(self.trainsing):
+        if(batch_size <= len(experience_replay)):
             sample = experience_replay.sample(batch_size)
-            s, a, r, n_s, t, idxs = self.train_batch(sample)
+            rollouts, idxs, is_weights = sample
 
-            new_q, new_q_targ = self.train_batch((s, a, r, n_s, t))
+            new_q, new_q_targ = self.train_batch(rollouts, is_weights)
             experience_replay.update_priorities(idxs, new_q, new_q_targ)
 
-    def foward(self, observation):
+            if(save_path is not None
+                and self.training_steps % save_interval == 0):
+                self.save(save_path)
+
+    def forward(self, observation):
         """
         Get the model output for a batch of observations
 
@@ -122,7 +129,7 @@ class SAC(RLAlgo):
 
         return action.detach(), q_val.detach()
 
-    def train_batch(self, rollouts):
+    def train_batch(self, rollouts, is_weights):
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
@@ -132,6 +139,9 @@ class SAC(RLAlgo):
                                training data for the network.
         """
         # Get all the parameters from the rollouts
+        print('------------------------------------------')
+        print(rollouts[0])
+
         states, actions, rewards, next_states, terminals = rollouts
 
         q_loss_func = nn.MSELoss()
