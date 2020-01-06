@@ -40,7 +40,7 @@ class TorchPER(PER):
         Computes the error (absolute difference) between the Q-value and the
         target Q-value
         """
-        return torch.abs(q_val - q_target).item()
+        return torch.abs(q_val - q_target)
 
     def add(self, experience, q_val, q_target):
         """
@@ -55,7 +55,7 @@ class TorchPER(PER):
 
             q_target (float): The target Q-value
         """
-        error = self._get_error(q_val, q_target)
+        error = self._get_error(q_val, q_target).item()
 
         current_index = self.priorities.next_index()
         self.experiences[current_index] = np.array(experience, dtype=object)
@@ -69,12 +69,13 @@ class TorchPER(PER):
 
         size : The number of experiences to sample
         """
-        size = 3
         priorities = self.priorities.get_leaves() / self.priorities.sum()
         indices = torch.multinomial(priorities, size)
-        print(type(self.experiences))
-        print(self.experiences.take(indices, axis=0))
+
         batch = np.stack(self.experiences[indices])
+        batch = batch.transpose()
+        batch = [torch.cat([*field]) for field in batch]
+
         probabilities = priorities[indices]
 
         is_weights = torch.pow(len(self.priorities) * probabilities,
@@ -84,3 +85,21 @@ class TorchPER(PER):
         self.beta = np.min([1.0, self.beta + self.beta_increment])
 
         return batch, indices, is_weights
+
+    def update_priorities(self, indices, q_vals, q_targets):
+        """
+        Updates the priority of the experiences at the given indices, using the
+        errors given.
+
+        Args:
+            q_val ([float]): The Q-values of the actions taken
+
+            discounted_next_qs ([float]): The target Q-values
+        """
+        errors = self._get_error(q_vals, q_targets)
+
+        for index, error in zip(indices, errors):
+            index = index.item()
+            error = error.item()
+
+            self.update_priority(index, error)

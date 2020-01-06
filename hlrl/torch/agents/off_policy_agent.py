@@ -81,12 +81,15 @@ class OffPolicyAgent(TorchRLAgent):
             queue (mp.Queue): A queue to put replays if using multiprocessing.
         """
         for episode in range(1, num_episodes + 1):
+            print("First thing in loop")
             self.env.reset()
             ep_reward = 0
-
+            a = 0
+            print("STARTING EPISODE")
             experiences = deque(maxlen = n_steps)
             while(not self.env.terminal):
-                #print(len(self.experience_replay))
+                a += 1
+                #print(a)
                 (state, action, reward, next_state, terminal, info,
                 add_algo_ret) = self.step()
 
@@ -94,8 +97,8 @@ class OffPolicyAgent(TorchRLAgent):
                 ep_reward += reward
 
                 # Convert the reward and terminal into a tensor for storage
-                reward = torch.FloatTensor([reward]).to(self.device)
-                terminal = torch.FloatTensor([terminal]).to(self.device)
+                reward = torch.FloatTensor([[reward]]).to(self.device)
+                terminal = torch.FloatTensor([[terminal]]).to(self.device)
 
                 experiences.append([[state, action, reward, next_state,
                                      terminal], *add_algo_ret, *next_algo_ret])
@@ -108,13 +111,28 @@ class OffPolicyAgent(TorchRLAgent):
                         self.put_in_queue(experiences, decay, queue)
                     else:
                         self.add_to_buffer(experiences, decay)
-
+            print("DONE EPISODE")
             if queue is not None:
+                print("ADDING TO QUEUE")
+                print(experiences)
+                print(decay)
+                print(queue)
                 self.put_in_queue(experiences, decay, queue)
+
+                # Make sure the queue finishes adding the experiences before
+                # garbage collecting the experience buffer
+                queue.join()
+
+                print("Queue now empty")
             else:
                 self.add_to_buffer(experiences, decay)
 
             if(self.logger is not None):
                 self.logger["Train/Episode Reward"] = ep_reward, episode
+            print("Exiting loop before queue is done")
+
+            print("Post queue join")
+
 
             self.algo.env_episodes += 1
+            print("Last thing in loop")

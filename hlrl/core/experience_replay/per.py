@@ -135,4 +135,7 @@ class PER():
         errors = self._get_error(q_vals, q_targets)
 
         for index, error in zip(indices, errors):
+            index = index
+            error = error
+
             self.update_priority(index, error)

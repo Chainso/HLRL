@@ -1,21 +1,19 @@
 import torch
 import torch.nn as nn
 
-from hlrl.torch.policies import LinearPolicy, LinearSAPolicy
+from hlrl.torch.policies import LinearPolicy, LinearSAPolicy, GaussianPolicy, TanhGaussianPolicy
 
 
 if(__name__ == "__main__"):
-    from argparse import ArgumentParser
-
     import torch.multiprocessing as mp
+
+    from argparse import ArgumentParser
 
     from hlrl.core.logger import make_tensorboard_logger
     from hlrl.torch.algos.sac.sac import SAC
     from hlrl.core.envs import GymEnv
     from hlrl.torch.agents import OffPolicyAgent
     from hlrl.torch.experience_replay import TorchPER
-
-    mp.set_start_method("forkserver")
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(description = "Twin Q-Function SAC example on "
@@ -90,15 +88,15 @@ if(__name__ == "__main__"):
     # The logger
     logger = args["logs_path"]
     logger = None if logger is None else make_tensorboard_logger(logger)
-    logger = None
+
     # Initialize SAC
     activation_fn = nn.ReLU
     qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
                            args["hidden_size"], args["num_hidden"],
                            activation_fn)
-    policy = LinearPolicy(env.state_space[0], env.action_space[0],
-                          args["hidden_size"], args["num_hidden"],
-                          activation_fn)
+    policy = TanhGaussianPolicy(env.state_space[0], env.action_space[0],
+                                args["hidden_size"], args["num_hidden"],
+                                activation_fn)
 
     value_func = LinearPolicy(env.state_space[0], 1, args["hidden_size"],
                               args["num_hidden"], activation_fn)
@@ -131,5 +129,6 @@ if(__name__ == "__main__"):
          experience_replay.get_from_queue(buffer_queue)
          algo.train_from_buffer(experience_replay, args["batch_size"],
                                 args["save_path"], args["save_interval"])
-
+    print("IN hereaa")
     agent_train_proc.join()
+    print("End of program")

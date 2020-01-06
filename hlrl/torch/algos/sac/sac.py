@@ -124,7 +124,7 @@ class SAC(TorchRLAlgo):
         Returns:
             The action and Q-value of the action.
         """
-        action = self.policy(observation)
+        action, mean, log_probs = self.policy.sample(observation)
         q_val = self.q_func1(observation, action)
 
         return action.detach(), q_val.detach()
@@ -139,39 +139,37 @@ class SAC(TorchRLAlgo):
                                training data for the network.
         """
         # Get all the parameters from the rollouts
-        print('------------------------------------------')
-        print(rollouts[0])
-
         states, actions, rewards, next_states, terminals = rollouts
 
         q_loss_func = nn.MSELoss()
         v_loss_func = nn.MSELoss()
 
         value_targ_next_pred = (1 - terminals) * self.value_targ(next_states)
+        value_targ_next_pred = value_targ_next_pred.detach()
+        new_actions, mean, log_pis = self.policy.sample(states)
 
-        new_actions, log_pis = self.policy(states, True)
-        entropy = -self.ent_coeff * log_pis
+        entropy = self._ent_coeff * log_pis
 
-        q_targ_pred1 = self.q_func1(states, new_actions)
-
+        q_targ_pred1 = self.q_func_targ1(states, new_actions).detach()
         q_targ = rewards + self._discount * value_targ_next_pred
         q_loss1 = q_loss_func(self.q_func1(states, actions), q_targ)
 
         self.q_optim1.zero_grad()
+        q_loss1.backward()
         self.q_optim1.step()
 
         # Only get the loss for q_func2 if using the twin Q-function algorithm
         if(self._twin):
-            q_targ_pred2 = self.q_func_targ2(states, new_actions)     
+            q_targ_pred2 = self.q_func_targ2(states, new_actions).detach()    
             q_loss2 = q_loss_func(self.q_func2(states, actions), q_targ)
 
             self.q_optim2.zero_grad()
             q_loss2.backward()
             self.q_optim2.step()
 
-            value_targ = torch.min(q_targ_pred1, q_targ_pred2) - entropy
+            value_targ = torch.min(q_targ_pred1, q_targ_pred2) - entropy.detach()
         else:
-            value_targ = q_targ_pred1 - entropy
+            value_targ = q_targ_pred1 - entropy.detach()
 
         v_loss = v_loss_func(self.value(states), value_targ)
 
@@ -179,7 +177,7 @@ class SAC(TorchRLAlgo):
         v_loss.backward()
         self.v_optim.step()
 
-        p_loss = torch.mean(q_targ_pred1 - entropy)
+        p_loss = torch.mean(entropy - q_targ_pred1)
 
         self.p_optim.zero_grad()
         p_loss.backward()
@@ -195,14 +193,17 @@ class SAC(TorchRLAlgo):
         if(self._twin and self.logger is not None):  
             self.logger["Q2 Loss"] = q_loss2, self.training_steps
 
-        new_qs = self.online(states)
-        new_value_targ = (1 - terminals) * self.value_targ(next_states)
+        # Get the new q value to update the experience replay
+        updated_actions, mean, new_log_pi = self.policy.sample(states)
+        new_qs = self.q_func1(states, updated_actions).detach()
+        new_value_targ = (1 - terminals) * self.value_targ(next_states).detach()
         new_q_targ = rewards + self._discount * value_targ_next_pred
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
-            polyak_average(self.q_func1, self.q_func_targ1, self.polyak)
-            polyak_average(self.q_func2, self.q_func_targ2, self.polyak)
+            polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
+            polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
+            polyak_average(self.value, self.value_targ, self._polyak)
 
         self.training_steps += 1
         return new_qs, new_q_targ
