@@ -81,15 +81,11 @@ class OffPolicyAgent(TorchRLAgent):
             queue (mp.Queue): A queue to put replays if using multiprocessing.
         """
         for episode in range(1, num_episodes + 1):
-            print("First thing in loop")
             self.env.reset()
             ep_reward = 0
-            a = 0
-            print("STARTING EPISODE")
+
             experiences = deque(maxlen = n_steps)
             while(not self.env.terminal):
-                a += 1
-                #print(a)
                 (state, action, reward, next_state, terminal, info,
                 add_algo_ret) = self.step()
 
@@ -111,28 +107,20 @@ class OffPolicyAgent(TorchRLAgent):
                         self.put_in_queue(experiences, decay, queue)
                     else:
                         self.add_to_buffer(experiences, decay)
-            print("DONE EPISODE")
+
             if queue is not None:
-                print("ADDING TO QUEUE")
-                print(experiences)
-                print(decay)
-                print(queue)
                 self.put_in_queue(experiences, decay, queue)
 
                 # Make sure the queue finishes adding the experiences before
                 # garbage collecting the experience buffer
-                queue.join()
-
-                print("Queue now empty")
+                # No queue.join() in multiprocessing.Queue
+                # Unsure of reliability of this method
+                while queue.empty():
+                    pass
             else:
                 self.add_to_buffer(experiences, decay)
 
             if(self.logger is not None):
                 self.logger["Train/Episode Reward"] = ep_reward, episode
-            print("Exiting loop before queue is done")
-
-            print("Post queue join")
-
-
+            print("Episode", str(episode) + ":", ep_reward)
             self.algo.env_episodes += 1
-            print("Last thing in loop")

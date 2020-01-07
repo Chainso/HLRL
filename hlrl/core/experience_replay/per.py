@@ -87,12 +87,12 @@ class PER():
         priorities = self.priorities.get_leaves() / self.priorities.sum()
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        batch = np.stack(self.experiences[indices])
+        batch = np.stack(self.experiences[indices], axis=1)
 
         stacked_batch = []
 
         # In order to get float32 instead of float64 and long over int
-        for arr in batch.transpose():
+        for arr in batch:
             stacked_arr = np.stack(arr)
 
             if(stacked_arr.dtype == np.float64):

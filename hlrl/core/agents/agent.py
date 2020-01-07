@@ -1,3 +1,5 @@
+import torch.multiprocessing as mp
+
 from abc import abstractmethod
 
 class RLAgent():
@@ -100,3 +102,29 @@ class RLAgent():
             num_episodes (int): The number of episodes to train for.
         """
         pass
+
+class AgentPool():
+    """
+    An asynchronous pool of agents.
+    """
+    def __init__(self, agents):
+        """
+        Properties:
+            agents ([RLAgent]): A list of agents in the pool.
+        """
+        self.agents = agents
+
+    def train(self, *agent_train_args):
+        """
+        Trains each agent using the arguments given.
+
+        Args:
+            agent_train_args ([object]): The list of arguments for each agents.
+        """
+        procs = [mp.Process(target = agent.train, args=agent_train_args)
+                 for agent in self.agents]
+
+        for proc in procs:
+            proc.start()
+
+        return procs

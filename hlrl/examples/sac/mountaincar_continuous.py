@@ -12,8 +12,11 @@ if(__name__ == "__main__"):
     from hlrl.core.logger import make_tensorboard_logger
     from hlrl.torch.algos.sac.sac import SAC
     from hlrl.core.envs import GymEnv
+    from hlrl.core.agents import AgentPool
     from hlrl.torch.agents import OffPolicyAgent
     from hlrl.torch.experience_replay import TorchPER
+
+    mp.set_start_method("forkserver")
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(description = "Twin Q-Function SAC example on "
@@ -28,7 +31,7 @@ if(__name__ == "__main__"):
                         help="render the environment")
 
     # Model arg
-    parser.add_argument("--hidden_size", type=int, default=16,
+    parser.add_argument("--hidden_size", type=int, default=32,
                         help="the size of each hidden layer")
     parser.add_argument("--num_hidden", type=int, default=1,
                         help="the number of hidden layers before the output "
@@ -61,7 +64,7 @@ if(__name__ == "__main__"):
                         help="the number of batches in between saves")
 
     # Agent args
-    parser.add_argument("--episodes", type=int, default=1,
+    parser.add_argument("--episodes", type=int, default=1000,
                         help="the number of episodes to train for")
     parser.add_argument("--decay", type=float, default=0.99,
                         help="the gamma decay for the target Q-values")
@@ -113,22 +116,23 @@ if(__name__ == "__main__"):
     # Experience replay
     experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
                                  args["er_beta"], args["er_beta_increment"],
-                                 args["er_epsilon"], args["device"])
+                                 args["er_epsilon"])
 
     # Initialize agent
-    agent = OffPolicyAgent(env, algo, experience_replay, args["render"],
-                           logger=logger, device=args["device"])
+    agents = [
+         OffPolicyAgent(env, algo, experience_replay, args["render"],
+                        logger=logger, device=args["device"])
+    ]
 
-    agent_train_proc = mp.Process(target=agent.train,
-                                  args=(args["episodes"], args["decay"],
-                                        args["n_steps"], buffer_queue))
+    agent_pool = AgentPool(agents)
+    agent_procs = agent_pool.train(args["episodes"], args["decay"],
+                                   args["n_steps"], buffer_queue)
 
-    agent_train_proc.start()
-
-    while agent_train_proc.is_alive():
+    while any(proc.is_alive() for proc in agent_procs):
          experience_replay.get_from_queue(buffer_queue)
          algo.train_from_buffer(experience_replay, args["batch_size"],
                                 args["save_path"], args["save_interval"])
     print("IN hereaa")
-    agent_train_proc.join()
+    for proc in agent_procs:
+         proc.join()
     print("End of program")
