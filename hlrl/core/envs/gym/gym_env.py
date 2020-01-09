@@ -16,7 +16,7 @@ class GymEnv(Env):
             env_args (list): Any additional arguments for the environment
         """
         Env.__init__(self)
-        self._gym = gym.make(env_name, *env_args).env
+        self._gym = gym.make(env_name, *env_args)
         self._state_space = self._gym.observation_space.shape
         self._action_space = self._gym.action_space.shape
 

@@ -1,8 +1,9 @@
 import numpy as np
 
 from .binary_sum_tree import BinarySumTree
+from .replay import ExperienceReplay
 
-class PER():
+class PER(ExperienceReplay):
     """
     A Prioritized Experience Replay implementation
     https://arxiv.org/abs/1511.05952
@@ -21,7 +22,7 @@ class PER():
             beta_increment (float): The value to increment the beta by
             epsilon (float): The value of epsilon to add to the priority
         """
-        self.capacity = capacity
+        super().__init__(capacity)
         self.alpha = alpha
         self.beta = beta
         self.beta_increment = beta_increment
@@ -71,12 +72,6 @@ class PER():
 
         priority = self._get_priority(error)
         self.priorities.add(priority)
-
-    def get_from_queue(self, queue):
-        """
-        Retrieve samples from a queue.
-        """
-        self.add(*queue.get())
 
     def sample(self, size):
         """

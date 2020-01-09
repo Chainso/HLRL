@@ -29,6 +29,8 @@ if(__name__ == "__main__"):
     # Env args
     parser.add_argument("-r, --render", dest="render", action="store_true",
                         help="render the environment")
+    parser.add_argument("-e,", "--env", dest="env", default="Pendulum-v0",
+                        help="the gym environment to train on")
 
     # Model arg
     parser.add_argument("--hidden_size", type=int, default=32,
@@ -86,7 +88,7 @@ if(__name__ == "__main__"):
     args = vars(parser.parse_args())
 
     # Initialize the environment
-    env = GymEnv("MountainCarContinuous-v0")
+    env = GymEnv(args["env"])
 
     # The logger
     logger = args["logs_path"]
@@ -132,6 +134,8 @@ if(__name__ == "__main__"):
          experience_replay.get_from_queue(buffer_queue)
          algo.train_from_buffer(experience_replay, args["batch_size"],
                                 args["save_path"], args["save_interval"])
+         print("Still going")
+         print(any(proc.is_alive() for proc in agent_procs))
     print("IN hereaa")
     for proc in agent_procs:
          proc.join()

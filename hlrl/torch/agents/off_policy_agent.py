@@ -83,7 +83,6 @@ class OffPolicyAgent(TorchRLAgent):
         for episode in range(1, num_episodes + 1):
             self.env.reset()
             ep_reward = 0
-
             experiences = deque(maxlen = n_steps)
             while(not self.env.terminal):
                 (state, action, reward, next_state, terminal, info,
