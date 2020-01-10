@@ -15,7 +15,7 @@ class Logger(dict):
                                   parameters every time a value is set.
             *args (list): All additional non-keyword arguments for a python
                           dictionary.
-            **kwargs (list): All additional keyword arguments for a python
+            **kwargs (dict): All additional keyword arguments for a python
                              dictionary.
         """
         super().__init__(*args, **kwargs)
@@ -28,21 +28,35 @@ class Logger(dict):
         super().__setitem__(key, value)
         self._on_update(key, value)
 
-def make_tensorboard_logger(logs_path):
+class TensorboardLogger(Logger):
     """
-    Creates a logger using tensorboardX summary writer and add scalar on update.
+    Logs values using tensorboard.
+    """
+    def __init__(self, logs_path, *args, **kwargs):
+        """
+        Logs values by key and calls a given function when a key is set or
+        updated.
 
-    Args:
-        logs_path (str): The path to store the tensorboard logs in.
-    """
-    tensorboard = SummaryWriter(logs_path)
+        Args:
+            logs_path (str): The path of the directory of the tensorboard logs.
+            *args (list): All additional non-keyword arguments for a python
+                          dictionary.
+            **kwargs (dict): All additional keyword arguments for a python
+                             dictionary.
+        """
+        super().__init__(self._add_val, *args, **kwargs)
+
+        self._tensorboard = SummaryWriter(logs_path)
+
+    def __setitem__(self, key, value):
+        # The value is likely to be a tuple of a number and step/episode/epoch
+        # count
+        super().__setitem__(key, value)
+        self._on_update(key, value)
 
     # Make sure to deal with single values and tuple values
-    def add_val(key, val):
+    def _add_val(self, key, val):
         if(type(val) == tuple):
-            tensorboard.add_scalar(key, *val)
+            self._tensorboard.add_scalar(key, *val)
         else:
-            tensorboard.add_scalar(key, val, 1)
-
-    return Logger(add_val)
-    
+            self._tensorboard.add_scalar(key, val, 1)

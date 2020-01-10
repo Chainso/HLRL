@@ -1,9 +1,14 @@
+import queue
+
 from abc import ABC, abstractmethod
+from torch.multiprocessing import JoinableQueue
+
 
 class ExperienceReplay(ABC):
     """
     An abstract replay buffer
     """
+
     def __init__(self, capacity: int):
         """
         Args:
@@ -29,12 +34,6 @@ class ExperienceReplay(ABC):
         """
         pass
 
-    def get_from_queue(self, queue):
-        """
-        Retrieve samples from a queue.
-        """
-        self.add(*queue.get())
-
     @abstractmethod
     def sample(self, size):
         """
@@ -42,25 +41,5 @@ class ExperienceReplay(ABC):
 
         Args:
             size (int): The number of experiences to sample.
-        """
-        pass
-
-class ExperienceReplayQueue():
-    """
-    Wraps the experience replay by passing objects through a pipe.
-    """
-    def __init__(self, er):
-        """
-        Args:
-            er (ExperienceReplay): The experience replay to wrap.
-        """
-        self.er = er
-
-    def __getattr__(self, name):
-        return getattr(self.wrappee, name)
-
-    def add(self, name):
-        """
-        Adds by
         """
         pass

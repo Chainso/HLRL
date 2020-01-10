@@ -6,10 +6,12 @@ from copy import deepcopy
 from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.util import polyak_average
 
+
 class SAC(TorchRLAlgo):
     """
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
+
     def __init__(self, q_func, policy, value, discount, ent_coeff,
                  polyak, target_update_interval, q_optim, p_optim, v_optim,
                  twin=True, logger=None):
@@ -61,7 +63,6 @@ class SAC(TorchRLAlgo):
                 if hasattr(m, "weight"):
                     nn.init.xavier_uniform_(m.weight.data)
 
-
             self.q_func2 = deepcopy(q_func).apply(init_weights)
             self.q_func_targ2 = deepcopy(self.q_func2)
             self.q_optim2 = q_optim(self.q_func2.parameters())
@@ -94,7 +95,7 @@ class SAC(TorchRLAlgo):
             experience_replay.update_priorities(idxs, new_q, new_q_targ)
 
             if(save_path is not None
-                and self.training_steps % save_interval == 0):
+               and self.training_steps % save_interval == 0):
                 self.save(save_path)
 
     def forward(self, observation):
@@ -160,14 +161,15 @@ class SAC(TorchRLAlgo):
 
         # Only get the loss for q_func2 if using the twin Q-function algorithm
         if(self._twin):
-            q_targ_pred2 = self.q_func_targ2(states, new_actions).detach()    
+            q_targ_pred2 = self.q_func_targ2(states, new_actions).detach()
             q_loss2 = q_loss_func(self.q_func2(states, actions), q_targ)
 
             self.q_optim2.zero_grad()
             q_loss2.backward()
             self.q_optim2.step()
 
-            value_targ = torch.min(q_targ_pred1, q_targ_pred2) - entropy.detach()
+            value_targ = torch.min(
+                q_targ_pred1, q_targ_pred2) - entropy.detach()
         else:
             value_targ = q_targ_pred1 - entropy.detach()
 
@@ -185,18 +187,19 @@ class SAC(TorchRLAlgo):
 
         # Log the losses if a logger was given
         if(self.logger is not None):
-            self.logger["Q1 Loss"] =  q_loss1, self.training_steps
+            self.logger["Q1 Loss"] = q_loss1, self.training_steps
             self.logger["Policy Loss"] = p_loss, self.training_steps
             self.logger["Value Loss"] = v_loss, self.training_steps
 
-        # Only log the Q2 
-        if(self._twin and self.logger is not None):  
+        # Only log the Q2
+        if(self._twin and self.logger is not None):
             self.logger["Q2 Loss"] = q_loss2, self.training_steps
 
         # Get the new q value to update the experience replay
         updated_actions, mean, new_log_pi = self.policy.sample(states)
         new_qs = self.q_func1(states, updated_actions).detach()
-        new_value_targ = (1 - terminals) * self.value_targ(next_states).detach()
+        new_value_targ = (1 - terminals) * \
+            self.value_targ(next_states).detach()
         new_q_targ = rewards + self._discount * value_targ_next_pred
 
         # Update the target
@@ -248,7 +251,7 @@ class SAC(TorchRLAlgo):
         self.value_targ.load_state_dict(state["value_targ"])
         self.v_optim.load_state_dict(state["v_optim"])
 
-        # Loadsecond q function if this is twin sac
+        # Load second q function if this is twin sac
         if (self._twin):
             self.q_func2.load_state_dict(state["q_func2"])
             self.q_func_targ2.load_state_dict(state["q_func_targ2"])

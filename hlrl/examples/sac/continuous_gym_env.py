@@ -9,17 +9,17 @@ if(__name__ == "__main__"):
 
     from argparse import ArgumentParser
 
-    from hlrl.core.logger import make_tensorboard_logger
+    from hlrl.core.logger import TensorboardLogger
     from hlrl.torch.algos.sac.sac import SAC
     from hlrl.core.envs import GymEnv
     from hlrl.core.agents import AgentPool
     from hlrl.torch.agents import OffPolicyAgent
     from hlrl.torch.experience_replay import TorchPER
 
-    mp.set_start_method("forkserver")
+    mp.set_start_method("spawn")
 
     # The hyperparameters as command line arguments
-    parser = ArgumentParser(description = "Twin Q-Function SAC example on "
+    parser = ArgumentParser(description="Twin Q-Function SAC example on "
                             + "the MountainCarContinuous-v0 environment.")
 
     # Logging
@@ -32,7 +32,7 @@ if(__name__ == "__main__"):
     parser.add_argument("-e,", "--env", dest="env", default="Pendulum-v0",
                         help="the gym environment to train on")
 
-    # Model arg
+    # Model args
     parser.add_argument("--hidden_size", type=int, default=32,
                         help="the size of each hidden layer")
     parser.add_argument("--num_hidden", type=int, default=1,
@@ -92,7 +92,8 @@ if(__name__ == "__main__"):
 
     # The logger
     logger = args["logs_path"]
-    logger = None if logger is None else make_tensorboard_logger(logger)
+    logger = None if logger is None else TensorboardLogger(logger)
+    logger = None
 
     # Initialize SAC
     activation_fn = nn.ReLU
@@ -113,30 +114,31 @@ if(__name__ == "__main__"):
     algo.train()
     algo.share_memory()
 
-    buffer_queue = mp.Queue()
-
     # Experience replay
     experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
                                  args["er_beta"], args["er_beta_increment"],
                                  args["er_epsilon"])
+    experience_queue = mp.JoinableQueue()
 
     # Initialize agent
     agents = [
-         OffPolicyAgent(env, algo, experience_replay, args["render"],
-                        logger=logger, device=args["device"])
+        OffPolicyAgent(env, algo, experience_queue, args["render"],
+                       logger=logger, device=args["device"])
     ]
 
     agent_pool = AgentPool(agents)
     agent_procs = agent_pool.train(args["episodes"], args["decay"],
-                                   args["n_steps"], buffer_queue)
+                                   args["n_steps"])
 
     while any(proc.is_alive() for proc in agent_procs):
-         experience_replay.get_from_queue(buffer_queue)
-         algo.train_from_buffer(experience_replay, args["batch_size"],
-                                args["save_path"], args["save_interval"])
-         print("Still going")
-         print(any(proc.is_alive() for proc in agent_procs))
-    print("IN hereaa")
-    for proc in agent_procs:
-         proc.join()
-    print("End of program")
+        experience = experience_queue.get()
+        experience_queue.task_done()
+
+        if experience is None:
+            # Wait on the train processes
+            for proc in agent_procs:
+                proc.join()
+        else:
+            experience_replay.add(*experience)
+            algo.train_from_buffer(experience_replay, args["batch_size"],
+                                   args["save_path"], args["save_interval"])
