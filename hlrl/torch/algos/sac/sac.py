@@ -5,7 +5,7 @@ from copy import deepcopy
 
 from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.util import polyak_average
-
+from hlrl.core.logger import TensorboardLogger
 
 class SAC(TorchRLAlgo):
     """
@@ -201,7 +201,6 @@ class SAC(TorchRLAlgo):
         if(self.logger is not None):
             self.logger["Train/Q1 Loss"] = (q_loss1, self.training_steps)
             self.logger["Train/Policy Loss"] = (p_loss, self.training_steps)
-            self.logger["Train/Value Loss"] = (v_loss, self.training_steps)
             self.logger["Train/Temperature"] = (self._temperature,
                                                 self.training_steps)
 

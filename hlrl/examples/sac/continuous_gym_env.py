@@ -94,7 +94,6 @@ if(__name__ == "__main__"):
     # The logger
     logger = args["logs_path"]
     logger = None if logger is None else TensorboardLogger(logger)
-    logger = None
 
     # Initialize SAC
     activation_fn = nn.ReLU
@@ -128,6 +127,9 @@ if(__name__ == "__main__"):
     agent_pool = AgentPool(agents)
     agent_procs = agent_pool.train(args["episodes"], args["decay"],
                                    args["n_steps"])
+
+    #### TEMPORARY LOGGER ####
+    algo.logger = TensorboardLogger("./logs")
 
     while any(proc.is_alive() for proc in agent_procs):
         experience = experience_queue.get()
