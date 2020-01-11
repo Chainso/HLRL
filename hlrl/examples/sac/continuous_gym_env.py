@@ -3,10 +3,31 @@ import torch.nn as nn
 
 from hlrl.torch.policies import LinearPolicy, LinearSAPolicy, GaussianPolicy, TanhGaussianPolicy
 
+def train(args, algo, experience_replay, experience_queue, agent_procs):
+    #### TEMPORARY LOGGER ####
+    algo.logger = TensorboardLogger("./logs")
+
+    while any(proc.is_alive() for proc in agent_procs):
+        experience = experience_queue.get()
+        experience_queue.task_done()
+
+        if experience is None:
+            # Wait on the train processes
+            for proc in agent_procs:
+                proc.join()
+        else:
+            experience_replay.add(*experience)
+            algo.train_from_buffer(experience_replay, args["batch_size"],
+                                   args["save_path"], args["save_interval"])
+
+def play(args, agent):
+    agent.play(args["episodes"])
 
 if(__name__ == "__main__"):
     import torch.multiprocessing as mp
+    import gym
 
+    from gym.wrappers import RescaleAction
     from argparse import ArgumentParser
 
     from hlrl.core.logger import TensorboardLogger
@@ -33,9 +54,9 @@ if(__name__ == "__main__"):
                         help="the gym environment to train on")
 
     # Model args
-    parser.add_argument("--hidden_size", type=int, default=32,
+    parser.add_argument("--hidden_size", type=int, default=256,
                         help="the size of each hidden layer")
-    parser.add_argument("--num_hidden", type=int, default=1,
+    parser.add_argument("--num_hidden", type=int, default=2,
                         help="the number of hidden layers before the output "
                              + "layers")
 
@@ -44,7 +65,7 @@ if(__name__ == "__main__"):
                         help="the device (cpu/gpu) to train and play on")
     parser.add_argument("--discount", type=float, default=0.99,
                         help="the next state reward discount factor")
-    parser.add_argument("--temperature", type=float, default=0.5,
+    parser.add_argument("--temperature", type=float, default=0.2,
                         help="the coefficient of temperature of the entropy "
                              + "for SAC")
     parser.add_argument("--polyak", type=float, default=0.995,
@@ -53,17 +74,22 @@ if(__name__ == "__main__"):
     parser.add_argument("--target_update_interval", type=float, default=1,
                         help="the number of training steps inbetween target "
                              + "network updates")
-    parser.add_argument("--lr", type=float, default=1e-3,
+    parser.add_argument("--lr", type=float, default=3e-4,
                         help="the learning rate")
     parser.add_argument("--twin", type=bool, default=True,
                         help="true if SAC should use twin Q-networks")
 
-    # Training args
-    parser.add_argument("--batch_size", type=int, default=32,
+    # Training/Playing args
+    parser.add_argument("-p", "--play", dest="play", action="store_true",
+                        help="runs the environment using the model instead of "
+                             + "training")
+    parser.add_argument("--batch_size", type=int, default=256,
                         help="the batch size of the training set")
     parser.add_argument("--save_path", type=str, default=None,
                         help="the path to save the model to")
-    parser.add_argument("--save_interval", type=int, default=10000,
+    parser.add_argument("--load_path", type=str, default=None,
+                        help="the path of the saved model to load")
+    parser.add_argument("--save_interval", type=int, default=500,
                         help="the number of batches in between saves")
 
     # Agent args
@@ -88,8 +114,10 @@ if(__name__ == "__main__"):
 
     args = vars(parser.parse_args())
 
-    # Initialize the environment
-    env = GymEnv(args["env"])
+    # Initialize the environment, and rescale for Tanh policy
+    gym_env = gym.make(args["env"])
+    gym_env = RescaleAction(gym_env, -1, 1)
+    env = GymEnv(gym_env)
 
     # The logger
     logger = args["logs_path"]
@@ -106,40 +134,36 @@ if(__name__ == "__main__"):
 
     optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
     algo = SAC(env.action_space, qfunc, policy, args["discount"],
-               args["temperature"], args["polyak"],
-               args["target_update_interval"], optim, optim, optim,
-               args["twin"], logger).to(torch.device(args["device"]))
-    algo.train()
-    algo.share_memory()
+               args["polyak"], args["target_update_interval"], optim, optim,
+               optim, args["twin"], logger).to(torch.device(args["device"]))
 
-    # Experience replay
-    experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
-                                 args["er_beta"], args["er_beta_increment"],
-                                 args["er_epsilon"])
-    experience_queue = mp.JoinableQueue()
+    if args["load_path"] is not None:
+        algo.load(args["load_path"])
 
-    # Initialize agent
-    agents = [
-        OffPolicyAgent(env, algo, experience_queue, args["render"],
-                       logger=logger, device=args["device"])
-    ]
+    if args["play"]:
+        algo.eval()
+        agent = OffPolicyAgent(env, algo, args["render"], logger=logger,
+                               device=args["device"])
+        play(args, agent)
+    else:
+        algo.train()
+        algo.share_memory()
 
-    agent_pool = AgentPool(agents)
-    agent_procs = agent_pool.train(args["episodes"], args["decay"],
-                                   args["n_steps"])
+        # Experience replay
+        experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
+                                     args["er_beta"], args["er_beta_increment"],
+                                     args["er_epsilon"])
+        experience_queue = mp.JoinableQueue()
 
-    #### TEMPORARY LOGGER ####
-    algo.logger = TensorboardLogger("./logs")
+        # Initialize agent
+        # Make sure to change logger from None
+        agents = [
+            OffPolicyAgent(env, algo, args["render"], logger=logger,
+                           device=args["device"])
+        ]
 
-    while any(proc.is_alive() for proc in agent_procs):
-        experience = experience_queue.get()
-        experience_queue.task_done()
+        agent_pool = AgentPool(agents)
+        agent_procs = agent_pool.train(args["episodes"], experience_queue,
+                                       args["decay"], args["n_steps"])
 
-        if experience is None:
-            # Wait on the train processes
-            for proc in agent_procs:
-                proc.join()
-        else:
-            experience_replay.add(*experience)
-            algo.train_from_buffer(experience_replay, args["batch_size"],
-                                   args["save_path"], args["save_interval"])
+        train(args, algo, experience_replay, experience_queue, agent_procs)

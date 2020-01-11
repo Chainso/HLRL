@@ -36,8 +36,6 @@ class GaussianPolicy(nn.Module):
         Returns a sample of the policy on the input with the mean and log
         probability of the sample
         """
-        epsilon = 1e-4
-
         mean, log_std = self(inp)
         std = log_std.exp()
 
@@ -80,14 +78,10 @@ class TanhGaussianPolicy(GaussianPolicy):
         epsilon = 1e-4
 
         # Need to get mean before tanh
-        mean, log_std = super().forward(inp)
-        std = log_std.exp()
-
-        normal = Normal(mean, std)
-        sample = normal.rsample()
+        sample, mean, log_prob = super().sample(inp)
         action = torch.tanh(sample)
 
-        log_prob = normal.log_prob(sample) - torch.log(1 - action.pow(2) + epsilon)
+        log_prob = log_prob - torch.log(1 - action.pow(2) + epsilon)
         log_prob = log_prob.sum(1, keepdim=True)
 
         mean = torch.tanh(mean)

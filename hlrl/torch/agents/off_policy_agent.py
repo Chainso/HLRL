@@ -11,26 +11,6 @@ class OffPolicyAgent(TorchRLAgent):
     An agent that collects (state, action, reward, next state) tuple
     observations
     """
-
-    def __init__(self, env, algo, experience_queue, render=False, logger=None,
-                 device="cpu"):
-        """
-        Creates an agent that interacts with the given environment using the
-        algorithm given.
-
-        Args:
-            env (Env): The environment the agent will explore in.
-            algo (TorchRLAlgo): The algorithm the agent will use the explore the
-                                environment.
-            experience_queue (Queue): The queue to store experiences in.
-            render (bool): If the environment is to be rendered (if applicable).
-            logger (Logger, optional) : The logger to log results while
-                                        interacting with the environment.
-            device (str): The device for the agent to run on.
-        """
-        super().__init__(env, algo, render, logger, device)
-        self.experience_queue = experience_queue
-
     def _n_step_decay(self, experiences, decay):
         """
         Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples
@@ -48,61 +28,69 @@ class OffPolicyAgent(TorchRLAgent):
         reward = self._n_step_decay(experiences, decay)
 
         experience = experiences.pop()
-        experience[0][2] = reward
-        q_val = experience[1][0]
-        next_q_val = experience[-1][0]
 
-        target_q_val = reward + decay * next_q_val
+        experience, algo_extras, next_algo_extras = experience
+        q_val = algo_extras[0]
+        next_q = next_algo_extras[0]
 
-        return experience
+        experience[2] = reward
 
-    def add_to_buffer(self, experiences, decay):
+        target_q_val = reward + decay * next_q
+
+        buffer_experience = (experience, q_val, target_q_val, *algo_extras[1:],
+                             *next_algo_extras[1:])
+
+        return buffer_experience
+
+    def add_to_buffer(self, experience_queue, experiences, decay):
         """
         Adds the experience to the replay buffer.
         """
         experience = self._get_buffer_experience(experiences, decay)
-        self.experience_queue.put(experience)
+        experience_queue.put(experience)
 
-    def train(self, num_episodes, decay, n_steps):
+    def transform_algo_step(self, algo_step):
+        action = algo_step[0]
+        algo_extras = algo_step[1:]
+
+        return (action, algo_extras)
+
+    def train(self, num_episodes, experience_queue, decay, n_steps):
         """
         Trains the algorithm for the number of episodes specified on the
         environment.
 
         Args:
             num_episodes (int): The number of episodes to train for.
+            experience_queue (Queue): The queue to store experiences in.
             decay (float): The decay of the next.
             n_steps (int): The number of steps.
         """
-        # Temporary
-        self.logger = TensorboardLogger("./logs")
-
-        for episode in range(1, num_episodes + 1):
+        for episode in range(self.algo.env_episodes + 1, num_episodes + 1):
             self.env.reset()
             ep_reward = 0
             experiences = deque(maxlen=n_steps)
             while(not self.env.terminal):
                 (state, action, reward, next_state, terminal, info,
-                 add_algo_ret) = self.step()
+                 algo_extras) = self.step()
 
-                next_algo_ret = self.algo.step(next_state)[1:]
+                next_algo_step = self.algo.step(next_state)
+                next_actions, next_algo_extras = self.transform_algo_step(next_algo_step)
+
                 ep_reward += reward
 
-                # Convert the reward and terminal into a tensor for storage
-                reward = torch.FloatTensor([[reward]]).to(self.device)
-                terminal = torch.FloatTensor([[terminal]]).to(self.device)
-
                 experiences.append([[state, action, reward, next_state,
-                                     terminal], *add_algo_ret, *next_algo_ret])
+                                     terminal], algo_extras, next_algo_extras])
 
                 self.algo.env_steps += 1
 
                 if (len(experiences) == n_steps):
                     # Do n-step decay and add to the buffer
-                    self.add_to_buffer(experiences, decay)
+                    self.add_to_buffer(experience_queue, experiences, decay)
 
             # Add the rest to the buffer
             while len(experiences) > 0:
-                self.add_to_buffer(experiences, decay)
+                self.add_to_buffer(experience_queue, experiences, decay)
 
             if(self.logger is not None):
                 self.logger["Train/Episode Reward"] = (ep_reward, episode)
@@ -110,5 +98,5 @@ class OffPolicyAgent(TorchRLAgent):
             print("Episode", str(episode) + ":", ep_reward)
             self.algo.env_episodes += 1
 
-        self.experience_queue.put(None)
-        self.experience_queue.join()
+        experience_queue.put(None)
+        experience_queue.join()

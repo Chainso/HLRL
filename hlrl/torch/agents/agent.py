@@ -25,8 +25,20 @@ class TorchRLAgent(RLAgent):
         super().__init__(env, algo, render, logger)
         self.device = torch.device(device)
 
-    def _make_input_from_state(self, state):
+    def make_tensor(self, data):
         """
-        Creates the algorithm input from the env state (does nothing by default)
+        Creates a float tensor of the data of batch size 1.
         """
-        return torch.FloatTensor([state]).to(self.device)
+        return torch.FloatTensor([data]).to(self.device)
+
+    def transform_state(self, state):
+        return self.make_tensor(state)
+
+    def transform_reward(self, reward):
+        return self.make_tensor([reward])
+
+    def transform_terminal(self, terminal):
+        return self.make_tensor([terminal])
+
+    def transform_action(self, action):
+        return action[0].cpu().numpy()

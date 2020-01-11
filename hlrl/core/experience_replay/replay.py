@@ -21,18 +21,17 @@ class ExperienceReplay(ABC):
         """
         Returns the number of experiences added to the buffer.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def add(self, experience):
+    def add(self, *add_args):
         """
         Adds the given experience to the replay buffer.
 
         Args:
-            experience (tuple) : The (s, a, r, ...) experience to add to the
-                                 buffer.
+            add_args (tuple): The arguments to add the experience to the buffer
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def sample(self, size):
@@ -42,4 +41,4 @@ class ExperienceReplay(ABC):
         Args:
             size (int): The number of experiences to sample.
         """
-        pass
+        raise NotImplementedError

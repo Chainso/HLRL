@@ -32,13 +32,14 @@ class RLAlgo(ABC):
         self.env_steps = 0
 
     @abstractmethod
-    def train_batch(self, rollouts):
+    def train_batch(self, *train_args):
         """
         Trains the network for a batch of rollouts.
 
-        rollouts : The rollouts of training data for the network.
+        Args:
+            train_args (tuple) : The training arguments for the network.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def step(self, observation):
@@ -51,18 +52,51 @@ class RLAlgo(ABC):
         Returns:
             The action from for the observation given.
         """
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_dict(self):
+        """
+        Returns dictionary of values to save this algorithm.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def save(self, save_path):
         """
         Saves the algorithm to a given save path.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def load(self, load_path):
         """
         Loads the algorithm from a given save path.
         """
-        pass
+        raise NotImplementedError
+
+class RLAlgoWrapper(RLAlgo):
+    """
+    A wrapper around an algorithm.
+    """
+    def __init__(self, algo):
+        self.algo = algo
+
+    def __getattr__(self, name):
+        if name in vars(self.algo):
+            return getattr(self.algo, vars)
+
+    def train_batch(self, *training_args):
+        return self.algo.train_batch(*training_args)
+
+    def step(self, observation):
+        return self.algo.step(observation)
+
+    def save_dict(self):
+        return self.algo.save_dict()
+
+    def save(self, save_path):
+        return self.algo.save(save_path)
+
+    def load(self, load_path):
+        return self.algo.load(load_path)

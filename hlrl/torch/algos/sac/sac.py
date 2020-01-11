@@ -12,8 +12,8 @@ class SAC(TorchRLAlgo):
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
 
-    def __init__(self, action_space, q_func, policy, discount, temperature,
-                 polyak, target_update_interval, q_optim, p_optim, temp_optim,
+    def __init__(self, action_space, q_func, policy, discount, polyak,
+                 target_update_interval, q_optim, p_optim, temp_optim,
                  twin=True, logger=None):
         """
         Creates the soft actor-critic algorithm with the given parameters
@@ -27,7 +27,6 @@ class SAC(TorchRLAlgo):
                                        observation.
             discount (float) : The coefficient for the discounted values
                                 (0 < x < 1).
-            temperature (float) : The initial tempeature for entropy.
             polyak (float) : The coefficient for polyak averaging (0 < x < 1).
             target_update_interval (int): The number of training steps in
                                           between target updates.
@@ -43,7 +42,6 @@ class SAC(TorchRLAlgo):
 
         # All constants
         self._discount = discount
-        self._temperature = temperature
         self._polyak = polyak
         self._target_update_interval = target_update_interval
         self._twin = twin
@@ -66,9 +64,10 @@ class SAC(TorchRLAlgo):
         self.policy = policy
         self.p_optim = p_optim(self.policy.parameters())
 
-        # Entropy tuning
+        # Entropy tuning, starting at 1 due to auto-tuning
+        self._temperature = 1
         self.target_entropy = -torch.prod(torch.Tensor(action_space)).item()
-        self.log_temp = torch.zeros(1, requires_grad=True)
+        self.log_temp = nn.Parameter(torch.zeros(1), requires_grad=True)
 
         self.temp_optim = temp_optim([self.log_temp])
 
@@ -139,9 +138,6 @@ class SAC(TorchRLAlgo):
         # Get all the parameters from the rollouts
         states, actions, rewards, next_states, terminals = rollouts
 
-        # Move device if necessary
-        self.log_temp = self.log_temp.to(states.device)
-
         q_loss_func = nn.MSELoss()
 
         with torch.no_grad():
@@ -189,7 +185,7 @@ class SAC(TorchRLAlgo):
         self.p_optim.step()
 
         # Tune temperature
-        targ_entropy = pred_log_probs.detach() * self.target_entropy
+        targ_entropy = pred_log_probs.detach() + self.target_entropy
         temp_loss = -torch.mean(self.log_temp * targ_entropy)
 
         self.temp_optim.zero_grad()
@@ -206,7 +202,7 @@ class SAC(TorchRLAlgo):
 
             # Only log the Q2
             if(self._twin):
-                self.logger["Q2 Loss"] = (q_loss2, self.training_steps)
+                self.logger["Train/Q2 Loss"] = (q_loss2, self.training_steps)
 
         # Get the new q value to update the experience replay
         with torch.no_grad():
@@ -222,7 +218,7 @@ class SAC(TorchRLAlgo):
         self.training_steps += 1
         return new_qs, new_q_targ
 
-    def save(self, save_path):
+    def save_dict(self):
         # Save all the dicts
         state = {
             "env_episodes": self.env_episodes,
@@ -233,9 +229,9 @@ class SAC(TorchRLAlgo):
             "q_optim1": self.q_optim1.state_dict(),
             "policy": self.policy.state_dict(),
             "p_optim": self.p_optim.state_dict(),
-            "value": self.value.state_dict(),
-            "value_targ": self.value_targ.state_dict(),
-            "v_optim": self.v_optim.state_dict()
+            "temperature": self._temperature,
+            "log_temp": self.log_temp,
+            "temp_optim": self.temp_optim.state_dict()
         }
 
         # Save second q function if this is twin sac
@@ -244,10 +240,10 @@ class SAC(TorchRLAlgo):
             state["q_func_targ2"] = self.q_func_targ2.state_dict()
             state["q_optim2"] = self.q_optim2.state_dict()
 
-        torch.save(state, save_path)
+        return state
 
     def load(self, load_path):
-        state = torch.load(load_path)
+        state = torch.load(load_path, map_location="cpu")
 
         # Load all the dicts
         self.env_episodes = state["env_episodes"]
@@ -258,9 +254,9 @@ class SAC(TorchRLAlgo):
         self.q_optim1.load_state_dict(state["q_optim1"])
         self.policy.load_state_dict(state["policy"])
         self.p_optim.load_state_dict(state["p_optim"])
-        self.value.load_state_dict(state["value"])
-        self.value_targ.load_state_dict(state["value_targ"])
-        self.v_optim.load_state_dict(state["v_optim"])
+        self._temperature = state["temperature"]
+        self.log_temp = state["log_temp"]
+        self.temp_optim.load_state_dict(state["temp_optim"])
 
         # Load second q function if this is twin sac
         if (self._twin):

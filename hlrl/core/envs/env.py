@@ -71,23 +71,22 @@ class Env(ABC):
         return self._info
 
     @abstractmethod
-    def step(self, action, repeat=1):
+    def step(self, action):
         """
         Takes 1 step into the environment using the given action.
 
         Args:
             action (object): The action to take in the environment.
 
-        If repeat = 1, returns (next state, reward, terminal, info) else returns
-        an array of (next state, reward, terminal, info) tuples
+        Returns an array of (next state, reward, terminal, info) tuples
         """
-        pass
+        raise NotImplementedError
 
     def render(self):
         """
         If applicable, the environment will render to the screen.
         """
-        pass
+        raise NotImplementedError
 
     def n_steps(self, actions):
         """
@@ -106,4 +105,4 @@ class Env(ABC):
         """
         Resets the environment.
         """
-        pass
+        raise NotImplementedError
