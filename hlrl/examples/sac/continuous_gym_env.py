@@ -44,8 +44,9 @@ if(__name__ == "__main__"):
                         help="the device (cpu/gpu) to train and play on")
     parser.add_argument("--discount", type=float, default=0.99,
                         help="the next state reward discount factor")
-    parser.add_argument("--entropy", type=float, default=0.5,
-                        help="the coefficient of entropy for SAC")
+    parser.add_argument("--temperature", type=float, default=0.5,
+                        help="the coefficient of temperature of the entropy "
+                             + "for SAC")
     parser.add_argument("--polyak", type=float, default=0.995,
                         help="the polyak constant for the target network "
                              + "updates")
@@ -104,13 +105,11 @@ if(__name__ == "__main__"):
                                 args["hidden_size"], args["num_hidden"],
                                 activation_fn)
 
-    value_func = LinearPolicy(env.state_space[0], 1, args["hidden_size"],
-                              args["num_hidden"], activation_fn)
-
     optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
-    algo = SAC(qfunc, policy, value_func, args["discount"],
-               args["entropy"], args["polyak"], args["target_update_interval"],
-               optim, optim, optim, args["twin"], logger).to(torch.device(args["device"]))
+    algo = SAC(env.action_space, qfunc, policy, args["discount"],
+               args["temperature"], args["polyak"],
+               args["target_update_interval"], optim, optim, optim,
+               args["twin"], logger).to(torch.device(args["device"]))
     algo.train()
     algo.share_memory()
 

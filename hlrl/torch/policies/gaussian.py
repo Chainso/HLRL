@@ -92,4 +92,4 @@ class TanhGaussianPolicy(GaussianPolicy):
 
         mean = torch.tanh(mean)
 
-        return action, mean, log_prob
+        return action, log_prob, mean
