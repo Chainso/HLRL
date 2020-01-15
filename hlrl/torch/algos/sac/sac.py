@@ -71,20 +71,22 @@ class SAC(TorchRLAlgo):
 
         self.temp_optim = temp_optim([self.log_temp])
 
-    def train_from_buffer(self, experience_replay, batch_size, save_path=None,
-                          save_interval=10000):
+    def train_from_buffer(self, experience_replay, batch_size, start_size,
+                          save_path=None, save_interval=10000):
         """
         Starts training the network.
 
         Args:
             experience_replay (ExperienceReplay): The experience replay buffer
                                                   to sample experiences from.
-            num_batches (int): The number of batches to train for.
             batch_size (int): The batch size of the experiences to train on.
+            start_size (int): The amount of expreiences in the buffer before
+                              training is started.
             save_path (Optional, str): The path to save the model to.
             save_interval (int): The number of batches between saves.
         """
-        if(batch_size <= len(experience_replay)):
+        if(batch_size <= len(experience_replay)
+           and start_size <= len(experience_replay)):
             sample = experience_replay.sample(batch_size)
             rollouts, idxs, is_weights = sample
 

@@ -20,7 +20,10 @@ class LinearPolicy(nn.Module):
         """
         super().__init__()
 
-        if(num_hidden < 1):
+        if(num_hidden < 0):
+            # Identity function
+            self.linear = nn.Sequential()
+        elif(num_hidden == 0):
             self.linear = nn.Linear(inp_n, out_n)
         else:
             self.linear = nn.Sequential(
@@ -56,5 +59,5 @@ class LinearSAPolicy(LinearPolicy):
                          activation_fn)
 
     def forward(self, state, actions):
-        lin_in = torch.cat([state, actions], dim=1)
+        lin_in = torch.cat([state, actions], dim=-1)
         return super().forward(lin_in)

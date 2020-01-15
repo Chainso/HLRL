@@ -7,19 +7,25 @@ from .linear import LinearPolicy
 
 class GaussianPolicy(nn.Module):
     """
-    A simple gaussian policy
+    A simple gaussian policy.
     """
     def __init__(self, inp_n, out_n, hidden_size, num_hidden, activation_fn):
         super().__init__()
 
-        self.linear = nn.Sequential(
-            LinearPolicy(inp_n, hidden_size, hidden_size, num_hidden - 1,
-                         activation_fn),
-            activation_fn()
-        )
+        self.linear = LinearPolicy(inp_n, hidden_size, hidden_size,
+                                   num_hidden - 1, activation_fn),
 
-        self.mean = nn.Linear(hidden_size, out_n)
-        self.log_std = nn.Linear(hidden_size, out_n)
+        if num_hidden > 0:
+            self.linear = nn.Sequential(
+                *self.linear,
+                activation_fn()
+            )
+
+            self.mean = nn.Linear(hidden_size, out_n)
+            self.log_std = nn.Linear(hidden_size, out_n)
+        else:
+            self.mean = nn.Linear(inp_n, out_n)
+            self.log_std = nn.Linear(inp_n, out_n)
 
     def forward(self, inp):
         """
@@ -49,18 +55,6 @@ class TanhGaussianPolicy(GaussianPolicy):
     """
     A gaussian policy with an extra tanh layer (restricted to [-1, 1])
     """
-    def __init__(self, inp_n, out_n, hidden_size, num_hidden, activation_fn):
-        super().__init__(inp_n, out_n, hidden_size, num_hidden, activation_fn)
-
-        self.linear = nn.Sequential(
-            LinearPolicy(inp_n, hidden_size, hidden_size, num_hidden - 1,
-                         activation_fn),
-            activation_fn()
-        )
-
-        self.mean = nn.Linear(hidden_size, out_n)
-        self.log_std = nn.Linear(hidden_size, out_n)
-
     def forward(self, inp):
         """
         Returns the mean and log std of the policy on the input.
@@ -70,13 +64,11 @@ class TanhGaussianPolicy(GaussianPolicy):
 
         return mean, log_std
 
-    def sample(self, inp):
+    def sample(self, inp, epsilon=1e-4):
         """
         Returns a sample of the policy on the input with the mean and log
         probability of the sample
         """
-        epsilon = 1e-4
-
         # Need to get mean before tanh
         sample, mean, log_prob = super().sample(inp)
         action = torch.tanh(sample)

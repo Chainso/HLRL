@@ -1,12 +1,9 @@
 import torch
 import torch.nn as nn
 
-from hlrl.torch.policies import LinearPolicy, LinearSAPolicy, GaussianPolicy, TanhGaussianPolicy
+from hlrl.torch.policies import LinearSAPolicy, TanhGaussianPolicy, LSTMGaussianPolicy, LSTMSAPolicy
 
 def train(args, algo, experience_replay, experience_queue, agent_procs):
-    #### TEMPORARY LOGGER ####
-    algo.logger = TensorboardLogger("./logs")
-
     while any(proc.is_alive() for proc in agent_procs):
         experience = experience_queue.get()
         experience_queue.task_done()
@@ -18,7 +15,8 @@ def train(args, algo, experience_replay, experience_queue, agent_procs):
         else:
             experience_replay.add(*experience)
             algo.train_from_buffer(experience_replay, args["batch_size"],
-                                   args["save_path"], args["save_interval"])
+                                   args["start_size"], args["save_path"],
+                                   args["save_interval"])
 
 def play(args, agent):
     agent.play(args["episodes"])
@@ -35,7 +33,7 @@ if(__name__ == "__main__"):
     from hlrl.core.envs import GymEnv
     from hlrl.core.agents import AgentPool
     from hlrl.torch.agents import OffPolicyAgent
-    from hlrl.torch.experience_replay import TorchPER
+    from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 
     mp.set_start_method("spawn")
 
@@ -85,6 +83,8 @@ if(__name__ == "__main__"):
                              + "training")
     parser.add_argument("--batch_size", type=int, default=256,
                         help="the batch size of the training set")
+    parser.add_argument("--start_size", type=int, default=512,
+                        help="the size of the replay buffer before training")
     parser.add_argument("--save_path", type=str, default=None,
                         help="the path to save the model to")
     parser.add_argument("--load_path", type=str, default=None,
@@ -123,6 +123,11 @@ if(__name__ == "__main__"):
     logger = args["logs_path"]
     logger = None if logger is None else TensorboardLogger(logger)
 
+    ######################### Temporary R2D2 settings ##########################
+    burn_in_length = 40
+    sequence_length = 40
+    max_factor = 0.9
+    
     # Initialize SAC
     activation_fn = nn.ReLU
     qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
@@ -150,9 +155,9 @@ if(__name__ == "__main__"):
         algo.share_memory()
 
         # Experience replay
-        experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
-                                     args["er_beta"], args["er_beta_increment"],
-                                     args["er_epsilon"])
+        experience_replay = TorchR2D2(args["er_capacity"], args["er_alpha"],
+                                      args["er_beta"], args["er_beta_increment"],
+                                      args["er_epsilon"], max_factor)
         experience_queue = mp.JoinableQueue()
 
         # Initialize agent
