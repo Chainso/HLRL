@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from hlrl.core.algos import RLAlgo, RLAlgoWrapper
+from hlrl.core.algos import RLAlgo
 
 class TorchRLAlgo(RLAlgo, nn.Module):
     """
@@ -14,19 +14,6 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         Args:
             logger (Logger, optional): The logger to log results while training
                                        and evaluating.
-
-        Properties:
-            logger (Logger): The logger to log results while training and
-                             evaluating.
-
-            training_episodes (int): The number of episodes the algorithm
-                                     has been training for.
-
-            training_steps (int): The number of steps the algorithm has been
-                                  training for.
-
-            env_steps (int): The number of environment steps the algorithm has
-                             been training for
         """
         RLAlgo.__init__(self, logger)
         nn.Module.__init__(self)

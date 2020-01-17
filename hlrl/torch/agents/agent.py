@@ -32,7 +32,7 @@ class TorchRLAgent(RLAgent):
         return torch.FloatTensor([data]).to(self.device)
 
     def transform_state(self, state):
-        return self.make_tensor(state)
+        return (self.make_tensor(state),)
 
     def transform_reward(self, reward):
         return self.make_tensor([reward])

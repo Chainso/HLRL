@@ -29,14 +29,18 @@ class LSTMPolicy(nn.Module):
 
         if b_num_hidden == 0:
             if a_num_hidden == 0:
-                self.lstm = nn.LSTM(input_size + action_n, output_size)
+                self.lstm = nn.LSTM(input_size + action_n, output_size,
+                                    l_num_hidden)
             else:
-                self.lstm = nn.LSTM(input_size + action_n, l_hidden_size)
+                self.lstm = nn.LSTM(input_size + action_n, l_hidden_size,
+                                    l_num_hidden)
         else:
             if a_num_hidden == 0:
-                self.lstm = nn.LSTM(b_hidden_size + action_n, output_size)
+                self.lstm = nn.LSTM(b_hidden_size + action_n, output_size,
+                                    l_num_hidden)
             else:
-                self.lstm = nn.LSTM(b_hidden_size + action_n, l_hidden_size)
+                self.lstm = nn.LSTM(b_hidden_size + action_n, l_hidden_size,
+                                    l_num_hidden)
 
         self.lin_before = LinearPolicy(input_size, b_hidden_size, b_hidden_size,
                                        b_num_hidden - 1, activation_fn)
@@ -52,22 +56,44 @@ class LSTMPolicy(nn.Module):
 
     def forward(self, states, last_actions, hidden_states):
         """
-        Returns the output along with the new hidden states.
+        Returns the output along with the new hidden state.
         """
+        # Input size is (batch size, sequence length, ...)
+        # For hidden states its (batch size, ...) since going 1 step at a time
+        batch_size, sequence_length = states.shape[:2]
+
+        states = states.view(batch_size * sequence_length, *states.shape[2:])
+        last_actions = last_actions.view(batch_size * sequence_length,
+                                         *last_actions.shape[2:])
+
         lin_before = self.lin_before(states)
 
-        # (sequence length, batch_size, input size)
         lstm_in = torch.cat([lin_before, last_actions], dim=-1)
-        lstm_in = lin_before.permute(1, 0, 2)
+        lstm_in = lstm_in.view(sequence_length, batch_size, *lstm_in.shape[2:])
 
-        lstm_out, new_hidden = self.lstm(lstm_in, hidden_states)
+        # Switch from (batch size, num layers, hidden size) to
+        # (num layers, batch size, hidden size)
+        hidden_states = [tens.permute(1, 0) for tens in hidden_states]
 
-        after_in = lstm_out.permute(1, 0, 2)
-        out = self.lin_after(after_in)
+        lstm_out, new_hiddens = self.lstm(lstm_in, hidden_states)
 
-        return out, new_hidden
+        # Back to batch major
+        new_hiddens = [tens.permute(1, 0) for tens in hidden_states]
 
-class LSTMSAPolicy(nn.Module):
+        lin_after_in = lstm_out.view(-1, *lstm_out.shape[2:])
+
+        lin_after = self.lin_after(lin_after_in)
+        lin_after = lin_after.view(batch_size, sequence_length,
+                                   *lin_after[1:].shape)
+    
+        return lin_after, new_hiddens
+
+    def reset_hidden_state(self):
+        print(self.lstm)
+        raise NotImplementedError
+        #h_0 = torch.zeros()
+
+class LSTMSAPolicy(LSTMPolicy):
     """
     A LSTM policy that takes state-action inputs.
     """
@@ -146,13 +172,13 @@ class LSTMGaussianPolicy(LSTMPolicy):
 
         return mean, log_std, new_hidden
 
-    def sample(self, states, epsilon=1e-4):
+    def sample(self, states, last_actions, hidden_states, epsilon=1e-4):
         """
         Returns a sample of the policy on the input with the mean and log
         probability of the sample and the new hidden states.
         """
         gauss_in, new_hidden = super().forward(states, last_actions,
                                                hidden_states)
-        action, log_prob, mean = self.gaussian.sample(gauss_in)
+        action, log_prob, mean = self.gaussian.sample(gauss_in, epsilon)
 
         return action, log_prob, mean, new_hidden

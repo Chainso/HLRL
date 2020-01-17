@@ -22,6 +22,8 @@ class RLAlgo(ABC):
             training_steps (int): The number of steps the algorithm has been
                                   training for.
 
+            recurrent (bool): If the model is a recurrent model.
+
             env_steps (int): The number of environment steps the algorithm has
                              been training for
         """
@@ -75,28 +77,8 @@ class RLAlgo(ABC):
         """
         raise NotImplementedError
 
-class RLAlgoWrapper(RLAlgo):
-    """
-    A wrapper around an algorithm.
-    """
-    def __init__(self, algo):
-        self.algo = algo
-
-    def __getattr__(self, name):
-        if name in vars(self.algo):
-            return getattr(self.algo, vars)
-
-    def train_batch(self, *training_args):
-        return self.algo.train_batch(*training_args)
-
-    def step(self, observation):
-        return self.algo.step(observation)
-
-    def save_dict(self):
-        return self.algo.save_dict()
-
-    def save(self, save_path):
-        return self.algo.save(save_path)
-
-    def load(self, load_path):
-        return self.algo.load(load_path)
+    def reset_hidden_state(self):
+        """
+        Resets the hidden state, if this is a recurrent algorithm.
+        """
+        raise NotImplementedError

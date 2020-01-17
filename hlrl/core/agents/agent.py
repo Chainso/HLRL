@@ -28,9 +28,9 @@ class RLAgent():
 
     def transform_state(self, state):
         """
-        Creates the algorithm input from the env state (does nothing by default)
+        Creates the tuple of algorithm inputs from the env state
         """
-        return state
+        return (state,)
 
     def transform_algo_step(self, algo_step):
         """
@@ -72,15 +72,17 @@ class RLAgent():
             self.env.render()
 
         state = self.env.state
-        algo_inp = self.transform_state(state)
+        state, inp_extras = self.transform_state(state)
 
-        algo_step = self.algo.step(algo_inp)
+        algo_step = self.algo.step(*algo_inp)
         action, algo_extras = self.transform_algo_step(algo_step)
 
         env_action = self.transform_action(action)
 
         next_state, reward, terminal, info = self.env.step(env_action)
         next_state = self.transform_state(next_state)
+        next_state, next_inp_extras = next_state
+
         reward = self.transform_reward(reward)
         terminal = self.transform_terminal(terminal)
 
@@ -154,35 +156,3 @@ class AgentPool():
             proc.start()
 
         return procs
-
-class RLAgentWrapper(RLAgent):
-    """
-    A wrapper around an agent.
-    """
-    def __init__(self, agent):
-        self.agent = agent
-
-    def __getattr__(self, name):
-        if name in vars(self.agent):
-            return getattr(self.agent, vars)
-
-    def transform_state(self, state):
-        return self.agent.transform_state(state)
-
-    def transform_algo_step(self, algo_step):
-        return self.agent.transform_algo_step(algo_step)
-
-    def transform_reward(self, reward):
-        return self.agent.transform_reward(reward)
-
-    def transform_terminal(self, terminal):
-        return self.agent.transform_terminal(terminal)
-
-    def transform_action(self, action):
-        return self.agent.transform_action(action)
-
-    def step(self):
-        return self.agent.step()
-
-    def play(self, num_episodes):
-        return self.agent.play(num_episodes)

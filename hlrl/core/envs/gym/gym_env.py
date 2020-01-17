@@ -28,6 +28,9 @@ class GymEnv(Env):
 
         return self._state, self._reward, self._terminal, self._info
 
+    def sample_action(self):
+        return self.env.action_space.sample()
+
     def render(self):
         """
         Renders the gym environment.

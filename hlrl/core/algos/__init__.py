@@ -1,1 +1,1 @@
-from .algo import RLAlgo, RLAlgoWrapper
+from .algo import RLAlgo

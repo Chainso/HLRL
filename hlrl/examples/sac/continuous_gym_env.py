@@ -32,7 +32,7 @@ if(__name__ == "__main__"):
     from hlrl.torch.algos.sac.sac import SAC
     from hlrl.core.envs import GymEnv
     from hlrl.core.agents import AgentPool
-    from hlrl.torch.agents import OffPolicyAgent
+    from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 
     mp.set_start_method("spawn")
@@ -61,6 +61,8 @@ if(__name__ == "__main__"):
     # Algo args
     parser.add_argument("--device", type=str, default="cpu",
                         help="the device (cpu/gpu) to train and play on")
+    parser.add_argument("--recurrent", action="store_true",
+                        help="make the network recurrent (using LSTM)")
     parser.add_argument("--discount", type=float, default=0.99,
                         help="the next state reward discount factor")
     parser.add_argument("--temperature", type=float, default=0.2,
@@ -130,17 +132,35 @@ if(__name__ == "__main__"):
     
     # Initialize SAC
     activation_fn = nn.ReLU
-    qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
-                           args["hidden_size"], args["num_hidden"],
-                           activation_fn)
-    policy = TanhGaussianPolicy(env.state_space[0], env.action_space[0],
-                                args["hidden_size"], args["num_hidden"],
-                                activation_fn)
-
     optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
-    algo = SAC(env.action_space, qfunc, policy, args["discount"],
-               args["polyak"], args["target_update_interval"], optim, optim,
-               optim, args["twin"], logger).to(torch.device(args["device"]))
+
+    if args["recurrent"]:
+        b_num_hidden = 1 if args["num_hidden"] > 0 else 0
+
+        q_func = LSTMSAPolicy(env.state_space[0], env.action_space[0], 1,
+                              args["hidden_size"], b_num_hidden,
+                              args["hidden_size"], 1, args["hidden_size"],
+                              args["num_hidden"] - 1, activation_fn)
+        policy = LSTMGaussianPolicy(env.state_space[0], env.action_space[0], 1,
+                                    args["hidden_size"], b_num_hidden,
+                                    args["hidden_size"], 1, args["hidden_size"],
+                                    args["num_hidden"] - 1, activation_fn,
+                                    squished=True)
+        algo = SACRecurrent(env.action_space, qfunc, policy, args["discount"],
+                            args["polyak"], args["target_update_interval"],
+                            optim, optim, optim, args["twin"],
+                            logger).to(torch.device(args["device"]))
+    else:
+        qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
+                            args["hidden_size"], args["num_hidden"],
+                            activation_fn)
+        policy = TanhGaussianPolicy(env.state_space[0], env.action_space[0],
+                                    args["hidden_size"], args["num_hidden"],
+                                    activation_fn)
+
+        algo = SAC(env.action_space, qfunc, policy, args["discount"],
+                args["polyak"], args["target_update_interval"], optim, optim,
+                optim, args["twin"], logger).to(torch.device(args["device"]))
 
     if args["load_path"] is not None:
         algo.load(args["load_path"])
@@ -162,10 +182,13 @@ if(__name__ == "__main__"):
 
         # Initialize agent
         # Make sure to change logger from None
-        agents = [
-            OffPolicyAgent(env, algo, args["render"], logger=logger,
-                           device=args["device"])
-        ]
+        agent = OffPolicyAgent(env, algo, args["render"], logger=logger,
+                               device=args["device"])
+
+        if args["recurrent"]:
+            agent = SequenceInputAgent(agent)
+
+        agents = [agent]
 
         agent_pool = AgentPool(agents)
         agent_procs = agent_pool.train(args["episodes"], experience_queue,

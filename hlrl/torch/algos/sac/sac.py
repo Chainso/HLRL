@@ -11,7 +11,6 @@ class SAC(TorchRLAlgo):
     """
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
-
     def __init__(self, action_space, q_func, policy, discount, polyak,
                  target_update_interval, q_optim, p_optim, temp_optim,
                  twin=True, logger=None):
@@ -106,7 +105,7 @@ class SAC(TorchRLAlgo):
                                              environment.
 
         Returns:
-            The action, Q-value and state value.
+            The action and Q-value.
         """
         action, log_prob, mean = self.policy.sample(observation)
         q_val = self.q_func1(observation, action)
@@ -134,8 +133,8 @@ class SAC(TorchRLAlgo):
         terminals) rollouts.
 
         Args:
-            rollouts (tuple) : The (s, a, r, s', t, idx, is_weights) of
-                               training data for the network.
+            rollouts (tuple) : The (s, a, r, s', t) of training data for the
+                               network.
         """
         # Get all the parameters from the rollouts
         states, actions, rewards, next_states, terminals = rollouts

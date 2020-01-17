@@ -11,9 +11,6 @@ class TorchR2D2(TorchPER):
     def __init__(self, capacity: int, alpha: float, beta: float,
                  beta_increment: float, epsilon: float, max_factor: float):
         """
-        Creates a new PSER buffer with the given parameters. The window size is
-        computed as floor(ln(threshold)/ln(decay))
-
         Args:
             capacity (int): The capacity of the replay buffer.
             alpha (float): The alpha value for the prioritization,

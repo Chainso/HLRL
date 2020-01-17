@@ -88,6 +88,12 @@ class Env(ABC):
         """
         raise NotImplementedError
 
+    def sample_action(self):
+        """
+        Samples an action from the environment action space.
+        """
+        raise NotImplementedError
+
     def n_steps(self, actions):
         """
         Takes 1 step into the environment using the given action.

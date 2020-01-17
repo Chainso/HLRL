@@ -1,1 +1,2 @@
-from .agent import RLAgent, AgentPool, RLAgentWrapper
+from .agent import RLAgent, AgentPool
+from .wrappers import *
