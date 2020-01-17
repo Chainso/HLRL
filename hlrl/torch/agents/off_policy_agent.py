@@ -49,12 +49,6 @@ class OffPolicyAgent(TorchRLAgent):
         experience = self._get_buffer_experience(experiences, decay)
         experience_queue.put(experience)
 
-    def transform_algo_step(self, algo_step):
-        action = algo_step[0]
-        algo_extras = algo_step[1:]
-
-        return (action, algo_extras)
-
     def train(self, num_episodes, experience_queue, decay, n_steps):
         """
         Trains the algorithm for the number of episodes specified on the
@@ -71,16 +65,19 @@ class OffPolicyAgent(TorchRLAgent):
             ep_reward = 0
             experiences = deque(maxlen=n_steps)
             while(not self.env.terminal):
-                (state, action, reward, next_state, terminal, info,
+                (state, action, reward, next_state, terminal, info, inp_extras,
                  algo_extras) = self.step()
 
                 next_algo_step = self.algo.step(next_state)
-                next_actions, next_algo_extras = self.transform_algo_step(next_algo_step)
+                next_algo_step = self.transform_algo_step(next_algo_step)
+                next_actions, next_algo_extras = (next_algo_step[0],
+                                                  next_algo_step[1:])
 
                 ep_reward += reward
 
                 experiences.append([[state, action, reward, next_state,
-                                     terminal], algo_extras, next_algo_extras])
+                                     terminal, *inp_extras], algo_extras,
+                                    next_algo_extras])
 
                 self.algo.env_steps += 1
 

@@ -29,7 +29,6 @@ class TorchPER(PER):
             q_target (float): The target Q-value
         """
         error = self._get_error(q_val, q_target).item()
-
         current_index = self.priorities.next_index()
         self.experiences[current_index] = np.array(experience, dtype=object)
 

@@ -35,9 +35,9 @@ class RLAgent():
     def transform_algo_step(self, algo_step):
         """
         Transforms the algorithm step on the observation to
-        (action, extra_outs).
+        (action, ...).
         """
-        return (algo_step, ())
+        return (algo_step,)
 
     def transform_reward(self, reward):
         """
@@ -72,21 +72,23 @@ class RLAgent():
             self.env.render()
 
         state = self.env.state
-        state, inp_extras = self.transform_state(state)
+        state_transed = self.transform_state(state)
+        state, inp_extras = state_transed[0], state_transed[1:]
 
-        algo_step = self.algo.step(*algo_inp)
-        action, algo_extras = self.transform_algo_step(algo_step)
+        algo_step = self.algo.step(state, *inp_extras)
+        algo_step = self.transform_algo_step(algo_step)
+        action, algo_extras = algo_step[0], algo_step[1:]
 
         env_action = self.transform_action(action)
 
         next_state, reward, terminal, info = self.env.step(env_action)
         next_state = self.transform_state(next_state)
-        next_state, next_inp_extras = next_state
+        next_state, next_inp_extras = next_state[0], next_state[1:]
 
         reward = self.transform_reward(reward)
         terminal = self.transform_terminal(terminal)
 
-        return (algo_inp, action, reward, next_state, terminal, info,
+        return (state, action, reward, next_state, terminal, info, inp_extras,
                 algo_extras)
 
     def play(self, num_episodes):

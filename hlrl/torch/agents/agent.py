@@ -34,6 +34,9 @@ class TorchRLAgent(RLAgent):
     def transform_state(self, state):
         return (self.make_tensor(state),)
 
+    def transform_algo_step(self, algo_step):
+        return algo_step
+
     def transform_reward(self, reward):
         return self.make_tensor([reward])
 

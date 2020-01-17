@@ -27,7 +27,7 @@ class RecurrentAgent(MethodWrapper, RLAgent):
         # Currying to apply the function to the wrapper object
         obj_transform_state = self.rebind_method(self.obj.transform_state)
 
-        return (obj_transform_state(state), self._self_last_action,
+        return (*obj_transform_state(state), self._self_last_action,
                 self._self_hidden_state)
 
     def transform_action(self, action):
@@ -47,7 +47,7 @@ class RecurrentAgent(MethodWrapper, RLAgent):
         """
         obj_algo_step = self.rebind_method(self.obj.transform_algo_step)
 
-        action, algo_extras = obj_algo_step(algo_step)
-        self._self_hidden_state = algo_extras[-1]
+        algo_step = obj_algo_step(algo_step)
+        self._self_hidden_state = algo_step[-1]
 
-        return (action, algo_extras)
+        return algo_step

@@ -31,8 +31,8 @@ if(__name__ == "__main__"):
     from hlrl.core.logger import TensorboardLogger
     from hlrl.torch.algos.sac.sac import SAC
     from hlrl.core.envs import GymEnv
-    from hlrl.core.agents import AgentPool
-    from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent
+    from hlrl.core.agents import AgentPool, RecurrentAgent
+    from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, ExperienceSequenceAgent
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 
     mp.set_start_method("spawn")
@@ -165,6 +165,14 @@ if(__name__ == "__main__"):
     if args["load_path"] is not None:
         algo.load(args["load_path"])
 
+    # Initialize agent
+    agent = OffPolicyAgent(env, algo, args["render"], logger=logger,
+                           device=args["device"])
+
+    if args["recurrent"]:
+        agent = SequenceInputAgent(agent)
+        agent = RecurrentAgent(agent)
+
     if args["play"]:
         algo.eval()
         agent = OffPolicyAgent(env, algo, args["render"], logger=logger,
@@ -174,19 +182,20 @@ if(__name__ == "__main__"):
         algo.train()
         algo.share_memory()
 
-        # Experience replay
-        experience_replay = TorchR2D2(args["er_capacity"], args["er_alpha"],
-                                      args["er_beta"], args["er_beta_increment"],
-                                      args["er_epsilon"], max_factor)
         experience_queue = mp.JoinableQueue()
 
-        # Initialize agent
-        # Make sure to change logger from None
-        agent = OffPolicyAgent(env, algo, args["render"], logger=logger,
-                               device=args["device"])
-
+        # Experience replay
         if args["recurrent"]:
-            agent = SequenceInputAgent(agent)
+            experience_replay = TorchR2D2(args["er_capacity"], args["er_alpha"],
+                                          args["er_beta"],
+                                          args["er_beta_increment"],
+                                          args["er_epsilon"], max_factor)
+            agent = ExperienceSequenceAgent(agent)
+        else:
+            experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
+                                         args["er_beta"],
+                                         args["er_beta_increment"],
+                                         args["er_epsilon"])
 
         agents = [agent]
 

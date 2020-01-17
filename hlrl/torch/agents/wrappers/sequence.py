@@ -27,7 +27,10 @@ class ExperienceSequenceAgent(MethodWrapper, OffPolicyAgent):
         MethodWrapper.__init__(self, agent)
 
         self._self_sequence_length = sequence_length
+
         self._self_ready_experiences = []
+        self._self_q_vals = []
+        self._self_target_q_vals = []
 
     def _get_buffer_experience(self, experiences, decay):
         """
@@ -45,10 +48,12 @@ class ExperienceSequenceAgent(MethodWrapper, OffPolicyAgent):
 
         target_q_val = reward + decay * next_q
 
-        buffer_experience = (experience, q_val, target_q_val, *algo_extras[1:],
+        buffer_experience = (experience, *algo_extras[1:],
                              *next_algo_extras[1:])
 
         self._self_ready_experiences.append(buffer_experience)
+        self._self_q_vals.append(q_val)
+        self._self_target_q_vals.append(target_q_val)
 
     def add_to_buffer(self, experience_queue, experiences, decay):
         """
@@ -57,5 +62,8 @@ class ExperienceSequenceAgent(MethodWrapper, OffPolicyAgent):
         self._get_buffer_experience(experiences, decay)
 
         if len(self._self_ready_experiences) == self._self_sequence_length:
-            experience_queue.put(self._self_ready_experiences)
+            experience_queue.put(self._self_ready_experiences,
+                                 self._self_q_vals, self._self_target_q_vals)
             self._self_ready_experiences = []
+            self._self_q_vals = []
+            self._self_target_q_vals = []
