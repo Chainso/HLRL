@@ -1,3 +1,3 @@
 from .algo import TorchRLAlgo
-from .sac import SAC 
+from .sac import *
 from .wrappers import *

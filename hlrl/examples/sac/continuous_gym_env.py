@@ -29,7 +29,7 @@ if(__name__ == "__main__"):
     from argparse import ArgumentParser
 
     from hlrl.core.logger import TensorboardLogger
-    from hlrl.torch.algos.sac.sac import SAC
+    from hlrl.torch.algos import SAC, SACRecurrent
     from hlrl.core.envs import GymEnv
     from hlrl.core.agents import AgentPool, RecurrentAgent
     from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, ExperienceSequenceAgent
@@ -113,6 +113,15 @@ if(__name__ == "__main__"):
                         help="the alpha value for PER")
     parser.add_argument("--er_epsilon", type=float, default=1e-2,
                         help="the epsilon value for PER")
+    parser.add_argument("--burn_in_length", type=int, default=40,
+                        help="if recurrent, the number of burn in samples for "
+                             + "R2D2")
+    parser.add_argument("--sequence_length", type=int, default=40,
+                        help="if recurrent, the length of the sequence to train "
+                             + "on")
+    parser.add_argument("--max_factor", type=int, default=40,
+                        help="if recurrent, factor of max priority to mean "
+                             + "priority for R2D2")
 
     args = vars(parser.parse_args())
 
@@ -124,11 +133,6 @@ if(__name__ == "__main__"):
     # The logger
     logger = args["logs_path"]
     logger = None if logger is None else TensorboardLogger(logger)
-
-    ######################### Temporary R2D2 settings ##########################
-    burn_in_length = 40
-    sequence_length = 40
-    max_factor = 0.9
     
     # Initialize SAC
     activation_fn = nn.ReLU
@@ -137,10 +141,10 @@ if(__name__ == "__main__"):
     if args["recurrent"]:
         b_num_hidden = 1 if args["num_hidden"] > 0 else 0
 
-        q_func = LSTMSAPolicy(env.state_space[0], env.action_space[0], 1,
-                              args["hidden_size"], b_num_hidden,
-                              args["hidden_size"], 1, args["hidden_size"],
-                              args["num_hidden"] - 1, activation_fn)
+        qfunc = LSTMSAPolicy(env.state_space[0], env.action_space[0], 1,
+                             args["hidden_size"], b_num_hidden,
+                             args["hidden_size"], 1, args["hidden_size"],
+                             args["num_hidden"] - 1, activation_fn)
         policy = LSTMGaussianPolicy(env.state_space[0], env.action_space[0], 1,
                                     args["hidden_size"], b_num_hidden,
                                     args["hidden_size"], 1, args["hidden_size"],
@@ -149,6 +153,7 @@ if(__name__ == "__main__"):
         algo = SACRecurrent(env.action_space, qfunc, policy, args["discount"],
                             args["polyak"], args["target_update_interval"],
                             optim, optim, optim, args["twin"],
+                            args["burn_in_length"],
                             logger).to(torch.device(args["device"]))
     else:
         qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
@@ -159,8 +164,8 @@ if(__name__ == "__main__"):
                                     activation_fn)
 
         algo = SAC(env.action_space, qfunc, policy, args["discount"],
-                args["polyak"], args["target_update_interval"], optim, optim,
-                optim, args["twin"], logger).to(torch.device(args["device"]))
+                   args["polyak"], args["target_update_interval"], optim, optim,
+                   optim, args["twin"], logger).to(torch.device(args["device"]))
 
     if args["load_path"] is not None:
         algo.load(args["load_path"])
@@ -175,8 +180,6 @@ if(__name__ == "__main__"):
 
     if args["play"]:
         algo.eval()
-        agent = OffPolicyAgent(env, algo, args["render"], logger=logger,
-                               device=args["device"])
         play(args, agent)
     else:
         algo.train()
@@ -189,8 +192,10 @@ if(__name__ == "__main__"):
             experience_replay = TorchR2D2(args["er_capacity"], args["er_alpha"],
                                           args["er_beta"],
                                           args["er_beta_increment"],
-                                          args["er_epsilon"], max_factor)
-            agent = ExperienceSequenceAgent(agent)
+                                          args["er_epsilon"],
+                                          args["max_factor"])
+            agent = ExperienceSequenceAgent(agent, args["burn_in_length"]
+                                                   + args["sequence_length"])
         else:
             experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
                                          args["er_beta"],

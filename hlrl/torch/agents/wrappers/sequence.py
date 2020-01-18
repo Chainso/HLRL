@@ -3,7 +3,7 @@ from collections import deque
 from hlrl.core.utils import MethodWrapper
 from hlrl.torch.agents import TorchRLAgent, OffPolicyAgent
 
-class SequenceInputAgent(MethodWrapper, TorchRLAgent):
+class SequenceInputAgent(MethodWrapper):
     """
     An agent that provides sequences of input to the model (of length 1).
     """
@@ -14,16 +14,21 @@ class SequenceInputAgent(MethodWrapper, TorchRLAgent):
         """
         Creates a float tensor of the data of batch size 1.
         """
-        agent_make_tens = self.rebind_method(self.obj.make_tensor)
+        return self.obj.make_tensor([data])
 
-        return agent_make_tens([data])
-
-class ExperienceSequenceAgent(MethodWrapper, OffPolicyAgent):
+class ExperienceSequenceAgent(MethodWrapper):
     """
     An agent that inputs a sequence of experiences to the replay buffer instead
     of one at a time.
     """
-    def __init__(self, agent, sequence_length):
+    def __init__(self, agent, sequence_length, keep_length=0):
+        """
+        Args:
+            agent (RLAgent): The agent to wrap.
+            sequence_length (int): The length of the sequences.
+            keep_length (int): Keeps the last n experiences from the previous
+                               batch.
+        """
         MethodWrapper.__init__(self, agent)
 
         self._self_sequence_length = sequence_length

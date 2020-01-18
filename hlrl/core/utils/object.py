@@ -1,8 +1,9 @@
 from types import MethodType
+from copy import copy
 
 class MethodWrapper():
     """
-    Wraps an object so that it mimics class inheritance,
+    Wraps an object so that it mimics class inheritance.
     """
     def __init__(self, obj):
         """
@@ -20,13 +21,29 @@ class MethodWrapper():
         calls the method using this object as self instead of the wrapped
         object.
         """
+        if "obj" not in vars(self):
+            raise AttributeError("{} + has no attribute {}", type(self), name)
+
         attr = getattr(self.obj, name)
 
         if isinstance(attr, MethodType):
-            return self.rebind_method(attr)
+            # A shallow copy to replace obj in wrapper of wrapper to stop
+            # infinite recursion
+            binder = self
+            if isinstance(self.obj, MethodWrapper):
+                binder = copy(binder)
+                binder.obj = self.obj.obj
+
+            return binder.rebind_method(attr)
         else:
             return attr
 
+    def _copy(self):
+        """
+        Copies everything, but sets the object to be this wrapped object's
+        object if applicable.
+        """
+        
     def __setattr__(self, name, value):
         if (name == "obj" or hasattr(type(self), name)
             or name.startswith("_self_")):
@@ -38,16 +55,4 @@ class MethodWrapper():
         """
         Rebinds a method from another object to use this object.
         """
-        return self.curry_func(method.__func__)
-
-    def curry_func(self, func):
-        """
-        Curries self as the first argument of a function.
-
-        Args:
-            func (function): The function to curry.
-        """
-        def curried_func(*args):
-            return func(self, *args)
-
-        return curried_func
+        return method.__func__.__get__(self, type(self))

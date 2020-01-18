@@ -65,6 +65,7 @@ class RLAgent():
         env info) tuple. Resets the environment if the current state is a
         terminal.
         """
+        #print(self._self_hidden_state)
         if(self.env.terminal):
             self.env.reset()
 
@@ -74,7 +75,7 @@ class RLAgent():
         state = self.env.state
         state_transed = self.transform_state(state)
         state, inp_extras = state_transed[0], state_transed[1:]
-
+        print(state)
         algo_step = self.algo.step(state, *inp_extras)
         algo_step = self.transform_algo_step(algo_step)
         action, algo_extras = algo_step[0], algo_step[1:]

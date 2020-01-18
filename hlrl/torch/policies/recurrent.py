@@ -1,7 +1,8 @@
+import torch
 import torch.nn as nn
 
 from .linear import LinearPolicy
-from .gaussian import GaussianPolicy
+from .gaussian import GaussianPolicy, TanhGaussianPolicy
 
 class LSTMPolicy(nn.Module):
     """
@@ -27,27 +28,26 @@ class LSTMPolicy(nn.Module):
         """
         super().__init__()
 
+        self.lstm_layers = l_num_hidden
+
         if b_num_hidden == 0:
-            if a_num_hidden == 0:
-                self.lstm = nn.LSTM(input_size + action_n, output_size,
-                                    l_num_hidden)
-            else:
-                self.lstm = nn.LSTM(input_size + action_n, l_hidden_size,
-                                    l_num_hidden)
+            self.lstm_inp = input_size + action_n
         else:
-            if a_num_hidden == 0:
-                self.lstm = nn.LSTM(b_hidden_size + action_n, output_size,
-                                    l_num_hidden)
-            else:
-                self.lstm = nn.LSTM(b_hidden_size + action_n, l_hidden_size,
-                                    l_num_hidden)
+            self.lstm_inp = b_hidden_size
+
+        if a_num_hidden == 0:
+            self.lstm_out = output_size
+        else:
+            self.lstm_out = l_hidden_size
+
+        self.lstm = nn.LSTM(self.lstm_inp, self.lstm_out, l_num_hidden)
 
         self.lin_before = LinearPolicy(input_size, b_hidden_size, b_hidden_size,
                                        b_num_hidden - 1, activation_fn)
 
         if b_num_hidden > 0:
             self.lin_before = nn.Sequential(
-                *self.lin_before,
+                self.lin_before,
                 activation_fn()
             )
 
@@ -89,9 +89,12 @@ class LSTMPolicy(nn.Module):
         return lin_after, new_hiddens
 
     def reset_hidden_state(self):
-        print(self.lstm)
-        raise NotImplementedError
-        #h_0 = torch.zeros()
+        """
+        Returns a reset hidden state of the LSTM.
+        """
+        zero_state = torch.zeros(self.lstm_layers, 1, self.lstm_inp)
+        reset_hidden = (zero_state, zero_state)
+        return reset_hidden
 
 class LSTMSAPolicy(LSTMPolicy):
     """

@@ -77,6 +77,12 @@ class SACRecurrent(SAC):
 
         return action.detach(), q_val.detach(), new_hidden.detach()
 
+    def reset_hidden_state(self):
+        """
+        Resets the hidden state for the network.
+        """
+        return self.policy.reset_hidden_state()
+
     def burn_in_hidden_states(self, rollouts):
         """
         Burns in the hidden state and returns the rest of the input.

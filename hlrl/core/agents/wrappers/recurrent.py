@@ -1,7 +1,7 @@
 from hlrl.core.utils import MethodWrapper
 from hlrl.core.agents import RLAgent
 
-class RecurrentAgent(MethodWrapper, RLAgent):
+class RecurrentAgent(MethodWrapper):
     """
     A recurrent agent that holds a hidden state.
     """
@@ -9,7 +9,7 @@ class RecurrentAgent(MethodWrapper, RLAgent):
         """
         Turns the agent into a recurrent agent.
         """
-        MethodWrapper.__init__(agent)
+        MethodWrapper.__init__(self, agent)
 
         self._self_hidden_state = self.algo.reset_hidden_state()
         self._self_last_action = self.env.sample_action()
@@ -24,10 +24,10 @@ class RecurrentAgent(MethodWrapper, RLAgent):
         """
         Appends the hidden state to the algorithm inputs.
         """
-        # Currying to apply the function to the wrapper object
-        obj_transform_state = self.rebind_method(self.obj.transform_state)
-
-        return (*obj_transform_state(state), self._self_last_action,
+        print("------------------")
+        print(self.obj.transform_state(state))
+        print(self)
+        return (*self.obj.transform_state(state), self._self_last_action,
                 self._self_hidden_state)
 
     def transform_action(self, action):
@@ -35,19 +35,13 @@ class RecurrentAgent(MethodWrapper, RLAgent):
         Updates the last action.
         """
         self._self_last_action = action
-
-        obj_transform_action = self.rebind_method(self.obj.transform_action)
-        action = obj_transform_action(action)
-
-        return action
+        return self.obj.transform_action(action)
 
     def transform_algo_step(self, algo_step):
         """
         Updates the hidden state to the last output of the algorithm extras.
         """
-        obj_algo_step = self.rebind_method(self.obj.transform_algo_step)
-
-        algo_step = obj_algo_step(algo_step)
+        algo_step = self.obj.transform_algo_step(algo_step)
         self._self_hidden_state = algo_step[-1]
 
         return algo_step
