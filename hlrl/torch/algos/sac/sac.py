@@ -127,7 +127,7 @@ class SAC(TorchRLAlgo):
 
         return action.detach(), q_val.detach()
 
-    def train_batch(self, rollouts, is_weights):
+    def train_batch(self, rollouts, is_weights=None):
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
