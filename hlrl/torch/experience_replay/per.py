@@ -30,7 +30,7 @@ class TorchPER(PER):
         """
         error = self._get_error(q_val, q_target).item()
         current_index = self.priorities.next_index()
-        self.experiences[current_index] = np.array(experience, dtype=object)
+        self.experiences[current_index] = experience
 
         priority = self._get_priority(error)
         self.priorities.add(priority)
@@ -44,8 +44,8 @@ class TorchPER(PER):
         priorities = self.priorities.get_leaves() / self.priorities.sum()
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        batch = np.stack(self.experiences[indices], axis=1)
-        batch = [torch.cat([*field]) for field in batch]
+        batch = self.experiences[indices]
+        batch = torch.stack([*batch], axis=-1)
 
         probabilities = priorities[indices]
 

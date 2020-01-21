@@ -47,7 +47,22 @@ class TorchR2D2(TorchPER):
 
         batch = np.stack(self.experiences[indices], axis=1)
         batch = batch.transpose()
-        batch = [torch.stack([*field]) for field in batch]
+
+
+        #batch = [[torch.stack(field[:-2])] for field in seq
+                  #for seq in batch]
+        print(batch)
+        print(batch.shape)
+
+        for field in batch:
+            for seq in field:
+                print('---------------------------')
+                print(type(seq))
+                print(seq.shape)
+                print(type(seq[0]))
+                print(seq[0].shape)
+        batch = [torch.cat([torch.cat([*seq]) for seq in field])
+                 for field in batch]
 
         probabilities = priorities[indices]
 
