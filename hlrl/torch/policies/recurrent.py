@@ -69,22 +69,23 @@ class LSTMPolicy(nn.Module):
         lin_before = self.lin_before(states)
 
         lstm_in = torch.cat([lin_before, last_actions], dim=-1)
-        lstm_in = lstm_in.view(sequence_length, batch_size, *lstm_in.shape[2:])
+        lstm_in = lstm_in.view(sequence_length, batch_size, *lstm_in.shape[1:])
 
         # Switch from (batch size, num layers, hidden size) to
         # (num layers, batch size, hidden size)
-        hidden_states = [tens.permute(1, 0) for tens in hidden_states]
+        hidden_states = [tens.transpose(1, 0) for tens in hidden_states]
 
         lstm_out, new_hiddens = self.lstm(lstm_in, hidden_states)
 
         # Back to batch major
-        new_hiddens = [tens.permute(1, 0) for tens in hidden_states]
+        new_hiddens = [tens.transpose(1, 0) for tens in hidden_states]
 
-        lin_after_in = lstm_out.view(-1, *lstm_out.shape[2:])
+        lin_after_in = lstm_out.view(batch_size * sequence_length,
+                                     *lstm_out.shape[2:])
 
         lin_after = self.lin_after(lin_after_in)
         lin_after = lin_after.view(batch_size, sequence_length,
-                                   *lin_after[1:].shape)
+                                   *lin_after.shape[1:])
     
         return lin_after, new_hiddens
 
@@ -92,7 +93,7 @@ class LSTMPolicy(nn.Module):
         """
         Returns a reset hidden state of the LSTM.
         """
-        zero_state = torch.zeros(self.lstm_layers, 1, self.lstm_inp)
+        zero_state = torch.zeros(self.lstm_layers, 1, self.lstm_out)
         reset_hidden = (zero_state, zero_state)
         return reset_hidden
 
@@ -118,15 +119,16 @@ class LSTMSAPolicy(LSTMPolicy):
             a_num_hidden (int): The number of hidden layers after the LSTM.
             activation_fn (callable): The activation function for each layer.
         """
-        super().__init__(input_size, action_n, output_size, b_hidden_size,
-                         b_num_hidden, l_hidden_size, l_num_hidden,
-                         a_hidden_size, a_num_hidden, activation_fn)
+        super().__init__(input_size + action_n, action_n, output_size,
+                         b_hidden_size, b_num_hidden, l_hidden_size,
+                         l_num_hidden, a_hidden_size, a_num_hidden,
+                         activation_fn)
 
     def forward(self, states, current_actions, last_actions, hidden_states):
         """
         Returns the output along with the new hidden states.
         """
-        lin_in = torch.cat([state, current_actions], dim=-1)
+        lin_in = torch.cat([states, current_actions], dim=-1)
         return super().forward(lin_in, last_actions, hidden_states)
 
 class LSTMGaussianPolicy(LSTMPolicy):
@@ -153,16 +155,21 @@ class LSTMGaussianPolicy(LSTMPolicy):
             squished (bool): If the Gaussian policy should be a squished
                              Gaussian (to [-1, 1] by tanh).
         """
-        super().__init__(input_size, action_n, output_size, b_hidden_size,
+        if a_num_hidden == 0:
+            gauss_in = l_hidden_size
+        else:
+            gauss_in = a_hidden_size
+
+        super().__init__(input_size, action_n, gauss_in, b_hidden_size,
                          b_num_hidden, l_hidden_size, l_num_hidden,
                          a_hidden_size, a_num_hidden, activation_fn)
 
         if squished:
-            self.gaussian = TanhGaussianPolicy(l_hidden_size, output_size, 0, 0,
+            self.gaussian = TanhGaussianPolicy(a_hidden_size, output_size, 0, 0,
                                                activation_fn)
         else:
-            self.gaussian = GaussianPolicy(l_hidden_size, output_size, 0, 0,
-                                        activation_fn)
+            self.gaussian = GaussianPolicy(gauss_in, output_size, 0, 0,
+                                           activation_fn)
 
     def forward(self, states, last_actions, hidden_states):
         """

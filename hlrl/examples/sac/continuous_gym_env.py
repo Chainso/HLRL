@@ -119,7 +119,7 @@ if(__name__ == "__main__"):
     parser.add_argument("--sequence_length", type=int, default=40,
                         help="if recurrent, the length of the sequence to train "
                              + "on")
-    parser.add_argument("--max_factor", type=int, default=40,
+    parser.add_argument("--max_factor", type=int, default=0.9,
                         help="if recurrent, factor of max priority to mean "
                              + "priority for R2D2")
 
@@ -145,11 +145,11 @@ if(__name__ == "__main__"):
                              args["hidden_size"], b_num_hidden,
                              args["hidden_size"], 1, args["hidden_size"],
                              args["num_hidden"] - 1, activation_fn)
-        policy = LSTMGaussianPolicy(env.state_space[0], env.action_space[0], 1,
-                                    args["hidden_size"], b_num_hidden,
-                                    args["hidden_size"], 1, args["hidden_size"],
-                                    args["num_hidden"] - 1, activation_fn,
-                                    squished=True)
+        policy = LSTMGaussianPolicy(env.state_space[0], env.action_space[0],
+                                    env.action_space[0], args["hidden_size"],
+                                    b_num_hidden, args["hidden_size"], 1,
+                                    args["hidden_size"], args["num_hidden"] - 1,
+                                    activation_fn, squished=True)
         algo = SACRecurrent(env.action_space, qfunc, policy, args["discount"],
                             args["polyak"], args["target_update_interval"],
                             optim, optim, optim, args["twin"],

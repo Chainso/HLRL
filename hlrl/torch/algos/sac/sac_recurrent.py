@@ -55,6 +55,7 @@ class SACRecurrent(SAC):
         action, log_prob, mean, new_hidden = self.policy.sample(observation,
                                                                 last_action,
                                                                 hidden_state)
+
         q_val, _ = self.q_func1(observation, action, last_action,
                                 hidden_state)
 
@@ -75,7 +76,8 @@ class SACRecurrent(SAC):
         """
         action, q_val, new_hidden = self(observation, last_action, hidden_state)
 
-        return action.detach(), q_val.detach(), new_hidden.detach()
+        return (action.detach(), q_val.detach(),
+                [tens.detach() for tens in new_hidden])
 
     def reset_hidden_state(self):
         """

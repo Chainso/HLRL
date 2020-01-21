@@ -13,11 +13,11 @@ class GaussianPolicy(nn.Module):
         super().__init__()
 
         self.linear = LinearPolicy(inp_n, hidden_size, hidden_size,
-                                   num_hidden - 1, activation_fn),
+                                   num_hidden - 1, activation_fn)
 
         if num_hidden > 0:
             self.linear = nn.Sequential(
-                *self.linear,
+                self.linear,
                 activation_fn()
             )
 
