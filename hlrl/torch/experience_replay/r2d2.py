@@ -32,8 +32,9 @@ class TorchR2D2(TorchPER):
         """
         reg_error = torch.abs(q_val - q_target)
 
-        error = (self.max_factor * reg_error.max()
-                 + (1 - self.max_factor) * reg_error.mean())
+        error = (self.max_factor * reg_error.max(dim=1).values
+                 + (1 - self.max_factor) * reg_error.mean(dim=1))
+
         return error
 
     def sample(self, size):
@@ -46,25 +47,22 @@ class TorchR2D2(TorchPER):
         indices = np.random.choice(len(priorities), size, p = priorities)
 
         batch = np.stack(self.experiences[indices], axis=1)
-        batch = batch.transpose()
 
+        # Each "experience" is a tuple of (sequence experience, hidden state)
+        experiences = batch[0]
+        hidden_states = batch[1]
 
-        #batch = [[torch.stack(field[:-2])] for field in seq
-                  #for seq in batch]
-        print(batch)
-        print(batch.shape)
+        experiences = np.stack(experiences)
+        experiences = experiences.transpose(2, 0, 1)
+        experiences = [torch.cat([torch.cat([*exp], axis=1) for exp in tens])
+                       for tens in experiences]
 
-        for field in batch:
-            for seq in field:
-                print('---------------------------')
-                print(type(seq))
-                print(seq.shape)
-                print(type(seq[0]))
-                print(seq[0].shape)
-        batch = [torch.cat([torch.cat([*seq]) for seq in field])
-                 for field in batch]
+        hidden_states = np.stack(hidden_states, axis=1)
+        hidden_states = tuple(torch.cat([*hc]) for hc in hidden_states)
 
         probabilities = priorities[indices]
+
+        batch = experiences + [hidden_states]
 
         is_weights = np.power(len(self.priorities) * probabilities,
                               -self.beta)

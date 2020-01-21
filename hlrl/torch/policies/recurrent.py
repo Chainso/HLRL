@@ -62,9 +62,10 @@ class LSTMPolicy(nn.Module):
         # For hidden states its (batch size, ...) since going 1 step at a time
         batch_size, sequence_length = states.shape[:2]
 
-        states = states.view(batch_size * sequence_length, *states.shape[2:])
-        last_actions = last_actions.view(batch_size * sequence_length,
-                                         *last_actions.shape[2:])
+        states = states.contiguous().view(batch_size * sequence_length,
+                                          *states.shape[2:])
+        last_actions = last_actions.contiguous().view(batch_size * sequence_length,
+                                                      *last_actions.shape[2:])
 
         lin_before = self.lin_before(states)
 
@@ -89,11 +90,17 @@ class LSTMPolicy(nn.Module):
     
         return lin_after, new_hiddens
 
-    def reset_hidden_state(self):
+    def reset_hidden_state(self, batch_size=1, batch_major=True):
         """
         Returns a reset hidden state of the LSTM.
         """
-        zero_state = torch.zeros(self.lstm_layers, 1, self.lstm_out)
+        if batch_major:
+            zero_state = torch.zeros(batch_size, self.lstm_layers,
+                                     self.lstm_out)
+        else:
+            zero_state = torch.zeros(self.lstm_layers, batch_size,
+                                     self.lstm_out)
+
         reset_hidden = (zero_state, zero_state)
         return reset_hidden
 
@@ -187,8 +194,20 @@ class LSTMGaussianPolicy(LSTMPolicy):
         Returns a sample of the policy on the input with the mean and log
         probability of the sample and the new hidden states.
         """
+        batch_size, sequence_length = states.shape[:2]
+
         gauss_in, new_hidden = super().forward(states, last_actions,
                                                hidden_states)
+
+        gauss_in = gauss_in.contiguous().view(batch_size * sequence_length,
+                                              *gauss_in.shape[2:])
         action, log_prob, mean = self.gaussian.sample(gauss_in, epsilon)
+
+        action = action.contiguous().view(batch_size, sequence_length,
+                                          *action.shape[1:])
+        log_prob = log_prob.contiguous().view(batch_size, sequence_length,
+                                              *log_prob.shape[1:])
+        mean = mean.contiguous().view(batch_size, sequence_length,
+                                      *mean.shape[1:])
 
         return action, log_prob, mean, new_hidden

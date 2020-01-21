@@ -1,4 +1,8 @@
+import torch
+import torch.nn as nn
+
 from .sac import SAC
+from hlrl.torch.util import polyak_average
 
 class SACRecurrent(SAC):
     """
@@ -34,7 +38,7 @@ class SACRecurrent(SAC):
         """
         super().__init__(action_space, q_func, policy, discount, polyak,
                          target_update_interval, q_optim, p_optim, temp_optim,
-                         twin=True, logger=None)
+                         twin=twin, logger=logger)
 
         self.burn_in_length = burn_in_length
 
@@ -90,18 +94,17 @@ class SACRecurrent(SAC):
         Burns in the hidden state and returns the rest of the input.
         """
         (states, actions, rewards, next_states, terminals, last_actions,
-         hidden_states, next_hidden_states) = rollouts
+         hidden_states) = rollouts
 
         burn_in_states = states[:, :self.burn_in_length]
         burn_in_last_actions = last_actions[:, :self.burn_in_length]
-        start_hiddens = hidden_states[:, 0]
 
         burn_in_next_states = states[:, self.burn_in_length:self.burn_in_length + 1]
         burn_in_next_last_act = actions[:, self.burn_in_length:self.burn_in_length + 1]
 
         _, _, _, new_hiddens = self.policy.sample(burn_in_states,
                                                   burn_in_last_actions,
-                                                  start_hiddens)
+                                                  hidden_states)
         _, _, _, next_hiddens = self.policy.sample(burn_in_next_states,
                                                    burn_in_next_last_act,
                                                    new_hiddens)
@@ -129,8 +132,8 @@ class SACRecurrent(SAC):
         (states, actions, rewards, next_states, terminals, last_actions,
          hidden_states, next_hiddens) = self.burn_in_hidden_states(rollouts)
 
-        (full_states, _, _, _, _, full_last_actions, full_hidden_states,
-         _) = rollouts
+        (full_states, _, full_rewards, full_next_states, full_terminals,
+         full_last_actions, full_hidden_states) = rollouts
 
         q_loss_func = nn.MSELoss()
 
@@ -138,8 +141,8 @@ class SACRecurrent(SAC):
             (next_actions, next_log_probs,
              next_mean, _) = self.policy.sample(next_states, actions,
                                                 next_hiddens)
-            q_targ_pred1 = self.q_func_targ1(next_states, next_actions,
-                                             actions, next_hiddens)
+            q_targ_pred1, _ = self.q_func_targ1(next_states, next_actions,
+                                                actions, next_hiddens)
 
         (pred_actions, pred_log_probs,
          pred_means, _) = self.policy.sample(states, last_actions,
@@ -151,18 +154,20 @@ class SACRecurrent(SAC):
         # Only get the loss for q_func2 if using the twin Q-function algorithm
         if(self._twin):
             with torch.no_grad():
-                q_targ_pred2 = self.q_func_targ2(next_states, next_actions,
-                                                 actions, next_hiddens)
+                q_targ_pred2, _ = self.q_func_targ2(next_states, next_actions,
+                                                    actions, next_hiddens)
 
             q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
                       - self._temperature * next_log_probs)
+
             q_next = rewards + (1 - terminals) * self._discount * q_targ
 
             p_q_pred2, _ = self.q_func2(states, pred_actions, last_actions,
                                         hidden_states)
             p_q_pred = torch.min(p_q_pred1, p_q_pred2)
 
-            q_pred2 = self.q_func2(states, actions, last_actions, hidden_states)
+            q_pred2, _ = self.q_func2(states, actions, last_actions,
+                                      hidden_states)
             q_loss2 = q_loss_func(q_pred2, q_next)
 
             self.q_optim2.zero_grad()
@@ -173,7 +178,7 @@ class SACRecurrent(SAC):
             q_next = rewards + (1 - terminals) * self._discount * q_targ
             p_q_pred = p_q_pred1
 
-        q_pred1 = self.q_func1(states, actions, last_actions, hidden_states)
+        q_pred1, _ = self.q_func1(states, actions, last_actions, hidden_states)
         q_loss1 = q_loss_func(q_pred1, q_next)
 
         self.q_optim1.zero_grad()
@@ -197,22 +202,33 @@ class SACRecurrent(SAC):
 
         # Log the losses if a logger was given
         if(self.logger is not None):
-            self.logger["Train/Q1 Loss"] = (q_loss1, self.training_steps)
-            self.logger["Train/Policy Loss"] = (p_loss, self.training_steps)
+            self.logger["Train/Q1_Loss"] = (q_loss1, self.training_steps)
+            self.logger["Train/Policy_Loss"] = (p_loss, self.training_steps)
             self.logger["Train/Temperature"] = (self._temperature,
                                                 self.training_steps)
 
             # Only log the Q2
             if(self._twin):
-                self.logger["Train/Q2 Loss"] = (q_loss2, self.training_steps)
+                self.logger["Train/Q2_Loss"] = (q_loss2, self.training_steps)
 
         # Get the new q value to update the experience replay
         with torch.no_grad():
             (updated_actions, new_log_pis, mean,
-             _) = self.policy.sample(full_states, full_last_actions,
-                                     full_hidden_states[:, 0])
-            new_qs = self.q_func1(states, updated_actions)
-            new_q_targ = new_qs - self._temperature * new_log_pis
+             new_hidden) = self.policy.sample(full_states, full_last_actions,
+                                              full_hidden_states)
+                                     
+            (u_new_acts, u_new_log_probs, u_new_mean,
+             _) = self.policy.sample(full_next_states, updated_actions,
+                                     new_hidden)
+
+            new_qs, _ = self.q_func1(full_states, updated_actions,
+                                     full_last_actions, full_hidden_states)
+            q_targ, _ = self.q_func1(full_next_states, u_new_acts,
+                                     updated_actions, new_hidden)
+
+            #new_q_targ = new_qs - self._temperature * new_log_pis
+            q_next = (full_rewards + (1 - full_terminals)
+                                     * self._discount * q_targ)
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
@@ -220,4 +236,4 @@ class SACRecurrent(SAC):
             polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
 
         self.training_steps += 1
-        return new_qs, new_q_targ
+        return new_qs, q_next

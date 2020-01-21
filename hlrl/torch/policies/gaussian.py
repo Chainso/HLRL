@@ -9,6 +9,9 @@ class GaussianPolicy(nn.Module):
     """
     A simple gaussian policy.
     """
+    LOG_STD_MIN = -20
+    LOG_STD_MAX = 2
+
     def __init__(self, inp_n, out_n, hidden_size, num_hidden, activation_fn):
         super().__init__()
 
@@ -33,7 +36,10 @@ class GaussianPolicy(nn.Module):
         """
         lin = self.linear(inp)
         mean = self.mean(lin)
+
         log_std = self.log_std(lin)
+        log_std = torch.clamp(log_std, min=self.LOG_STD_MIN,
+                              max=self.LOG_STD_MAX)
 
         return mean, log_std
 
@@ -74,6 +80,8 @@ class TanhGaussianPolicy(GaussianPolicy):
         action = torch.tanh(sample)
 
         log_prob = log_prob - torch.log(1 - action.pow(2) + epsilon)
+
+        # Not sure if need keep dim here
         log_prob = log_prob.sum(1, keepdim=True)
 
         mean = torch.tanh(mean)

@@ -5,7 +5,6 @@ from copy import deepcopy
 
 from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.util import polyak_average
-from hlrl.core.logger import TensorboardLogger
 
 class SAC(TorchRLAlgo):
     """
