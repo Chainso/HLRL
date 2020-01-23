@@ -17,7 +17,7 @@ class OffPolicyAgent(TorchRLAgent):
         """
         reward = 0
         for experience in list(experiences)[::-1]:
-            reward += experience[0][2] + decay * reward
+            reward = experience[0][2] + decay * reward
 
         return reward
 

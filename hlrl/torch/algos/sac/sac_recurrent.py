@@ -87,7 +87,8 @@ class SACRecurrent(SAC):
         """
         Resets the hidden state for the network.
         """
-        return self.policy.reset_hidden_state()
+        return [tens.to(self.log_temp.device)
+                for tens in self.policy.reset_hidden_state()]
 
     def burn_in_hidden_states(self, rollouts):
         """
@@ -176,6 +177,7 @@ class SACRecurrent(SAC):
         else:
             q_targ = q_targ_pred1 - self._temperature * next_log_probs
             q_next = rewards + (1 - terminals) * self._discount * q_targ
+
             p_q_pred = p_q_pred1
 
         q_pred1, _ = self.q_func1(states, actions, last_actions, hidden_states)
