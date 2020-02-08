@@ -127,7 +127,7 @@ if(__name__ == "__main__"):
     burn_in_length = 40
     sequence_length = 40
     max_factor = 0.9
-    
+
     # Initialize SAC
     activation_fn = nn.ReLU
     qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
@@ -155,9 +155,14 @@ if(__name__ == "__main__"):
         algo.share_memory()
 
         # Experience replay
+        experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
+                                      args["er_beta"], args["er_beta_increment"],
+                                      args["er_epsilon"])
+        """
         experience_replay = TorchR2D2(args["er_capacity"], args["er_alpha"],
                                       args["er_beta"], args["er_beta_increment"],
                                       args["er_epsilon"], max_factor)
+        """
         experience_queue = mp.JoinableQueue()
 
         # Initialize agent
