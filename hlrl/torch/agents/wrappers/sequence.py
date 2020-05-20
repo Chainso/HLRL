@@ -1,20 +1,20 @@
 from collections import deque
 
 from hlrl.core.utils import MethodWrapper
-from hlrl.torch.agents import TorchRLAgent, OffPolicyAgent
 
 class SequenceInputAgent(MethodWrapper):
     """
     An agent that provides sequences of input to the model (of length 1).
     """
     def __init__(self, agent):
-        MethodWrapper.__init__(self, agent)
+        super().__init__(agent)
 
     def make_tensor(self, data):
         """
         Creates a float tensor of the data of batch size 1.
         """
-        return self.obj.make_tensor([data])
+        return self.om.make_tensor([data])
+
 
 class ExperienceSequenceAgent(MethodWrapper):
     """
@@ -29,13 +29,13 @@ class ExperienceSequenceAgent(MethodWrapper):
             keep_length (int): Keeps the last n experiences from the previous
                                batch.
         """
-        MethodWrapper.__init__(self, agent)
+        super().__init__(agent)
 
-        self._self_sequence_length = sequence_length
+        self.sequence_length = sequence_length
 
-        self._self_ready_experiences = []
-        self._self_q_vals = []
-        self._self_target_q_vals = []
+        self.ready_experiences = []
+        self.q_vals = []
+        self.target_q_vals = []
 
     def _get_buffer_experience(self, experiences, decay):
         """
@@ -56,9 +56,9 @@ class ExperienceSequenceAgent(MethodWrapper):
         buffer_experience = (experience, *algo_extras[1:],
                              *next_algo_extras[1:])
 
-        self._self_ready_experiences.append(buffer_experience)
-        self._self_q_vals.append(q_val)
-        self._self_target_q_vals.append(target_q_val)
+        self.ready_experiences.append(buffer_experience)
+        self.q_vals.append(q_val)
+        self.target_q_vals.append(target_q_val)
 
     def add_to_buffer(self, experience_queue, experiences, decay):
         """
@@ -66,9 +66,9 @@ class ExperienceSequenceAgent(MethodWrapper):
         """
         self._get_buffer_experience(experiences, decay)
 
-        if len(self._self_ready_experiences) == self._self_sequence_length:
-            experience_queue.put(self._self_ready_experiences,
-                                 self._self_q_vals, self._self_target_q_vals)
-            self._self_ready_experiences = []
-            self._self_q_vals = []
-            self._self_target_q_vals = []
+        if len(self.ready_experiences) == self.sequence_length:
+            experience_queue.put(self.ready_experiences,
+                                 self.q_vals, self.target_q_vals)
+            self.ready_experiences = []
+            self.q_vals = []
+            self.target_q_vals = []

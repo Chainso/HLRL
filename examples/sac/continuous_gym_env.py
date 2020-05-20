@@ -6,7 +6,6 @@ from hlrl.torch.policies import LinearSAPolicy, TanhGaussianPolicy, LSTMGaussian
 def train(args, algo, experience_replay, experience_queue, agent_procs):
     while any(proc.is_alive() for proc in agent_procs):
         experience = experience_queue.get()
-        experience_queue.task_done()
 
         if experience is None:
             # Wait on the train processes
@@ -32,7 +31,8 @@ if(__name__ == "__main__"):
     from hlrl.torch.algos import SAC, SACRecurrent
     from hlrl.core.envs import GymEnv
     from hlrl.core.agents import AgentPool, RecurrentAgent
-    from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, ExperienceSequenceAgent
+    from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, \
+                                  ExperienceSequenceAgent
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 
     mp.set_start_method("spawn")
@@ -170,7 +170,7 @@ if(__name__ == "__main__"):
     if args["load_path"] is not None:
         algo.load(args["load_path"])
 
-    # Initialize agent
+    # Create agent class
     agent = OffPolicyAgent(env, algo, args["render"], logger=logger,
                            device=args["device"])
 
@@ -179,13 +179,15 @@ if(__name__ == "__main__"):
         agent = RecurrentAgent(agent)
 
     if args["play"]:
+        agent = agent_class(env, algo, args["render"], logger=logger,
+                            device=args["device"])
         algo.eval()
         play(args, agent)
     else:
         algo.train()
         algo.share_memory()
 
-        experience_queue = mp.JoinableQueue()
+        experience_queue = mp.Queue()
 
         # Experience replay
         if args["recurrent"]:
@@ -195,7 +197,8 @@ if(__name__ == "__main__"):
                                           args["er_epsilon"],
                                           args["max_factor"])
             agent = ExperienceSequenceAgent(agent, args["burn_in_length"]
-                                                   + args["sequence_length"])
+                                                   + args["sequence_length"],
+                                            0)
         else:
             experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
                                          args["er_beta"],

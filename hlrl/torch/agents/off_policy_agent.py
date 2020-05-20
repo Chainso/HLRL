@@ -96,4 +96,3 @@ class OffPolicyAgent(TorchRLAgent):
             self.algo.env_episodes += 1
 
         experience_queue.put(None)
-        experience_queue.join()

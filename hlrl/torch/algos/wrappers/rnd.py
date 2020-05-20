@@ -19,16 +19,16 @@ class RND(MethodWrapper, TorchRLAlgo):
             rnd_network (torch.nn.Module): The RND network.
             rnd_optim (callable): The function to create the optimizer for RND.
         """
-        MethodWrapper.__init__(self, algo)
+        super().__init__(algo)
 
-        self._self_rnd = rnd_network
+        self.rnd = rnd_network
 
         def init_weights(m):
             if hasattr(m, "weight"):
                 nn.init.xavier_uniform_(m.weight.data)
 
-        self._self_rnd_target = deepcopy(self._self_rnd).apply(init_weights)
-        self._self_rnd_optim = rnd_optim(self._self_rnd.parameters())
+        self.rnd_target = deepcopy(self.rnd).apply(init_weights)
+        self.rnd_optim = rnd_optim(self.rnd.parameters())
 
     def _get_loss(self, states):
         """
@@ -36,8 +36,8 @@ class RND(MethodWrapper, TorchRLAlgo):
         """
         rnd_loss_func = nn.MSELoss()
 
-        rnd_pred = self._self_rnd(states)
-        rnd_target = self._self_rnd_target(states)
+        rnd_pred = self.rnd(states)
+        rnd_target = self.rnd_target(states)
 
         rnd_loss = rnd_loss_func(rnd_pred, rnd_target)
 
@@ -50,14 +50,14 @@ class RND(MethodWrapper, TorchRLAlgo):
         _, _, _, next_states, _ = rollouts
         rnd_loss = self._get_loss(next_states)
 
-        self._self_rnd_optim.zero_grad()
+        self.rnd_optim.zero_grad()
         rnd_loss.backward()
-        self._self_rnd_optim.step()
+        self.rnd_optim.step()
 
         if self.logger is not None:
             self.logger["Train/RND Loss"] = (rnd_loss, self.training_steps)
 
-        return self.obj.train_batch(rollouts, *training_args)
+        return self.om.train_batch(rollouts, *training_args)
 
     def intrinsic_reward(self, states):
         """
@@ -69,9 +69,9 @@ class RND(MethodWrapper, TorchRLAlgo):
         """
         Adds the rnd network to the save dict of the algorithm.
         """
-        state_dict = self.obj.save_dict()
-        state_dict["rnd"] = self._self_rnd.state_dict()
-        state_dict["rnd_target"] = self._self_rnd_target.state_dict()
-        state_dict["rnd_optim"] = self._self_rnd_optim.state_dict()
+        state_dict = self.obj.__class__.save_dict(self.obj)
+        state_dict["rnd"] = self.rnd.state_dict()
+        state_dict["rnd_target"] = self.rnd_target.state_dict()
+        state_dict["rnd_optim"] = self.rnd_optim.state_dict()
 
         return state_dict
