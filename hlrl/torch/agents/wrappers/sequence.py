@@ -2,6 +2,7 @@ from collections import deque
 
 from hlrl.core.utils import MethodWrapper
 
+
 class SequenceInputAgent(MethodWrapper):
     """
     An agent that provides sequences of input to the model (of length 1).
@@ -15,6 +16,11 @@ class SequenceInputAgent(MethodWrapper):
         """
         return self.om.make_tensor([data])
 
+    def transform_action(self, action):
+        """
+        Remove the sequence axis for the environment.
+        """
+        return self.om.transform_action(action)[0]
 
 class ExperienceSequenceAgent(MethodWrapper):
     """
@@ -67,8 +73,8 @@ class ExperienceSequenceAgent(MethodWrapper):
         self._get_buffer_experience(experiences, decay)
 
         if len(self.ready_experiences) == self.sequence_length:
-            experience_queue.put(self.ready_experiences,
-                                 self.q_vals, self.target_q_vals)
+            experience_queue.put((self.ready_experiences, self.q_vals,
+                                  self.target_q_vals))
             self.ready_experiences = []
             self.q_vals = []
             self.target_q_vals = []

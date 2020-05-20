@@ -66,9 +66,9 @@ class OffPolicyAgent(TorchRLAgent):
             experiences = deque(maxlen=n_steps)
             while(not self.env.terminal):
                 (state, action, reward, next_state, terminal, info, inp_extras,
-                 algo_extras) = self.step()
+                 algo_extras, next_inp_extras) = self.step()
 
-                next_algo_step = self.algo.step(next_state)
+                next_algo_step = self.algo.step(next_state, *next_inp_extras)
                 next_algo_step = self.transform_algo_step(next_algo_step)
                 next_actions, next_algo_extras = (next_algo_step[0],
                                                   next_algo_step[1:])

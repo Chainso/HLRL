@@ -11,7 +11,7 @@ class RecurrentAgent(MethodWrapper):
         super().__init__(agent)
 
         self.hidden_state = self.obj.algo.reset_hidden_state()
-        self.last_action = self.env.sample_action()
+        self.last_action = self.make_tensor(self.env.sample_action())
 
     def set_hidden_state(self, hidden_state):
         """

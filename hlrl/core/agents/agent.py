@@ -72,6 +72,7 @@ class RLAgent():
             self.env.render()
 
         state = self.env.state
+
         state_transed = self.transform_state(state)
 
         state, inp_extras = state_transed[0], state_transed[1:]
@@ -83,6 +84,7 @@ class RLAgent():
         env_action = self.transform_action(action)
 
         next_state, reward, terminal, info = self.env.step(env_action)
+
         next_state = self.transform_state(next_state)
         next_state, next_inp_extras = next_state[0], next_state[1:]
 
@@ -90,7 +92,7 @@ class RLAgent():
         terminal = self.transform_terminal(terminal)
 
         return (state, action, reward, next_state, terminal, info, inp_extras,
-                algo_extras)
+                algo_extras, next_inp_extras)
 
     def play(self, num_episodes):
         """

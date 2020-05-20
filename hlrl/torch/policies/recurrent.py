@@ -31,9 +31,11 @@ class LSTMPolicy(nn.Module):
         self.lstm_layers = l_num_hidden
 
         if b_num_hidden == 0:
-            self.lstm_inp = input_size + action_n
+            self.lstm_inp = input_size 
         else:
             self.lstm_inp = b_hidden_size
+
+        self.lstm_inp += action_n
 
         if a_num_hidden == 0:
             self.lstm_out = output_size
