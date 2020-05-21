@@ -36,6 +36,7 @@ if(__name__ == "__main__"):
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 
     mp.set_start_method("spawn")
+    mp.set_sharing_strategy("file_system")
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(description="Twin Q-Function SAC example on "
@@ -179,8 +180,6 @@ if(__name__ == "__main__"):
         agent = RecurrentAgent(agent)
 
     if args["play"]:
-        agent = agent_class(env, algo, args["render"], logger=logger,
-                            device=args["device"])
         algo.eval()
         play(args, agent)
     else:
@@ -197,8 +196,7 @@ if(__name__ == "__main__"):
                                           args["er_epsilon"],
                                           args["max_factor"])
             agent = ExperienceSequenceAgent(agent, args["burn_in_length"]
-                                                   + args["sequence_length"],
-                                            0)
+                                                   + args["sequence_length"], 0)
         else:
             experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
                                          args["er_beta"],

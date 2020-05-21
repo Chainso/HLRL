@@ -1,3 +1,5 @@
+import torch
+
 from collections import deque
 
 from hlrl.core.utils import MethodWrapper
@@ -47,20 +49,10 @@ class ExperienceSequenceAgent(MethodWrapper):
         """
         Perpares the experience to add to the buffer.
         """
-        reward = self._n_step_decay(experiences, decay)
+        (experience, q_val, target_q_val,
+            *extras) = self.om._get_buffer_experience(experiences, decay)
 
-        experience = experiences.pop()
-
-        experience, algo_extras, next_algo_extras = experience
-        q_val = algo_extras[0]
-        next_q = next_algo_extras[0]
-
-        experience[2] = reward
-
-        target_q_val = reward + decay * next_q
-
-        buffer_experience = (experience, *algo_extras[1:],
-                             *next_algo_extras[1:])
+        buffer_experience = (experience, *extras)
 
         self.ready_experiences.append(buffer_experience)
         self.q_vals.append(q_val)
@@ -73,6 +65,9 @@ class ExperienceSequenceAgent(MethodWrapper):
         self._get_buffer_experience(experiences, decay)
 
         if len(self.ready_experiences) == self.sequence_length:
+            self.q_vals = torch.cat(self.q_vals)
+            self.target_q_vals = torch.cat(self.target_q_vals)
+
             experience_queue.put((self.ready_experiences, self.q_vals,
                                   self.target_q_vals))
             self.ready_experiences = []

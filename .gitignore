@@ -108,3 +108,7 @@ venv.bak/
 
 # Tensorboard
 events.out.tfevents.*
+
+# Pytorch models
+*.pt
+*.torch

@@ -53,4 +53,8 @@ class MethodWrapper():
         if name == "obj" or name == "om":
             object.__setattr__(self, name, value)
         else:
+            obj = self.obj
+            while isinstance(obj, MethodWrapper):
+                obj = obj.obj
+
             setattr(self.obj, name, value)

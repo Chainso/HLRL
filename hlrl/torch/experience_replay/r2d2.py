@@ -32,8 +32,8 @@ class TorchR2D2(TorchPER):
         """
         reg_error = torch.abs(q_val - q_target)
 
-        error = (self.max_factor * reg_error.max(dim=1).values
-                 + (1 - self.max_factor) * reg_error.mean(dim=1))
+        error = (self.max_factor * reg_error.max()
+                 + (1 - self.max_factor) * reg_error.mean())
 
         return error
 
