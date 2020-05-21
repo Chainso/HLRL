@@ -134,7 +134,16 @@ if(__name__ == "__main__"):
     # The logger
     logger = args["logs_path"]
     logger = None if logger is None else TensorboardLogger(logger)
+<<<<<<< HEAD:examples/sac/continuous_gym_env.py
     
+=======
+
+    ######################### Temporary R2D2 settings ##########################
+    burn_in_length = 40
+    sequence_length = 40
+    max_factor = 0.9
+
+>>>>>>> a4b41c8f75898e29195303ec36220fbcf980f614:hlrl/examples/sac/continuous_gym_env.py
     # Initialize SAC
     activation_fn = nn.ReLU
     optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
