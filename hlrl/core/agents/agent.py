@@ -58,6 +58,13 @@ class RLAgent():
         """
         return action
 
+    def reset(self):
+        """
+        Resets the agent.
+        """
+        # The simplest agent doesn't require anything to reset
+        pass
+
     def step(self):
         """
         Takes 1 step in the agent's environment. Returns the
@@ -90,7 +97,7 @@ class RLAgent():
 
         reward = self.transform_reward(reward)
         terminal = self.transform_terminal(terminal)
-
+        print("Pre return on step")
         return (state, action, reward, next_state, terminal, info, inp_extras,
                 algo_extras, next_inp_extras)
 
@@ -105,6 +112,7 @@ class RLAgent():
         avg_reward = 0
 
         for episode in range(1, num_episodes + 1):
+            self.reset()
             self.env.reset()
             ep_reward = 0
             

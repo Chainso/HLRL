@@ -83,6 +83,7 @@ class SAC(TorchRLAlgo):
             save_path (Optional, str): The path to save the model to.
             save_interval (int): The number of batches between saves.
         """
+        print(batch_size, start_size, len(experience_replay))
         if(batch_size <= len(experience_replay)
            and start_size <= len(experience_replay)):
             sample = experience_replay.sample(batch_size)

@@ -32,7 +32,7 @@ class ExperienceSequenceAgent(MethodWrapper):
     def __init__(self, agent, sequence_length, keep_length=0):
         """
         Args:
-            agent (RLAgent): The agent to wrap.
+            agent (OffPolicyAgent): The agent to wrap.
             sequence_length (int): The length of the sequences.
             keep_length (int): Keeps the last n experiences from the previous
                                batch.
@@ -40,11 +40,13 @@ class ExperienceSequenceAgent(MethodWrapper):
         super().__init__(agent)
 
         self.sequence_length = sequence_length
+        self.keep_length = keep_length
 
         self.ready_experiences = []
         self.q_vals = []
         self.target_q_vals = []
-
+        self.a = True
+        self.b = True
     def _get_buffer_experience(self, experiences, decay):
         """
         Perpares the experience to add to the buffer.
@@ -64,12 +66,18 @@ class ExperienceSequenceAgent(MethodWrapper):
         """
         self._get_buffer_experience(experiences, decay)
 
-        if len(self.ready_experiences) == self.sequence_length:
-            self.q_vals = torch.cat(self.q_vals)
-            self.target_q_vals = torch.cat(self.target_q_vals)
-
-            experience_queue.put((self.ready_experiences, self.q_vals,
-                                  self.target_q_vals))
-            self.ready_experiences = []
-            self.q_vals = []
-            self.target_q_vals = []
+        if (self.a or self.b) and len(self.ready_experiences) == self.sequence_length:
+            q_vals = torch.cat(self.q_vals)
+            target_q_vals = torch.cat(self.target_q_vals)
+            print(self.ready_experiences[0][-1])
+            print("+++++++++++++++++++++++++++++++++")
+            print("Tryna put")
+            experience_queue.put((self.ready_experiences, q_vals,
+                                  target_q_vals))
+            print("Put")
+            keep_start = len(self.ready_experiences) - self.keep_length
+            self.ready_experiences = self.ready_experiences[keep_start:]
+            self.q_vals = self.q_vals[keep_start:]
+            self.target_q_vals = self.target_q_vals[keep_start:]
+            self.b = self.a
+            self.a = False

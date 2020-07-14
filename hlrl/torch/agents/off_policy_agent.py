@@ -47,7 +47,7 @@ class OffPolicyAgent(TorchRLAgent):
         Adds the experience to the replay buffer.
         """
         experience = self._get_buffer_experience(experiences, decay)
-        experience_queue.put(experience)
+        experience_queue.put(experience, False)
 
     def train(self, num_episodes, experience_queue, decay, n_steps):
         """
@@ -61,20 +61,27 @@ class OffPolicyAgent(TorchRLAgent):
             n_steps (int): The number of steps.
         """
         for episode in range(self.algo.env_episodes + 1, num_episodes + 1):
+            self.reset()
             self.env.reset()
+
             ep_reward = 0
             experiences = deque(maxlen=n_steps)
+            a = 0
             while(not self.env.terminal):
+                a += 1
+                print(a)
+                if(a == 21):
+                    print("Here")
                 (state, action, reward, next_state, terminal, info, inp_extras,
                  algo_extras, next_inp_extras) = self.step()
-
+                print("Post return on")
                 next_algo_step = self.algo.step(next_state, *next_inp_extras)
                 next_algo_step = self.transform_algo_step(next_algo_step)
                 next_actions, next_algo_extras = (next_algo_step[0],
                                                   next_algo_step[1:])
 
                 ep_reward += reward
-
+                
                 experiences.append([[state, action, reward, next_state,
                                      terminal, *inp_extras], algo_extras,
                                     next_algo_extras])

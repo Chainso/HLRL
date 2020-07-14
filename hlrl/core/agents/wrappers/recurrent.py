@@ -1,4 +1,5 @@
 from hlrl.core.utils import MethodWrapper
+import torch
 
 class RecurrentAgent(MethodWrapper):
     """
@@ -10,8 +11,8 @@ class RecurrentAgent(MethodWrapper):
         """
         super().__init__(agent)
 
-        self.hidden_state = self.obj.algo.reset_hidden_state()
-        self.last_action = self.make_tensor(self.env.sample_action())
+        self.hidden_state = None
+        self.last_action = None
 
     def set_hidden_state(self, hidden_state):
         """
@@ -41,3 +42,10 @@ class RecurrentAgent(MethodWrapper):
         self.hidden_state = algo_step[-1]
 
         return algo_step
+
+    def reset(self):
+        """
+        Resets the agent's hidden state
+        """
+        self.set_hidden_state(self.obj.algo.reset_hidden_state())
+        self.last_action = self.make_tensor(self.env.sample_action())

@@ -4,18 +4,24 @@ import torch.nn as nn
 from hlrl.torch.policies import LinearSAPolicy, TanhGaussianPolicy, LSTMGaussianPolicy, LSTMSAPolicy
 
 def train(args, algo, experience_replay, experience_queue, agent_procs):
+    done_count = 0
     while any(proc.is_alive() for proc in agent_procs):
-        experience = experience_queue.get()
-
-        if experience is None:
+        if done_count == len(agent_procs):
             # Wait on the train processes
             for proc in agent_procs:
                 proc.join()
         else:
-            experience_replay.add(*experience)
-            algo.train_from_buffer(experience_replay, args["batch_size"],
-                                   args["start_size"], args["save_path"],
-                                   args["save_interval"])
+            print("Tryna grab")
+            experience = experience_queue.get()
+            print("Grabbed")
+
+            if experience is None:
+                done_count += 1
+            else:
+                experience_replay.add(*experience)
+                algo.train_from_buffer(experience_replay, args["batch_size"],
+                                    args["start_size"], args["save_path"],
+                                    args["save_interval"])
 
 def play(args, agent):
     agent.play(args["episodes"])
@@ -23,7 +29,7 @@ def play(args, agent):
 if(__name__ == "__main__"):
     import torch.multiprocessing as mp
     import gym
-
+    
     from gym.wrappers import RescaleAction
     from argparse import ArgumentParser
 
@@ -114,10 +120,10 @@ if(__name__ == "__main__"):
                         help="the alpha value for PER")
     parser.add_argument("--er_epsilon", type=float, default=1e-2,
                         help="the epsilon value for PER")
-    parser.add_argument("--burn_in_length", type=int, default=40,
+    parser.add_argument("--burn_in_length", type=int, default=5,
                         help="if recurrent, the number of burn in samples for "
                              + "R2D2")
-    parser.add_argument("--sequence_length", type=int, default=40,
+    parser.add_argument("--sequence_length", type=int, default=5,
                         help="if recurrent, the length of the sequence to train "
                              + "on")
     parser.add_argument("--max_factor", type=int, default=0.9,
@@ -134,16 +140,7 @@ if(__name__ == "__main__"):
     # The logger
     logger = args["logs_path"]
     logger = None if logger is None else TensorboardLogger(logger)
-<<<<<<< HEAD:examples/sac/continuous_gym_env.py
     
-=======
-
-    ######################### Temporary R2D2 settings ##########################
-    burn_in_length = 40
-    sequence_length = 40
-    max_factor = 0.9
-
->>>>>>> a4b41c8f75898e29195303ec36220fbcf980f614:hlrl/examples/sac/continuous_gym_env.py
     # Initialize SAC
     activation_fn = nn.ReLU
     optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
@@ -205,7 +202,8 @@ if(__name__ == "__main__"):
                                           args["er_epsilon"],
                                           args["max_factor"])
             agent = ExperienceSequenceAgent(agent, args["burn_in_length"]
-                                                   + args["sequence_length"], 0)
+                                                   + args["sequence_length"],
+                                            args["burn_in_length"])
         else:
             experience_replay = TorchPER(args["er_capacity"], args["er_alpha"],
                                          args["er_beta"],
