@@ -1,6 +1,8 @@
 import torch.multiprocessing as mp
 import os
+
 from abc import abstractmethod
+from collections import OrderedDict
 
 class RLAgent():
     """
@@ -26,18 +28,47 @@ class RLAgent():
         self.render = render
         self.logger = logger
 
+    def _add_prefix(self, map, prefix):
+        """
+        Returns a copy of map with the keys having a prefix.
+        """
+        return {prefix + key : value for key, value in map.items()}
+
     def transform_state(self, state):
         """
-        Creates the tuple of algorithm inputs from the env state
+        Creates the dictionary of algorithm inputs from the env state
         """
-        return (state,)
+        return {
+            "state": state[0],
+            "inp_extras": state[1:]
+        }
+
+    def transform_next_state(self, next_state):
+        """
+        Transforms the next observation of an environment to a dictionary.
+        """
+        transed_ns = self.transform_state(next_state)
+        transed_ns = self._add_prefix(transed_ns, "next_")
+
+        return transed_ns
 
     def transform_algo_step(self, algo_step):
         """
-        Transforms the algorithm step on the observation to
-        (action, ...).
+        Transforms the algorithm step on the observation to a dictionary.
         """
-        return (algo_step,)
+        return {
+            "action": algo_step[0],
+            "algo_extras": algo_step[1:]
+        }
+
+    def transform_next_algo_step(self, next_algo_step):
+        """
+        Transforms the next algorithm step on the observation to a dictionary.
+        """
+        transed_nas = self.transform_algo_step(next_algo_step)
+        transed_nas = self._add_prefix(transed_nas, "next_")
+
+        return transed_nas
 
     def transform_reward(self, reward):
         """
@@ -65,12 +96,16 @@ class RLAgent():
         # The simplest agent doesn't require anything to reset
         pass
 
-    def step(self):
+    def step(self, with_next_step=False):
         """
         Takes 1 step in the agent's environment. Returns the
         (state, action, reward, next state, terminal, *additional algo returns,
         env info) tuple. Resets the environment if the current state is a
         terminal.
+
+        Args:
+            with_next_step (boolean):   If true, runs the next state through the
+                                        model as well.
         """
         if(self.env.terminal):
             self.env.reset()
@@ -79,27 +114,37 @@ class RLAgent():
             self.env.render()
 
         state = self.env.state
+        algo_inp = self.transform_state(state)
 
-        state_transed = self.transform_state(state)
-
-        state, inp_extras = state_transed[0], state_transed[1:]
-
-        algo_step = self.algo.step(state, *inp_extras)
+        algo_step = self.algo.step(algo_inp["state"], *algo_inp["inp_extras"])
         algo_step = self.transform_algo_step(algo_step)
-        action, algo_extras = algo_step[0], algo_step[1:]
 
-        env_action = self.transform_action(action)
-
+        env_action = self.transform_action(algo_step["action"])
         next_state, reward, terminal, info = self.env.step(env_action)
 
-        next_state = self.transform_state(next_state)
-        next_state, next_inp_extras = next_state[0], next_state[1:]
-
+        next_algo_inp = self.transform_next_state(next_state)
         reward = self.transform_reward(reward)
         terminal = self.transform_terminal(terminal)
-        print("Pre return on step")
-        return (state, action, reward, next_state, terminal, info, inp_extras,
-                algo_extras, next_inp_extras)
+
+        experience = OrderedDict({
+            **algo_inp,
+            **algo_step,
+            "reward": reward,
+            **next_algo_inp,
+            "terminal": terminal,
+            "info": info
+        })
+
+        if with_next_step:
+            next_algo_step = self.algo.step(
+                experience["next_state"],
+                *experience["next_inp_extras"]
+            )
+            next_algo_step = self.transform_next_algo_step(next_algo_step)
+
+            experience.update(next_algo_step)
+
+        return experience
 
     def play(self, num_episodes):
         """
@@ -117,7 +162,7 @@ class RLAgent():
             ep_reward = 0
             
             while(not self.env.terminal):
-                ep_reward += self.step()[2]
+                ep_reward += self.step()["reward"]
 
             if(self.logger is not None):
                 self.logger["Play/Episode Reward"] = ep_reward, episode

@@ -17,7 +17,7 @@ class OffPolicyAgent(TorchRLAgent):
         """
         reward = 0
         for experience in list(experiences)[::-1]:
-            reward = experience[0][2] + decay * reward
+            reward = experience["reward"] + decay * reward
 
         return reward
 
@@ -25,29 +25,32 @@ class OffPolicyAgent(TorchRLAgent):
         """
         Perpares the experience to add to the buffer.
         """
-        reward = self._n_step_decay(experiences, decay)
+        experience = experiences.pop().copy()
+        experience["reward"] = self._n_step_decay(experiences, decay)
 
-        experience = experiences.pop()
+        algo_extras = experience["algo_extras"]
+        q_val, algo_extras = algo_extras[0], algo_extras[1:]
 
-        experience, algo_extras, next_algo_extras = experience
-        q_val = algo_extras[0]
-        next_q = next_algo_extras[0]
+        next_algo_extras = experience["next_algo_extras"]
+        next_q, algo_extras = next_algo_extras[0], next_algo_extras[1:]
 
-        experience[2] = reward
+        target_q_val = experience["reward"] + decay * next_q
 
-        target_q_val = reward + decay * next_q
+        # Update experience with removed q values from extras
+        experience["q_val"] = q_val
+        experience["algo_extras"] = algo_extras
 
-        buffer_experience = (experience, q_val, target_q_val, *algo_extras[1:],
-                             *next_algo_extras[1:])
+        experience["target_q_val"] = target_q_val
+        experience["next_algo_extras"] = next_algo_extras
 
-        return buffer_experience
+        return experience
 
     def add_to_buffer(self, experience_queue, experiences, decay):
         """
         Adds the experience to the replay buffer.
         """
         experience = self._get_buffer_experience(experiences, decay)
-        experience_queue.put(experience, False)
+        experience_queue.put(experience)
 
     def train(self, num_episodes, experience_queue, decay, n_steps):
         """
@@ -66,25 +69,13 @@ class OffPolicyAgent(TorchRLAgent):
 
             ep_reward = 0
             experiences = deque(maxlen=n_steps)
-            a = 0
-            while(not self.env.terminal):
-                a += 1
-                print(a)
-                if(a == 21):
-                    print("Here")
-                (state, action, reward, next_state, terminal, info, inp_extras,
-                 algo_extras, next_inp_extras) = self.step()
-                print("Post return on")
-                next_algo_step = self.algo.step(next_state, *next_inp_extras)
-                next_algo_step = self.transform_algo_step(next_algo_step)
-                next_actions, next_algo_extras = (next_algo_step[0],
-                                                  next_algo_step[1:])
 
-                ep_reward += reward
+            while(not self.env.terminal):
+                experience = self.step(True)
+
+                ep_reward += experience["reward"]
                 
-                experiences.append([[state, action, reward, next_state,
-                                     terminal, *inp_extras], algo_extras,
-                                    next_algo_extras])
+                experiences.append(experience)
 
                 self.algo.env_steps += 1
 

@@ -24,12 +24,12 @@ class ExperienceReplay(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def add(self, *add_args):
+    def add(self, *args):
         """
         Adds the given experience to the replay buffer.
 
         Args:
-            add_args (tuple): The arguments to add the experience to the buffer
+            args (tuple): The arguments to add the experience to the buffer
         """
         raise NotImplementedError
 

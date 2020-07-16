@@ -11,14 +11,12 @@ def train(args, algo, experience_replay, experience_queue, agent_procs):
             for proc in agent_procs:
                 proc.join()
         else:
-            print("Tryna grab")
             experience = experience_queue.get()
-            print("Grabbed")
 
             if experience is None:
                 done_count += 1
             else:
-                experience_replay.add(*experience)
+                experience_replay.add(experience)
                 algo.train_from_buffer(experience_replay, args["batch_size"],
                                     args["start_size"], args["save_path"],
                                     args["save_interval"])

@@ -52,23 +52,21 @@ class PER(ExperienceReplay):
         """
         return np.abs(q_val - q_target)
 
-    def add(self, experience, q_val, q_target):
+    def add(self, experience):
         """
         Adds the given experience to the replay buffer with the priority being
         the given error added to the epsilon value.
 
         Args:
-            experience (tuple) : The (s, a, r, ...) experience to add to the
-                                 buffer
-
-            q_val (float): The Q-value of the action taken
-
-            q_target (float): The target Q-value
+            experience (tuple) : The experience dictionary to add to the buffer
         """
-        error = self._get_error(q_val, q_target)
+        q_val = experience.pop("q_val")
+        target_q_val = experience.pop("target_q_val")
+
+        error = self._get_error(q_val, target_q_val)
 
         current_index = self.priorities.next_index()
-        self.experiences[current_index] = np.array(experience)
+        self.experiences[current_index] = experience
 
         priority = self._get_priority(error)
         self.priorities.add(priority)
@@ -83,20 +81,6 @@ class PER(ExperienceReplay):
         indices = np.random.choice(len(priorities), size, p = priorities)
 
         batch = np.stack(self.experiences[indices], axis=1)
-
-        stacked_batch = []
-
-        # In order to get float32 instead of float64 and long over int
-        for arr in batch:
-            stacked_arr = np.stack(arr)
-
-            if(stacked_arr.dtype == np.float64):
-                stacked_arr = stacked_arr.astype(np.float32)
-            elif(stacked_arr.dtype == np.int32):
-                stacked_arr = stacked_arr.astype(np.int64)
-
-            stacked_batch.append(stacked_arr)
-
         probabilities = priorities[indices]
 
         is_weights = np.power(len(self.priorities) * probabilities, -self.beta)
@@ -104,7 +88,7 @@ class PER(ExperienceReplay):
 
         self.beta = np.min([1.0, self.beta + self.beta_increment])
 
-        return stacked_batch, indices, is_weights
+        return batch, indices, is_weights
 
     def update_priority(self, index, error):
         """

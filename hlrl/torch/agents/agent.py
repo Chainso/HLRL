@@ -32,16 +32,13 @@ class TorchRLAgent(RLAgent):
         return torch.FloatTensor([data]).to(self.device)
 
     def transform_state(self, state):
-        return (self.make_tensor(state),)
-
-    def transform_algo_step(self, algo_step):
-        return algo_step
+        return super().transform_state(self.make_tensor([state]))
 
     def transform_reward(self, reward):
-        return self.make_tensor([reward])
+        return super().transform_reward(self.make_tensor([reward]))
 
     def transform_terminal(self, terminal):
-        return self.make_tensor([terminal])
+        return super().transform_terminal(self.make_tensor([terminal]))
 
     def transform_action(self, action):
-        return action[0].cpu().numpy()
+        return super().transform_action(action.squeeze().cpu().numpy())
