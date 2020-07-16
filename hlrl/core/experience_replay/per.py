@@ -77,13 +77,25 @@ class PER(ExperienceReplay):
 
         size : The number of experiences to sample
         """
+        assert(size > 0)
+
         priorities = self.priorities.get_leaves() / self.priorities.sum()
+
+        # A hack right now
+        priorities /= priorities.sum()
+
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        batch = np.stack(self.experiences[indices], axis=1)
+        # Transpose the dictionary values
+        batch = self.experiences[indices]
+
+        batch = {key: np.concatenate([experience[key] for experience in batch])
+            for key in batch[0]}
+
         probabilities = priorities[indices]
 
-        is_weights = np.power(len(self.priorities) * probabilities, -self.beta)
+        is_weights = np.power(len(self.priorities) * probabilities,
+                              -self.beta)
         is_weights /= is_weights.max()
 
         self.beta = np.min([1.0, self.beta + self.beta_increment])

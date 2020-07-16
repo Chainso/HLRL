@@ -40,14 +40,20 @@ class TorchPER(PER):
 
         size : The number of experiences to sample
         """
+        assert(size > 0)
+
         priorities = self.priorities.get_leaves() / self.priorities.sum()
-        indices = np.random.multinomial(len(priorities), priorities, size)
+
+        # A hack right now
+        priorities /= priorities.sum()
+
+        indices = np.random.choice(len(priorities), size, p = priorities)
 
         # Transpose the dictionary values
         batch = self.experiences[indices]
-        batch = [dict(zip(batch, field)) for field in zip(*batch.values())]
-        batch = np.stack(self.experiences[indices], axis=1)
-        batch = [torch.cat([*tens]) for tens in batch]
+
+        batch = {key: torch.cat([experience[key] for experience in batch])
+            for key in batch[0]}
 
         probabilities = priorities[indices]
 

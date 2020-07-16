@@ -38,10 +38,9 @@ class RLAgent():
         """
         Creates the dictionary of algorithm inputs from the env state
         """
-        return {
+        return OrderedDict({
             "state": state[0],
-            "inp_extras": state[1:]
-        }
+        })
 
     def transform_next_state(self, next_state):
         """
@@ -56,10 +55,9 @@ class RLAgent():
         """
         Transforms the algorithm step on the observation to a dictionary.
         """
-        return {
-            "action": algo_step[0],
-            "algo_extras": algo_step[1:]
-        }
+        return OrderedDict({
+            "action": algo_step[0]
+        })
 
     def transform_next_algo_step(self, next_algo_step):
         """
@@ -115,31 +113,31 @@ class RLAgent():
 
         state = self.env.state
         algo_inp = self.transform_state(state)
+        state = algo_inp.pop("state")
 
-        algo_step = self.algo.step(algo_inp["state"], *algo_inp["inp_extras"])
+        algo_step = self.algo.step(state, *algo_inp)
         algo_step = self.transform_algo_step(algo_step)
 
         env_action = self.transform_action(algo_step["action"])
-        next_state, reward, terminal, info = self.env.step(env_action)
+        next_state, reward, terminal, _ = self.env.step(env_action)
 
         next_algo_inp = self.transform_next_state(next_state)
+        next_state = next_algo_inp.pop("next_state")
         reward = self.transform_reward(reward)
         terminal = self.transform_terminal(terminal)
 
         experience = OrderedDict({
+            "state": state,
             **algo_inp,
             **algo_step,
             "reward": reward,
+            "next_state": next_state,
             **next_algo_inp,
-            "terminal": terminal,
-            "info": info
+            "terminal": terminal
         })
 
         if with_next_step:
-            next_algo_step = self.algo.step(
-                experience["next_state"],
-                *experience["next_inp_extras"]
-            )
+            next_algo_step = self.algo.step(next_state, *next_algo_inp)
             next_algo_step = self.transform_next_algo_step(next_algo_step)
 
             experience.update(next_algo_step)

@@ -15,9 +15,10 @@ class OffPolicyAgent(TorchRLAgent):
         """
         Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples
         """
-        reward = 0
-        for experience in list(experiences)[::-1]:
-            reward = experience["reward"] + decay * reward
+        if len(experiences) > 0:
+            reward = experiences[-1]["reward"]
+            for experience in list(experiences)[:-1:-1]:
+                reward = experience["reward"] + decay * reward
 
         return reward
 
@@ -25,25 +26,27 @@ class OffPolicyAgent(TorchRLAgent):
         """
         Perpares the experience to add to the buffer.
         """
-        experience = experiences.pop().copy()
-        experience["reward"] = self._n_step_decay(experiences, decay)
+        decayed_reward = self._n_step_decay(experiences, decay)
+        experience = experiences.pop()
+        experience["reward"] = decayed_reward
 
-        algo_extras = experience["algo_extras"]
-        q_val, algo_extras = algo_extras[0], algo_extras[1:]
+        next_q_val = experience.pop("next_q_val")
+        target_q_val = experience["reward"] + decay * next_q_val
 
-        next_algo_extras = experience["next_algo_extras"]
-        next_q, algo_extras = next_algo_extras[0], next_algo_extras[1:]
-
-        target_q_val = experience["reward"] + decay * next_q
-
-        # Update experience with removed q values from extras
-        experience["q_val"] = q_val
-        experience["algo_extras"] = algo_extras
-
+        # Update experience with target q value
         experience["target_q_val"] = target_q_val
-        experience["next_algo_extras"] = next_algo_extras
 
         return experience
+
+    def transform_algo_step(self, algo_step):
+        """
+        Transforms the algorithm step on the observation to a dictionary.
+        """
+        # Action then q val
+        transed_algo_step = super().transform_algo_step(algo_step)
+        transed_algo_step["q_val"] = algo_step[1]
+
+        return transed_algo_step
 
     def add_to_buffer(self, experience_queue, experiences, decay):
         """
