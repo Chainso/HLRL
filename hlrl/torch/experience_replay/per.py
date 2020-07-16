@@ -15,25 +15,6 @@ class TorchPER(PER):
         """
         return torch.abs(q_val - q_target)
 
-    def add(self, experience):
-        """
-        Adds the given experience to the replay buffer with the priority being
-        the given error added to the epsilon value.
-
-        Args:
-            experience (tuple) : The experience dictionary to add to the buffer
-        """
-        q_val = experience.pop("q_val")
-        target_q_val = experience.pop("target_q_val")
-
-        error = self._get_error(q_val, target_q_val)
-
-        current_index = self.priorities.next_index()
-        self.experiences[current_index] = experience
-
-        priority = self._get_priority(error)
-        self.priorities.add(priority)
-
     def sample(self, size):
         """
         Samples "size" number of experiences from the buffer
@@ -49,11 +30,8 @@ class TorchPER(PER):
 
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        # Transpose the dictionary values
-        batch = self.experiences[indices]
-
-        batch = {key: torch.cat([experience[key] for experience in batch])
-            for key in batch[0]}
+        batch = {key: torch.cat(self.experiences[key][indices].tolist())
+            for key in self.experiences}
 
         probabilities = priorities[indices]
 

@@ -28,7 +28,7 @@ class PER(ExperienceReplay):
         self.beta_increment = beta_increment
         self.epsilon = epsilon
 
-        self.experiences = np.zeros(capacity, dtype=object)
+        self.experiences = {}
         self.priorities = BinarySumTree(capacity)
 
     def __len__(self):
@@ -66,7 +66,13 @@ class PER(ExperienceReplay):
         error = self._get_error(q_val, target_q_val)
 
         current_index = self.priorities.next_index()
-        self.experiences[current_index] = experience
+    
+        # Store individually for faster "zipping"
+        for key in experience:
+            if key not in self.experiences:
+                self.experiences[key] = np.zeros(self.capacity, dtype=object)
+
+            self.experiences[key][current_index] = experience[key]
 
         priority = self._get_priority(error)
         self.priorities.add(priority)
@@ -86,11 +92,8 @@ class PER(ExperienceReplay):
 
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        # Transpose the dictionary values
-        batch = self.experiences[indices]
-
-        batch = {key: np.concatenate([experience[key] for experience in batch])
-            for key in batch[0]}
+        batch = {key: np.concatenate(self.experiences[key][indices].tolist())
+            for key in self.experiences}
 
         probabilities = priorities[indices]
 

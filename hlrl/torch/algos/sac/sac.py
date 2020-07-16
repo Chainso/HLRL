@@ -83,7 +83,6 @@ class SAC(TorchRLAlgo):
             save_path (Optional, str): The path to save the model to.
             save_interval (int): The number of batches between saves.
         """
-        print(batch_size, start_size, len(experience_replay))
         if(batch_size <= len(experience_replay)
            and start_size <= len(experience_replay)):
             sample = experience_replay.sample(batch_size)
@@ -137,7 +136,11 @@ class SAC(TorchRLAlgo):
                                network.
         """
         # Get all the parameters from the rollouts
-        states, actions, rewards, next_states, terminals = rollouts
+        states = rollouts["state"]
+        actions = rollouts["action"]
+        rewards = rollouts["reward"]
+        next_states = rollouts["next_state"]
+        terminals = rollouts["terminal"]
 
         q_loss_func = nn.MSELoss()
 

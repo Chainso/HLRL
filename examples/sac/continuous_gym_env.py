@@ -88,9 +88,9 @@ if(__name__ == "__main__"):
     parser.add_argument("-p", "--play", dest="play", action="store_true",
                         help="runs the environment using the model instead of "
                              + "training")
-    parser.add_argument("--batch_size", type=int, default=4,
+    parser.add_argument("--batch_size", type=int, default=256,
                         help="the batch size of the training set")
-    parser.add_argument("--start_size", type=int, default=4,
+    parser.add_argument("--start_size", type=int, default=512,
                         help="the size of the replay buffer before training")
     parser.add_argument("--save_path", type=str, default=None,
                         help="the path to save the model to")
