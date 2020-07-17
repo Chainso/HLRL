@@ -43,31 +43,9 @@ class TorchR2D2(TorchPER):
 
         size : The number of experiences to sample
         """
-        priorities = self.priorities.get_leaves() / self.priorities.sum()
-        indices = np.random.choice(len(priorities), size, p = priorities)
+        batch, indices, is_weights = super().sample(size)
 
-        batch = np.stack(self.experiences[indices], axis=1)
-
-        # Each "experience" is a tuple of (sequence experience, hidden state)
-        experiences = batch[0]
-        hidden_states = batch[1]
-
-        experiences = np.stack(experiences)
-        experiences = experiences.transpose(2, 0, 1)
-        experiences = [torch.cat([torch.cat([*exp], axis=1) for exp in tens])
-                       for tens in experiences]
-
-        hidden_states = np.stack(hidden_states, axis=1)
-        hidden_states = tuple(torch.cat([*hc]) for hc in hidden_states)
-
-        probabilities = priorities[indices]
-
-        batch = experiences + [hidden_states]
-
-        is_weights = np.power(len(self.priorities) * probabilities,
-                              -self.beta)
-        is_weights /= is_weights.max()
-
-        self.beta = np.min([1.0, self.beta + self.beta_increment])
+        # Transpose batch and sequence dimensions
+        batch = {key: value.transpose(0, 1) for key, value in batch.items()}
 
         return batch, indices, is_weights

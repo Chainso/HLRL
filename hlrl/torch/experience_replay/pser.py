@@ -34,28 +34,6 @@ class TorchPSER(TorchPER):
         self.window_size = 0 if threshold == 0 else np.floor(np.log(threshold)
                                                              / np.log(decay))
 
-    def add(self, experience, q_val, q_target):
-        """
-        Adds the given experience to the replay buffer with the priority being
-        the given error added to the epsilon value. Also decays the priority
-        backwards to the previous experiences.
-
-        Args:
-            experience (tuple) : The (s, a, r, ...) experience to add to the
-                                 buffer
-
-            q_val (float): The Q-value of the action taken
-
-            q_target (float): The target Q-value
-        """
-        error = self._get_error(q_val, q_target).item()
-
-        current_index = self.priorities.next_index()
-        self.experiences[current_index] = np.array(experience, dtype=object)
-
-        priority = self._get_priority(error)
-        self.priorities.add(priority)
-
         # Decay priority
         for i in range(1, self.window_size + 1):
             decay_idx = current_index - i
@@ -64,6 +42,19 @@ class TorchPSER(TorchPER):
             updated_prio = np.max(priority * np.pow(self.decay, i), decay_prio)
 
             self.priorities.set(updated_prio, decay_idx)
+
+    def sample(self, size):
+        """
+        Samples "size" number of experiences from the buffer
+
+        size : The number of experiences to sample
+        """
+        batch, indices, is_weights = super().sample(size)
+
+        # Transpose batch and sequence dimensions
+        batch = {key: value.transpose(0, 1) for key, value in batch.items()}
+
+        return batch, indices, is_weights
 
     def update_priority(self, index, error):
         """
