@@ -24,8 +24,11 @@ class RecurrentAgent(MethodWrapper):
         """
         Appends the hidden state to the algorithm inputs.
         """
-        return (*self.om.transform_state(state), self.last_action,
-                self.hidden_state)
+        transed_state = self.om.transform_state(state)
+        transed_state["last_action"] = self.last_action
+        transed_state["hidden_state"] = self.hidden_state
+
+        return transed_state
 
     def transform_action(self, action):
         """
@@ -38,10 +41,10 @@ class RecurrentAgent(MethodWrapper):
         """
         Updates the hidden state to the last output of the algorithm extras.
         """
-        algo_step = self.om.transform_algo_step(algo_step)
-        self.hidden_state = algo_step[-1]
+        transed_algo_step = self.om.transform_algo_step(algo_step)
+        transed_algo_step["next_hidden_state"] = algo_step[-1]
 
-        return algo_step
+        return transed_algo_step
 
     def reset(self):
         """

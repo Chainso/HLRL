@@ -22,7 +22,11 @@ class SequenceInputAgent(MethodWrapper):
         """
         Remove the sequence axis for the environment.
         """
-        return self.om.transform_action(action)[0]
+        transed_action = self.om.transform_action(action)
+        transed_action = transed_action.squeeze(0)
+
+        return transed_action
+
 
 class ExperienceSequenceAgent(MethodWrapper):
     """
@@ -45,8 +49,7 @@ class ExperienceSequenceAgent(MethodWrapper):
         self.ready_experiences = []
         self.q_vals = []
         self.target_q_vals = []
-        self.a = True
-        self.b = True
+
     def _get_buffer_experience(self, experiences, decay):
         """
         Perpares the experience to add to the buffer.
@@ -66,7 +69,7 @@ class ExperienceSequenceAgent(MethodWrapper):
         """
         self._get_buffer_experience(experiences, decay)
 
-        if (self.a or self.b) and len(self.ready_experiences) == self.sequence_length:
+        if len(self.ready_experiences) == self.sequence_length:
             q_vals = torch.cat(self.q_vals)
             target_q_vals = torch.cat(self.target_q_vals)
 
@@ -78,5 +81,3 @@ class ExperienceSequenceAgent(MethodWrapper):
             self.ready_experiences = self.ready_experiences[keep_start:]
             self.q_vals = self.q_vals[keep_start:]
             self.target_q_vals = self.target_q_vals[keep_start:]
-            self.b = self.a
-            self.a = False
