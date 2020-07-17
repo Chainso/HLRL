@@ -94,8 +94,13 @@ class SACRecurrent(SAC):
         """
         Burns in the hidden state and returns the rest of the input.
         """
-        (states, actions, rewards, next_states, terminals, last_actions,
-         hidden_states) = rollouts
+        states = rollouts["state"]
+        actions = rollouts["action"]
+        rewards = rollouts["reward"]
+        next_states = rollouts["next_state"]
+        terminals = rollouts["terminal"]
+        last_actions = rollouts["last_action"]
+        hidden_states = rollouts["hidden_state"]
 
         burn_in_states = states[:, :self.burn_in_length]
         burn_in_last_actions = last_actions[:, :self.burn_in_length]
