@@ -3,10 +3,10 @@ import torch.nn as nn
 
 from copy import deepcopy
 
-from hlrl.torch.algos import TorchRLAlgo
+from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.util import polyak_average
 
-class SAC(TorchRLAlgo):
+class SAC(TorchOffPolicyAlgo):
     """
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
@@ -26,7 +26,7 @@ class SAC(TorchRLAlgo):
             discount (float) : The coefficient for the discounted values
                                 (0 < x < 1).
             polyak (float) : The coefficient for polyak averaging (0 < x < 1).
-            target_update_interval (int): The number of training steps in
+            target_update_interval (int): The number of environment steps in
                                           between target updates.
             q_optim (torch.nn.Module) : The optimizer for the Q-function.
             p_optim (torch.nn.Module) : The optimizer for the action policy.
@@ -69,32 +69,6 @@ class SAC(TorchRLAlgo):
 
         self.temp_optim = temp_optim([self.log_temp])
 
-    def train_from_buffer(self, experience_replay, batch_size, start_size,
-                          save_path=None, save_interval=10000):
-        """
-        Starts training the network.
-
-        Args:
-            experience_replay (ExperienceReplay): The experience replay buffer
-                                                  to sample experiences from.
-            batch_size (int): The batch size of the experiences to train on.
-            start_size (int): The amount of expreiences in the buffer before
-                              training is started.
-            save_path (Optional, str): The path to save the model to.
-            save_interval (int): The number of batches between saves.
-        """
-        if(batch_size <= len(experience_replay)
-           and start_size <= len(experience_replay)):
-            sample = experience_replay.sample(batch_size)
-            rollouts, idxs, is_weights = sample
-
-            new_q, new_q_targ = self.train_batch(rollouts, is_weights)
-            experience_replay.update_priorities(idxs, new_q, new_q_targ)
-
-            if(save_path is not None
-               and self.training_steps % save_interval == 0):
-                self.save(save_path)
-
     def forward(self, observation):
         """
         Get the model output for a batch of observations
@@ -134,6 +108,7 @@ class SAC(TorchRLAlgo):
         Args:
             rollouts (tuple) : The (s, a, r, s', t) of training data for the
                                network.
+            is_weights (numpy.array) : The importance sampling weights for PER.
         """
         # Get all the parameters from the rollouts
         states = rollouts["state"]
