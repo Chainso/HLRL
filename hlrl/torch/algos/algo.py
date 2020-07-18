@@ -34,7 +34,7 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
             logger (Logger, optional): The logger to log results while training
                                        and evaluating.
         """
-        super().__init__(self, logger)
+        super().__init__(logger)
 
 
     def train_from_buffer(self, experience_replay, batch_size, start_size,

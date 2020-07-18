@@ -14,7 +14,7 @@ class GymEnv(Env):
         Env.__init__(self)
         self.env = env
         self._state_space = self.env.observation_space.shape
-        self._action_space = self.env.action_space.shape
+        self._action_space = (self.env.action_space.n,)
 
     def step(self, action):
         """

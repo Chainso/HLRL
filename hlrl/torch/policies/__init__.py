@@ -1,3 +1,3 @@
-from .linear import LinearPolicy, LinearSAPolicy
+from .linear import LinearPolicy
 from .gaussian import GaussianPolicy, TanhGaussianPolicy
-from .recurrent import LSTMPolicy, LSTMSAPolicy, LSTMGaussianPolicy
+from .recurrent import LSTMPolicy, LSTMGaussianPolicy

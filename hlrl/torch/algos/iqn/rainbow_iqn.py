@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import math
 
 from torch.distributions import Categorical
 from copy import deepcopy
@@ -13,8 +14,8 @@ class RainbowIQN(TorchOffPolicyAlgo):
     https://arxiv.org/pdf/1908.04683.pdf (IQN)
     """
     def __init__(self, enc_dim, autoencoder, q_func, discount, n_quantiles,
-        embedding_dim, huber_const, target_update_interval, enc_optim, q_optim,
-        logger=None):
+        embedding_dim, huber_threshold, target_update_interval, enc_optim,
+        q_optim, logger=None):
         """
         Creates the Rainbow-IQN network.
 
@@ -28,7 +29,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
                                 (0 < x < 1).
             n_quantiles (int) : The number of quantiles to sample.
             embedding_dim (int) : The dimension of the embedding tensor.
-            huber_const (float) : The huber loss cutoff constant (kappa).
+            huber_threshold (float) : The huber loss threshold constant (kappa).
             target_update_interval (int): The number of training steps in
                                           between target updates.
             enc_optim (torch.nn.Module) : The optimizer for the autoencoder.
@@ -39,11 +40,10 @@ class RainbowIQN(TorchOffPolicyAlgo):
         super().__init__(logger)
 
         # Constants
-        self.input_dim = input_dim
         self.discount = discount
         self.n_quantiles = n_quantiles
         self.embedding_dim = embedding_dim
-        self.huber_const = huber_const
+        self.huber_threshold = huber_threshold
         self.target_update_interval = target_update_interval
 
         # Networks
@@ -55,11 +55,11 @@ class RainbowIQN(TorchOffPolicyAlgo):
         self.target_q_func = deepcopy(q_func)
 
         # Quantile layer
-        self.quantiles = nn.Linear(self.embedding_dim, self.input_dim)
-        nn.init.xavier_uniform_(self.quantiles)
+        self.quantiles = nn.Linear(self.embedding_dim, enc_dim)
+        nn.init.uniform_(self.quantiles.weight)
         self.relu = nn.ReLU()
 
-        self.action = nn.Softmax()
+        self.action = nn.Softmax(-1)
 
     def _calculate_quantile_values(self, observation, q_func):
         """
@@ -78,25 +78,20 @@ class RainbowIQN(TorchOffPolicyAlgo):
         # Sample a random number and tile for the embedding dimension
         quantiles = torch.rand(self.n_quantiles * observation.shape[0], 1)
         quantiles = quantiles.to(observation.device)
-        quantiles = quantiles.repeat(1, self.embedding_dim)
+        quantiles_tiled = quantiles.repeat(1, self.embedding_dim)
 
         # RELU(sum_{i = 1}^{n} (cos(pi * i * sample) * w_ij + b_j))
         # No bias in this calculation however
         # Paper also has {i = 0}^{n - 1}, but is inconsistent with loss function
-        quantile_values = torch.range(
-            0, self.embedding_dim
+        quantile_values = torch.arange(
+            1, self.embedding_dim + 1
         ).to(observation.device)
-        quantile_values = quantile_values * torch.pi * quantiles
+        quantile_values = quantile_values * math.pi * quantiles_tiled
         quantile_values = self.relu(torch.cos(quantiles))
 
         # Multiple with input feature dim
         quantile_values = latent_tiled * quantiles
         quantile_values = q_func(quantile_values)
-
-        # Get the mean to find the q values
-        quantiles_values = quantile_values.view(
-            self.n_quantiles, observation.state[0], -1
-        )   
   
         return quantile_values, quantiles
 
@@ -117,11 +112,17 @@ class RainbowIQN(TorchOffPolicyAlgo):
             observation, self.q_func
         )
 
+        quantile_values = quantile_values.view(
+            self.n_quantiles, observation.shape[0], -1
+        )
+
+        # Get the mean to find the q values
         q_val = torch.mean(quantile_values, dim=0)
+
         action = self.action(q_val)
 
         if greedy:
-            action = torch.argmax(action, dim=1)
+            action = torch.argmax(action, dim=1, keepdim=True)
         else:
             action = torch.multinomial(action, 1)
 
@@ -140,6 +141,8 @@ class RainbowIQN(TorchOffPolicyAlgo):
         """
         with torch.no_grad():
             action, q_val = self(observation)
+
+        q_val = q_val.gather(1, action)
 
         return action, q_val
 
@@ -163,11 +166,11 @@ class RainbowIQN(TorchOffPolicyAlgo):
         # Tile parameters for the quantiles
         actions = actions.repeat(self.n_quantiles, 1)
         rewards = rewards.repeat(self.n_quantiles, 1)
-        terminal_mask = torch.repeat((1 - terminals), self.n_quantiles, 1)
+        terminal_mask = (1 - terminals).repeat(self.n_quantiles, 1)
 
         with torch.no_grad():
             target_quantile_values = self._calculate_q_target(
-                rewards, next_states, terminal_masks
+                rewards, next_states, terminal_mask
             )
 
             # Switch to batch major
@@ -185,32 +188,42 @@ class RainbowIQN(TorchOffPolicyAlgo):
         bellman_error = target_quantile_values - quantile_values
         abs_bellman_error = torch.abs(bellman_error)
 
-        # Huber loss has two cases abs(bellman_error) <= huber_const (kappa)
-        # and abs(bellman_error) > huber_const
+        # Huber loss has two cases abs(bellman_error) <= huber_threshold (kappa)
+        # and abs(bellman_error) > huber_threshold
         # Case 1 (MSE)
         huber_loss1 = (
-            (abs_bellman_error <= self.huber_const) * 0.5
+            (abs_bellman_error <= self.huber_threshold) * 0.5
             * (torch.pow(bellman_error, 2))
         )
 
         # Case 2 (kappa * (abs(bellman_error) - (kappa/2)))
         huber_loss2 = (
-            (abs_bellman_error > self.huber_const) * self.huber_const
-            * (abs_bellman_error - 0.5 * self.huber_const)
+            (abs_bellman_error > self.huber_threshold) * self.huber_threshold
+            * (abs_bellman_error - 0.5 * self.huber_threshold)
         )
 
         huber_loss = huber_loss1 + huber_loss2
 
+        quantiles = quantiles.view(self.n_quantiles, states.shape[0], 1)
+        quantiles = quantiles.transpose(0, 1)
+
         # Quantile regression loss
-        # sum_{i = 1}^{n} abs(quantiles - (bellman_error < 0))
-        #                 * (huber_loss / huber_const)
+        # sum_{i = 1}^{N} sum_{j = 1}^{N'} abs(quantiles - (bellman_error < 0))
+        #                                  * (huber_loss / huber_threshold)
         qr_loss = (
-            torch.abs(quantiles - (bellman_error < 0)) * huber_loss
-            / self.huber_const
+            torch.abs(quantiles - (bellman_error < 0).float().detach()) * huber_loss
+            / self.huber_threshold
         )
 
-        # Take the mean of all quantiles
-        qr_loss = torch.mean(qr_loss, dim=1) * is_weights
+        # Sum over embedding dimension
+        qr_loss = qr_loss.sum(dim=2)
+
+        # Mean over number of quantiles
+        qr_loss = qr_loss.mean(dim=1)
+
+        # Importance sampling weights
+        qr_loss = qr_loss * is_weights
+        qr_loss = qr_loss.mean(dim=0)
 
         # Backpropogate losses
         self.enc_optim.zero_grad()
@@ -223,7 +236,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Calculate the new Q-values and target for PER
         with torch.no_grad():
-            _, new_q_val = self(states)
+            _, new_q_val = self.step(states)
 
             new_quantile_values_target = self._calculate_q_target(
                 rewards, next_states, terminal_mask
@@ -233,6 +246,8 @@ class RainbowIQN(TorchOffPolicyAlgo):
         # Update the target
         if (self.training_steps % self.target_update_interval == 0):
             self.target_q_func.load_state_dict(self.q_func.state_dict())
+
+        self.training_steps += 1
         return new_q_val, new_q_target
 
     def _calculate_q_target(self, rewards, next_states, terminal_mask):
@@ -262,7 +277,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         )
 
         target_quantile_values = target_quantile_values.view(
-            self.n_quantiles, states.shape[0], 1
+            self.n_quantiles, next_states.shape[0], -1
         )
 
         return target_quantile_values

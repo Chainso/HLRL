@@ -1,3 +1,4 @@
-from .algo import TorchRLAlgo
-from .sac import *
+from .algo import TorchRLAlgo, TorchOffPolicyAlgo
 from .wrappers import *
+from .sac import *
+from .iqn import *

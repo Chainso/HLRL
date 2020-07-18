@@ -12,7 +12,6 @@ class RecurrentAgent(MethodWrapper):
         super().__init__(agent)
 
         self.hidden_state = None
-        self.last_action = None
 
     def set_hidden_state(self, hidden_state):
         """
@@ -25,17 +24,9 @@ class RecurrentAgent(MethodWrapper):
         Appends the hidden state to the algorithm inputs.
         """
         transed_state = self.om.transform_state(state)
-        transed_state["last_action"] = self.last_action
         transed_state["hidden_state"] = self.hidden_state
 
         return transed_state
-
-    def transform_action(self, action):
-        """
-        Updates the last action.
-        """
-        self.last_action = action
-        return self.om.transform_action(action)
 
     def transform_algo_step(self, algo_step):
         """
@@ -51,4 +42,3 @@ class RecurrentAgent(MethodWrapper):
         Resets the agent's hidden state
         """
         self.set_hidden_state(self.obj.algo.reset_hidden_state())
-        self.last_action = self.make_tensor(self.env.sample_action())

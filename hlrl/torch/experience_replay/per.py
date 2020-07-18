@@ -39,6 +39,11 @@ class TorchPER(PER):
                               -self.beta)
         is_weights /= is_weights.max()
 
+        # Find a random key to get the device
+        for key in batch:
+            is_weights = torch.from_numpy(is_weights).to(batch[key].device)
+            break
+
         self.beta = np.min([1.0, self.beta + self.beta_increment])
 
         return batch, indices, is_weights

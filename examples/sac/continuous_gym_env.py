@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from hlrl.torch.policies import LinearSAPolicy, TanhGaussianPolicy, LSTMGaussianPolicy, LSTMSAPolicy
+from hlrl.torch.policies import LinearPolicy, TanhGaussianPolicy, LSTMGaussianPolicy, LSTMPolicy
 
 def train(args, algo, experience_replay, experience_queue, agent_procs):
     done_count = 0
@@ -44,7 +44,7 @@ if(__name__ == "__main__"):
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(description="Twin Q-Function SAC example on "
-                            + "the MountainCarContinuous-v0 environment.")
+                            + "the Pendulum-v0 environment.")
 
     # Logging
     parser.add_argument("-l, --logs_path ", dest="logs_path", type=str,
@@ -146,10 +146,10 @@ if(__name__ == "__main__"):
     if args["recurrent"]:
         b_num_hidden = 1 if args["num_hidden"] > 0 else 0
 
-        qfunc = LSTMSAPolicy(env.state_space[0], env.action_space[0], 1,
-                             args["hidden_size"], b_num_hidden,
-                             args["hidden_size"], 1, args["hidden_size"],
-                             args["num_hidden"] - 1, activation_fn)
+        qfunc = LSTMPolicy(env.state_space[0], env.action_space[0], 1,
+                           args["hidden_size"], b_num_hidden,
+                           args["hidden_size"], 1, args["hidden_size"],
+                           args["num_hidden"] - 1, activation_fn)
         policy = LSTMGaussianPolicy(env.state_space[0], env.action_space[0],
                                     env.action_space[0], args["hidden_size"],
                                     b_num_hidden, args["hidden_size"], 1,
@@ -159,18 +159,20 @@ if(__name__ == "__main__"):
                             args["polyak"], args["target_update_interval"],
                             optim, optim, optim, args["twin"],
                             args["burn_in_length"],
-                            logger).to(torch.device(args["device"]))
+                            logger)
     else:
-        qfunc = LinearSAPolicy(env.state_space[0], env.action_space[0], 1,
-                            args["hidden_size"], args["num_hidden"],
-                            activation_fn)
+        qfunc = LinearPolicy(env.state_space[0] + env.action_space[0], 1,
+                             args["hidden_size"], args["num_hidden"],
+                             activation_fn)
         policy = TanhGaussianPolicy(env.state_space[0], env.action_space[0],
                                     args["hidden_size"], args["num_hidden"],
                                     activation_fn)
 
         algo = SAC(env.action_space, qfunc, policy, args["discount"],
                    args["polyak"], args["target_update_interval"], optim, optim,
-                   optim, args["twin"], logger).to(torch.device(args["device"]))
+                   optim, args["twin"], logger)
+
+    algo = algo.to(torch.device(args["device"]))
 
     if args["load_path"] is not None:
         algo.load(args["load_path"])

@@ -42,14 +42,13 @@ class SACRecurrent(SAC):
 
         self.burn_in_length = burn_in_length
 
-    def forward(self, observation, last_action, hidden_state):
+    def forward(self, observation, hidden_state):
         """
         Get the model output for a batch of observations
 
         Args:
             observation (torch.FloatTensor): A batch of observations from the
                                              environment.
-            last_action (torch.Tensor): The last action taken.
             hidden_state (torch.Tensor): The hidden state.
 
         Returns:
@@ -57,28 +56,25 @@ class SACRecurrent(SAC):
         """
         # Only going to update the hidden state using the policy hidden state
         action, log_prob, mean, new_hidden = self.policy.sample(observation,
-                                                                last_action,
                                                                 hidden_state)
 
-        q_val, _ = self.q_func1(observation, action, last_action,
-                                hidden_state)
+        q_val, _ = self.q_func1(observation, action, hidden_state)
 
         return action, q_val, new_hidden
 
-    def step(self, observation, last_action, hidden_state):
+    def step(self, observation, hidden_state):
         """
         Get the model action for a single observation of gameplay.
 
         Args:
             observation (torch.FloatTensor): A single observation from the
                                              environment.
-            last_action (torch.Tensor): The last action taken.
             hidden_state (torch.Tensor): The hidden state.
 
         Returns:
             The action, Q-value of the action and hidden state if applicable
         """
-        action, q_val, new_hidden = self(observation, last_action, hidden_state)
+        action, q_val, new_hidden = self(observation, hidden_state)
 
         return (action.detach(), q_val.detach(),
                 [tens.detach() for tens in new_hidden])
@@ -99,18 +95,14 @@ class SACRecurrent(SAC):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
-        last_actions = rollouts["last_action"]
         hidden_states = rollouts["hidden_state"]
 
         burn_in_states = states[:, :self.burn_in_length]
-        burn_in_last_actions = last_actions[:, :self.burn_in_length]
 
         burn_in_next_states = states[:, self.burn_in_length:self.burn_in_length + 1]
         burn_in_next_last_act = actions[:, self.burn_in_length:self.burn_in_length + 1]
 
-        _, _, _, new_hiddens = self.policy.sample(burn_in_states,
-                                                  burn_in_last_actions,
-                                                  hidden_states)
+        _, _, _, new_hiddens = self.policy.sample(burn_in_states, hidden_states)
         _, _, _, next_hiddens = self.policy.sample(burn_in_next_states,
                                                    burn_in_next_last_act,
                                                    new_hiddens)
@@ -120,10 +112,9 @@ class SACRecurrent(SAC):
         rewards = rewards[:, self.burn_in_length:]
         next_states = next_states[:, self.burn_in_length:]
         terminals = terminals[:, self.burn_in_length:]
-        last_actions = last_actions[:, self.burn_in_length:]
 
-        return (states, actions, rewards, next_states, terminals, last_actions,
-                new_hiddens, next_hiddens)
+        return (states, actions, rewards, next_states, terminals, new_hiddens,
+                next_hiddens)
 
     def train_batch(self, rollouts, is_weights):
         """
@@ -135,11 +126,11 @@ class SACRecurrent(SAC):
                                for the network.
         """
         # Get all the parameters from the rollouts
-        (states, actions, rewards, next_states, terminals, last_actions,
+        (states, actions, rewards, next_states, terminals,
          hidden_states, next_hiddens) = self.burn_in_hidden_states(rollouts)
 
         (full_states, _, full_rewards, full_next_states, full_terminals,
-         full_last_actions, full_hidden_states) = rollouts
+         full_hidden_states) = rollouts
 
         q_loss_func = nn.MSELoss()
 
@@ -151,11 +142,9 @@ class SACRecurrent(SAC):
                                                 actions, next_hiddens)
 
         (pred_actions, pred_log_probs,
-         pred_means, _) = self.policy.sample(states, last_actions,
-                                             hidden_states)
+         pred_means, _) = self.policy.sample(states, hidden_states)
 
-        p_q_pred1, _ = self.q_func1(states, pred_actions, last_actions,
-                                    hidden_states)
+        p_q_pred1, _ = self.q_func1(states, pred_actions, hidden_states)
 
         # Only get the loss for q_func2 if using the twin Q-function algorithm
         if(self._twin):
@@ -168,12 +157,10 @@ class SACRecurrent(SAC):
 
             q_next = rewards + (1 - terminals) * self._discount * q_targ
 
-            p_q_pred2, _ = self.q_func2(states, pred_actions, last_actions,
-                                        hidden_states)
+            p_q_pred2, _ = self.q_func2(states, pred_actions, hidden_states)
             p_q_pred = torch.min(p_q_pred1, p_q_pred2)
 
-            q_pred2, _ = self.q_func2(states, actions, last_actions,
-                                      hidden_states)
+            q_pred2, _ = self.q_func2(states, actions, hidden_states)
             q_loss2 = q_loss_func(q_pred2, q_next)
 
             self.q_optim2.zero_grad()
@@ -185,7 +172,7 @@ class SACRecurrent(SAC):
 
             p_q_pred = p_q_pred1
 
-        q_pred1, _ = self.q_func1(states, actions, last_actions, hidden_states)
+        q_pred1, _ = self.q_func1(states, actions, hidden_states)
         q_loss1 = q_loss_func(q_pred1, q_next)
 
         self.q_optim1.zero_grad()
@@ -221,15 +208,14 @@ class SACRecurrent(SAC):
         # Get the new q value to update the experience replay
         with torch.no_grad():
             (updated_actions, new_log_pis, mean,
-             new_hidden) = self.policy.sample(full_states, full_last_actions,
-                                              full_hidden_states)
+             new_hidden) = self.policy.sample(full_states, full_hidden_states)
                                      
             (u_new_acts, u_new_log_probs, u_new_mean,
              _) = self.policy.sample(full_next_states, updated_actions,
                                      new_hidden)
 
             new_qs, _ = self.q_func1(full_states, updated_actions,
-                                     full_last_actions, full_hidden_states)
+                                     full_hidden_states)
             q_targ, _ = self.q_func1(full_next_states, u_new_acts,
                                      updated_actions, new_hidden)
 
