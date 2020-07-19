@@ -14,6 +14,7 @@ def train(args, algo, experience_replay, experience_queue, agent_procs):
             experience = experience_queue.get()
 
             if experience is None:
+                print("Done!")
                 done_count += 1
             else:
                 experience_replay.add(experience)
@@ -26,6 +27,7 @@ def play(args, agent):
     agent.play(args["episodes"])
 
 if(__name__ == "__main__"):
+    import torch.nn as nn
     import torch.multiprocessing as mp
     import gym
     
@@ -55,7 +57,7 @@ if(__name__ == "__main__"):
 
     # Env args
     parser.add_argument(
-        "-r, --render", dest="render", action="store_true",
+        "-r", "--render", dest="render", action="store_true",
         help="render the environment"
     )
     parser.add_argument(
@@ -65,7 +67,7 @@ if(__name__ == "__main__"):
 
     # Model args
     parser.add_argument(
-        "--hidden_size", type=int, default=64,
+        "--hidden_size", type=int, default=512,
         help="the size of each hidden layer"
     )
     parser.add_argument(
@@ -91,7 +93,7 @@ if(__name__ == "__main__"):
 		help="the number of quantile samples for IQN"
 	)
     parser.add_argument(
-		"--embedding_dim", type=float, default=32,
+		"--embedding_dim", type=float, default=64,
 		help="the dimension of the quantile distribution for IQN"
 	)
     parser.add_argument(
@@ -99,7 +101,7 @@ if(__name__ == "__main__"):
 		help="the threshhold of the huber loss (kappa) for IQN"
 	)
     parser.add_argument(
-        "--target_update_interval", type=float, default=1,
+        "--target_update_interval", type=float, default=500,
         help="the number of training steps in-between target network updates"
     )
     parser.add_argument(
@@ -113,11 +115,11 @@ if(__name__ == "__main__"):
         help="runs the environment using the model instead of training"
     )
     parser.add_argument(
-		"--batch_size", type=int, default=256,
+		"--batch_size", type=int, default=32,
 		help="the batch size of the training set"
 	)
     parser.add_argument(
-		"--start_size", type=int, default=512,
+		"--start_size", type=int, default=64,
 		help="the size of the replay buffer before training"
 	)
     parser.add_argument(
@@ -135,7 +137,7 @@ if(__name__ == "__main__"):
 
     # Agent args
     parser.add_argument(
-		"--episodes", type=int, default=1000,
+		"--episodes", type=int, default=10000,
 		help="the number of episodes to train for"
 	)
     parser.add_argument(
@@ -217,9 +219,12 @@ if(__name__ == "__main__"):
                             args["burn_in_length"],
                             logger).to(torch.device(args["device"]))"""
     else:
-        autoencoder = LinearPolicy(
-            env.state_space[0], args["hidden_size"], args["hidden_size"],
-            args["num_hidden"] - 1, activation_fn
+        autoencoder = nn.Sequential(
+            LinearPolicy(
+                env.state_space[0], args["hidden_size"], args["hidden_size"],
+                args["num_hidden"] - 1, activation_fn
+            ),
+            nn.ReLU()
         )
 
         algo = RainbowIQN(
