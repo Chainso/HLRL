@@ -47,21 +47,6 @@ class ExperienceSequenceAgent(MethodWrapper):
         self.keep_length = keep_length
 
         self.ready_experiences = []
-        self.q_vals = []
-        self.target_q_vals = []
-
-    def _get_buffer_experience(self, experiences, decay):
-        """
-        Perpares the experience to add to the buffer.
-        """
-        (experience, q_val, target_q_val,
-            *extras) = self.om._get_buffer_experience(experiences, decay)
-
-        buffer_experience = (experience, *extras)
-
-        self.ready_experiences.append(buffer_experience)
-        self.q_vals.append(q_val)
-        self.target_q_vals.append(target_q_val)
 
     def add_to_buffer(self, experience_queue, experiences, decay):
         """
@@ -70,14 +55,6 @@ class ExperienceSequenceAgent(MethodWrapper):
         self._get_buffer_experience(experiences, decay)
 
         if len(self.ready_experiences) == self.sequence_length:
-            q_vals = torch.cat(self.q_vals)
-            target_q_vals = torch.cat(self.target_q_vals)
-
-            experience_queue.put((self.ready_experiences, q_vals,
-                                  target_q_vals))
-
+            experience_queue.put(self.ready_experiences)
             keep_start = len(self.ready_experiences) - self.keep_length
-
             self.ready_experiences = self.ready_experiences[keep_start:]
-            self.q_vals = self.q_vals[keep_start:]
-            self.target_q_vals = self.target_q_vals[keep_start:]
