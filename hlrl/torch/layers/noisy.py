@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn.functional as F
 
-class NoisyLinear(nn.Module):
+class NoisyLayer(nn.Module):
     """
     A layer that provides noise to an input. Largely taken from:
     https://github.com/qfettes/DeepRL-Tutorials/blob/master/05.DQN-NoisyNets.ipynb

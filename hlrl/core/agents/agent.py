@@ -96,9 +96,8 @@ class RLAgent():
 
     def step(self, with_next_step=False):
         """
-        Takes 1 step in the agent's environment. Returns the
-        (state, action, reward, next state, terminal, *additional algo returns,
-        env info) tuple. Resets the environment if the current state is a
+        Takes 1 step in the agent's environment. Returns the experience
+        dictionary. Resets the environment if the current state is a
         terminal.
 
         Args:

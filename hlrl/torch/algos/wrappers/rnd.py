@@ -3,9 +3,8 @@ import torch.nn as nn
 from copy import deepcopy
 
 from hlrl.core.utils import MethodWrapper
-from hlrl.torch.algos import TorchRLAlgo
 
-class RND(MethodWrapper, TorchRLAlgo):
+class RND(MethodWrapper):
     """
     The Random Network Distillation Algorithm
     https://arxiv.org/abs/1810.12894
@@ -69,7 +68,7 @@ class RND(MethodWrapper, TorchRLAlgo):
         """
         Adds the rnd network to the save dict of the algorithm.
         """
-        state_dict = self.obj.__class__.save_dict(self.obj)
+        state_dict = self.om.save_dict()
         state_dict["rnd"] = self.rnd.state_dict()
         state_dict["rnd_target"] = self.rnd_target.state_dict()
         state_dict["rnd_optim"] = self.rnd_optim.state_dict()
