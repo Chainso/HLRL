@@ -1,5 +1,3 @@
-import torch
-
 from collections import deque
 from hlrl.core.logger import TensorboardLogger
 
@@ -76,7 +74,7 @@ class OffPolicyAgent(TorchRLAgent):
             while(not self.env.terminal):
                 experience = self.step(True)
 
-                ep_reward += experience["reward"]
+                ep_reward += experience["reward"].item()
                 
                 experiences.append(experience)
 
@@ -93,7 +91,11 @@ class OffPolicyAgent(TorchRLAgent):
             if(self.logger is not None):
                 self.logger["Train/Episode Reward"] = (ep_reward, episode)
 
-            print("Episode", str(episode) + ":", ep_reward)
+            print(
+                "Episode", str(self.algo.env_episodes), "Step",
+                str(self.algo.env_steps) + ":", ep_reward
+            )
+
             self.algo.env_episodes += 1
 
         experience_queue.put(None)

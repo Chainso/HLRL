@@ -199,46 +199,17 @@ class SAC(TorchOffPolicyAlgo):
 
     def save_dict(self):
         # Save all the dicts
-        state = {
-            "env_episodes": self.env_episodes,
-            "training_steps": self.training_steps,
-            "env_steps": self.env_steps,
-            "q_func1": self.q_func1.state_dict(),
-            "q_func_targ1": self.q_func_targ1.state_dict(),
-            "q_optim1": self.q_optim1.state_dict(),
-            "policy": self.policy.state_dict(),
-            "p_optim": self.p_optim.state_dict(),
-            "temperature": self._temperature,
-            "log_temp": self.log_temp,
-            "temp_optim": self.temp_optim.state_dict()
-        }
-
-        # Save second q function if this is twin sac
-        if (self._twin):
-            state["q_func2"] = self.q_func2.state_dict()
-            state["q_func_targ2"] = self.q_func_targ2.state_dict()
-            state["q_optim2"] = self.q_optim2.state_dict()
+        state_dict = super().state_dict()
+        state_dict["temperature"] = self._temperature
 
         return state
 
     def load(self, load_path):
-        state = torch.load(load_path, map_location="cpu")
+        state = torch.load(load_path)
 
         # Load all the dicts
+        self.load_state_dict(state["state_dict"])
         self.env_episodes = state["env_episodes"]
         self.training_steps = state["training_steps"]
         self.env_steps = state["env_steps"]
-        self.q_func1.load_state_dict(state["q_func1"])
-        self.q_func_targ1.load_state_dict(state["q_func_targ1"])
-        self.q_optim1.load_state_dict(state["q_optim1"])
-        self.policy.load_state_dict(state["policy"])
-        self.p_optim.load_state_dict(state["p_optim"])
         self._temperature = state["temperature"]
-        self.log_temp = state["log_temp"]
-        self.temp_optim.load_state_dict(state["temp_optim"])
-
-        # Load second q function if this is twin sac
-        if (self._twin):
-            self.q_func2.load_state_dict(state["q_func2"])
-            self.q_func_targ2.load_state_dict(state["q_func_targ2"])
-            self.q_optim2.load_state_dict(state["q_optim2"])

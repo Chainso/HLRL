@@ -18,9 +18,28 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         RLAlgo.__init__(self, logger)
         nn.Module.__init__(self)
 
+    def save_dict(self):
+        # Save all the dicts
+        state = {
+            "state_dict": self.state_dict(),
+            "env_episodes": self.env_episodes,
+            "training_steps": self.training_steps,
+            "env_steps": self.env_steps
+        }
+
+        return state
+
     def save(self, save_path):
         model_name = "/model-" + str(self.training_steps) + ".pt"
         torch.save(self.save_dict(), save_path + model_name)
+
+    def load(self, load_path):
+        state = torch.load(load_path)
+
+        self.load_state_dict(state["state_dict"])
+        self.env_episodes = state["env_episodes"]
+        self.training_steps = state["training_steps"]
+        self.env_steps = state["env_steps"]
 
 class TorchOffPolicyAlgo(TorchRLAlgo):
     """

@@ -40,6 +40,7 @@ if(__name__ == "__main__"):
     from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, \
                                   ExperienceSequenceAgent
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
+    from hlrl.core.trainers import Worker
 
     mp.set_start_method("spawn")
     mp.set_sharing_strategy("file_system")
@@ -88,6 +89,10 @@ if(__name__ == "__main__"):
 		"--discount", type=float, default=0.99,
 		help="the next state reward discount factor"
 	)
+    parser.add_argument(
+        "--polyak", type=float, default=5e-3,
+        help="the polyak constant for the target network updates"
+    )
     parser.add_argument(
 		"--n_quantiles", type=float, default=64,
 		help="the number of quantile samples for IQN"
@@ -212,7 +217,7 @@ if(__name__ == "__main__"):
             b_num_hidden, args["hidden_size"], 1, args["hidden_size"],
             args["num_hidden"] - 1, activation_fn
         )
-        """ COmmented out until rainbow iqn recurrent implemented
+        """ Commented out until rainbow iqn recurrent implemented
         algo = SACRecurrent(env.action_space, qfunc, policy, args["discount"],
                             args["polyak"], args["target_update_interval"],
                             optim, optim, optim, args["twin"],
@@ -229,8 +234,9 @@ if(__name__ == "__main__"):
 
         algo = RainbowIQN(
             args["hidden_size"], autoencoder, qfunc, args["discount"],
-            args["embedding_dim"], args["n_quantiles"], args["huber_threshold"],
-            args["target_update_interval"], optim, optim, logger
+            args["polyak"], args["embedding_dim"], args["n_quantiles"],
+            args["huber_threshold"], args["target_update_interval"], optim,
+            optim, logger
         )
 
     algo = algo.to(torch.device(args["device"]))
@@ -280,4 +286,7 @@ if(__name__ == "__main__"):
             args["episodes"], experience_queue, args["decay"], args["n_steps"]
         )
 
-        train(args, algo, experience_replay, experience_queue, agent_procs)
+        # Start the worker for the model
+        worker = Worker(algo, experience_replay, experience_queue)
+        worker.train(args["batch_size"], args["start_size"], args["save_path"],
+                     args["save_interval"])

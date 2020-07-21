@@ -13,9 +13,9 @@ class RainbowIQN(TorchOffPolicyAlgo):
     Implicit Quantile Networks with the rainbow of improvements used for DQN.
     https://arxiv.org/pdf/1908.04683.pdf (IQN)
     """
-    def __init__(self, enc_dim, autoencoder, q_func, discount, n_quantiles,
-        embedding_dim, huber_threshold, target_update_interval, enc_optim,
-        q_optim, logger=None):
+    def __init__(self, enc_dim, autoencoder, q_func, discount, polyak,
+        n_quantiles, embedding_dim, huber_threshold, target_update_interval,
+        enc_optim, q_optim, logger=None):
         """
         Creates the Rainbow-IQN network.
 
@@ -27,6 +27,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
                                        observation and action.
             discount (float) : The coefficient for the discounted values
                                 (0 < x < 1).
+            polyak (float) : The coefficient for polyak averaging (0 < x < 1).
             n_quantiles (int) : The number of quantiles to sample.
             embedding_dim (int) : The dimension of the embedding tensor.
             huber_threshold (float) : The huber loss threshold constant (kappa).
@@ -41,6 +42,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Constants
         self.discount = discount
+        self.polyak = polyak
         self.n_quantiles = n_quantiles
         self.embedding_dim = embedding_dim
         self.huber_threshold = huber_threshold
@@ -245,6 +247,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Update the target
         if (self.training_steps % self.target_update_interval == 0):
+            polyak_average(self.q_func, self.target_q_func, self.polyak)
             self.target_q_func.load_state_dict(self.q_func.state_dict())
 
         self.training_steps += 1
@@ -281,31 +284,3 @@ class RainbowIQN(TorchOffPolicyAlgo):
         )
 
         return target_quantile_values
-
-    def save_dict(self):
-        # Save all the dicts
-        state = {
-            "env_episodes": self.env_episodes,
-            "training_steps": self.training_steps,
-            "env_steps": self.env_steps,
-            "q_func": self.q_func.state_dict(),
-            "target_q_func": self.target_q_func.state_dict(),
-            "q_optim": self.q_optim.state_dict(),
-            "autoencoder": self.autoencoder.state_dict(),
-            "enc_optim": self.enc_optim.state_dict(),
-        }
-
-        return state
-
-    def load(self, load_path):
-        state = torch.load(load_path)
-
-        # Load all the dicts
-        self.env_episodes = state["env_episodes"]
-        self.training_steps = state["training_steps"]
-        self.env_steps = state["env_steps"]
-        self.q_func.load_state_dict(state["q_func"])
-        self.target_q_func.load_state_dict(state["target_q_func"])
-        self.q_optim.load_state_dict(state["q_optim"])
-        self.autoencoder.load_state_dict(state["autoencoder"])
-        self.enc_optim.load_state_dict(state["enc_optim"])

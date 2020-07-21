@@ -38,6 +38,7 @@ if(__name__ == "__main__"):
     from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, \
                                   ExperienceSequenceAgent
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
+    from hlrl.core.trainers import Worker
 
     mp.set_start_method("spawn")
     mp.set_sharing_strategy("file_system")
@@ -73,7 +74,7 @@ if(__name__ == "__main__"):
     parser.add_argument("--temperature", type=float, default=0.2,
                         help="the coefficient of temperature of the entropy "
                              + "for SAC")
-    parser.add_argument("--polyak", type=float, default=0.995,
+    parser.add_argument("--polyak", type=float, default=5e-3,
                         help="the polyak constant for the target network "
                              + "updates")
     parser.add_argument("--target_update_interval", type=float, default=1,
@@ -216,4 +217,7 @@ if(__name__ == "__main__"):
         agent_procs = agent_pool.train(args["episodes"], experience_queue,
                                        args["decay"], args["n_steps"])
 
-        train(args, algo, experience_replay, experience_queue, agent_procs)
+        # Start the worker for the model
+        worker = Worker(algo, experience_replay, experience_queue)
+        worker.train(args["batch_size"], args["start_size"], args["save_path"],
+                     args["save_interval"])

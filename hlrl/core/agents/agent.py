@@ -203,7 +203,7 @@ class AgentPool():
         Trains each agent using the arguments given.
 
         Args:
-            agent_train_args ([object]): The list of arguments for each agents.
+            agent_train_args (*[object]): The list of arguments for each agent.
         """
         procs = [mp.Process(target = agent.train, args=agent_train_args)
                  for agent in self.agents]
