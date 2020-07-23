@@ -6,7 +6,7 @@ from torch.distributions import Categorical
 from copy import deepcopy
 
 from hlrl.torch.algos import TorchOffPolicyAlgo
-from hlrl.torch.util import polyak_average
+from hlrl.torch.utils import polyak_average
 
 class RainbowIQN(TorchOffPolicyAlgo):
     """

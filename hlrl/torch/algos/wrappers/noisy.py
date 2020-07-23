@@ -1,5 +1,4 @@
 from hlrl.core.utils import MethodWrapper
-from hlrl.torch.layers import NoisyLayer
 
 class NoisyAlgo(MethodWrapper):
     """

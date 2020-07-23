@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from .sac import SAC
-from hlrl.torch.util import polyak_average
+from hlrl.torch.utils import polyak_average
 
 class SACRecurrent(SAC):
     """

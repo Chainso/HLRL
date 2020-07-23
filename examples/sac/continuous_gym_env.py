@@ -219,5 +219,5 @@ if(__name__ == "__main__"):
 
         # Start the worker for the model
         worker = Worker(algo, experience_replay, experience_queue)
-        worker.train(args["batch_size"], args["start_size"], args["save_path"],
-                     args["save_interval"])
+        worker.train(agent_procs, args["batch_size"], args["start_size"],
+                     args["save_path"], args["save_interval"])

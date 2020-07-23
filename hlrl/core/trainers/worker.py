@@ -42,13 +42,13 @@ class Worker():
                 for proc in agent_procs:
                     proc.join()
             else:
-                experience = experience_queue.get()
+                experience = self.experience_queue.get()
 
                 if experience is None:
                     print("Done!")
                     done_count += 1
                 else:
-                    experience_replay.add(experience)
+                    self.experience_replay.add(experience)
                     algo.train_from_buffer(
                         experience_replay, batch_size, start_size, save_path,
                         save_interval
