@@ -66,7 +66,7 @@ class LSTMPolicy(nn.Module):
 
         lin_before = self.lin_before(states)
 
-        lstm_in = lstm_in.view(
+        lstm_in = lin_before.view(
             sequence_length, batch_size, *lin_before.shape[1:]
         )
 
@@ -102,12 +102,6 @@ class LSTMPolicy(nn.Module):
         reset_hidden = (zero_state, zero_state)
         return reset_hidden
 
-    def forward(self, states, current_actions, hidden_states):
-        """
-        Returns the output along with the new hidden states.
-        """
-        lin_in = torch.cat([states, current_actions], dim=-1)
-        return super().forward(lin_in, hidden_states)
 
 class LSTMSAPolicy(LSTMPolicy):
     """

@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 
-from hlrl.torch.policies import LinearPolicy, TanhGaussianPolicy, LSTMGaussianPolicy, LSTMPolicy
+from hlrl.torch.policies import (
+    LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy, LSTMSAPolicy,
+    LSTMGaussianPolicy,
+)
 
 def train(args, algo, experience_replay, experience_queue, agent_procs):
     done_count = 0
@@ -34,9 +37,11 @@ if(__name__ == "__main__"):
     from hlrl.core.logger import TensorboardLogger
     from hlrl.torch.algos import SAC, SACRecurrent
     from hlrl.core.envs import GymEnv
-    from hlrl.core.agents import AgentPool, RecurrentAgent
-    from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, \
-                                  ExperienceSequenceAgent
+    from hlrl.core.agents import AgentPool
+    from hlrl.torch.agents import (
+        OffPolicyAgent, SequenceInputAgent, ExperienceSequenceAgent,
+        TorchRecurrentAgent
+    )
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
     from hlrl.core.trainers import Worker
 
@@ -189,7 +194,7 @@ if(__name__ == "__main__"):
 
     if args["recurrent"]:
         agent = SequenceInputAgent(agent)
-        agent = RecurrentAgent(agent)
+        agent = TorchRecurrentAgent(agent)
 
     if args["play"]:
         algo.eval()

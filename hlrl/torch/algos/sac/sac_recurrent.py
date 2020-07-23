@@ -101,7 +101,9 @@ class SACRecurrent(SAC):
 
         burn_in_next_states = states[:, self.burn_in_length:self.burn_in_length + 1]
         burn_in_next_last_act = actions[:, self.burn_in_length:self.burn_in_length + 1]
-
+        print(hidden_states.shape)
+        print(hidden_states[0].shape)
+        print(hidden_states[1].shape)
         _, _, _, new_hiddens = self.policy.sample(burn_in_states, hidden_states)
         _, _, _, next_hiddens = self.policy.sample(burn_in_next_states,
                                                    burn_in_next_last_act,

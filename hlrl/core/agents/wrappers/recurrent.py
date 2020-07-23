@@ -1,5 +1,7 @@
-from hlrl.core.utils import MethodWrapper
 import torch
+
+from hlrl.core.utils import MethodWrapper
+
 
 class RecurrentAgent(MethodWrapper):
     """
@@ -36,6 +38,15 @@ class RecurrentAgent(MethodWrapper):
         transed_algo_step["next_hidden_state"] = algo_step[-1]
 
         return transed_algo_step
+
+    def transform_next_algo_step(self, next_algo_step):
+        """
+        Retrieves the next Q-value and discards the next hidden state.
+        """
+        transed_nas = self.om.transform_next_algo_step(next_algo_step)
+        transed_nas.pop("next_next_hidden_state")
+
+        return transed_nas
 
     def reset(self):
         """

@@ -91,10 +91,9 @@ class OffPolicyAgent(TorchRLAgent):
             if(self.logger is not None):
                 self.logger["Train/Episode Reward"] = (ep_reward, episode)
 
-            print(
-                "Episode", str(self.algo.env_episodes), "Step",
-                str(self.algo.env_steps) + ":", ep_reward
-            )
+            print("Episode {0} Step {1} Reward: {2}".format(
+                self.algo.env_episodes, self.algo.env_steps, ep_reward
+            ))
 
             self.algo.env_episodes += 1
 

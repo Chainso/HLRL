@@ -49,7 +49,7 @@ class Worker():
                     done_count += 1
                 else:
                     self.experience_replay.add(experience)
-                    algo.train_from_buffer(
-                        experience_replay, batch_size, start_size, save_path,
-                        save_interval
+                    self.algo.train_from_buffer(
+                        self.experience_replay, batch_size, start_size,
+                        save_path, save_interval
                     )

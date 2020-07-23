@@ -46,15 +46,34 @@ class ExperienceSequenceAgent(MethodWrapper):
         self.sequence_length = sequence_length
         self.keep_length = keep_length
 
-        self.ready_experiences = []
+        # Store it in list format
+        self.ready_experiences = {}
+        self.num_experiences = 0
 
     def add_to_buffer(self, experience_queue, experiences, decay):
         """
         Adds the experience to the replay buffer.
         """
-        self._get_buffer_experience(experiences, decay)
+        experience = self._get_buffer_experience(experiences, decay)
+        
+        for key in experience:
+            if key not in self.ready_experiences:
+                self.ready_experiences[key] = []
 
-        if len(self.ready_experiences) == self.sequence_length:
-            experience_queue.put(self.ready_experiences)
+            self.ready_experiences[key].append(experience[key])
+
+        self.num_experiences += 1
+
+        if self.num_experiences == self.sequence_length:
+            # Concatenate experiences first
+            experiences_to_send = {}
+            for key in self.ready_experiences:
+                experiences_to_send[key] = torch.cat(self.ready_experiences[key])
+
+            experience_queue.put(experiences_to_send)
             keep_start = len(self.ready_experiences) - self.keep_length
-            self.ready_experiences = self.ready_experiences[keep_start:]
+
+            self.num_experiences = self.keep_length
+            for key in self.ready_experiences:
+                self.ready_experiences[key] = self.ready_experiences[key][keep_start:]
+

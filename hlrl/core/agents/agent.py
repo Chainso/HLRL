@@ -114,7 +114,7 @@ class RLAgent():
         algo_inp = self.transform_state(state)
         state = algo_inp.pop("state")
 
-        algo_step = self.algo.step(state, *algo_inp)
+        algo_step = self.algo.step(state, *algo_inp.values())
         algo_step = self.transform_algo_step(algo_step)
 
         env_action = self.transform_action(algo_step["action"])
@@ -136,7 +136,7 @@ class RLAgent():
         })
 
         if with_next_step:
-            next_algo_step = self.algo.step(next_state, *next_algo_inp)
+            next_algo_step = self.algo.step(next_state, *next_algo_inp.values())
             next_algo_step = self.transform_next_algo_step(next_algo_step)
 
             experience.update(next_algo_step)
@@ -164,7 +164,8 @@ class RLAgent():
             if(self.logger is not None):
                 self.logger["Play/Episode Reward"] = ep_reward, episode
 
-            print("Episode", str(episode) + ":", ep_reward)
+            print("Episode {0} Reward: {1}".format(episode, ep_reward))
+
             avg_reward += ep_reward / num_episodes
 
         if(self.logger is not None):
