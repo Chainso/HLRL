@@ -109,6 +109,41 @@ class LSTMPolicy(nn.Module):
         lin_in = torch.cat([states, current_actions], dim=-1)
         return super().forward(lin_in, hidden_states)
 
+class LSTMSAPolicy(LSTMPolicy):
+    """
+    A LSTM policy that takes state-action inputs.
+    """
+    def __init__(self, input_size, action_n, output_size, b_hidden_size,
+                 b_num_hidden, l_hidden_size, l_num_hidden, a_hidden_size,
+                 a_num_hidden, activation_fn):
+        """
+        Args:
+            input_size (int): The number of input units.
+            action_n (int): The number of actions (appended to LSTM input).
+            output_size (int): The number of output units.
+            b_hidden_size (int): The number of hidden units in the linear
+                                 network before the LSTM.
+            b_num_hidden (int): The number of hidden layers before the LSTM.
+            b_hidden_size (int): The number of hidden units in the LSTM.
+            b_num_hidden (int): The number of hidden layers in the LSTM.
+            a_hidden_size (int): The number of hidden units in the linear
+                                 network after the LSTM.
+            a_num_hidden (int): The number of hidden layers after the LSTM.
+            activation_fn (callable): The activation function for each layer.
+        """
+        super().__init__(
+            input_size + action_n, output_size, b_hidden_size, b_num_hidden,
+            l_hidden_size, l_num_hidden, a_hidden_size, a_num_hidden,
+            activation_fn
+        )
+
+    def forward(self, states, actions, hidden_states):
+        """
+        Returns the output along with the new hidden states.
+        """
+        lin_in = torch.cat([states, actions], dim=-1)
+        return super().forward(lin_in, hidden_states)
+
 class LSTMGaussianPolicy(LSTMPolicy):
     """
     A LSTM Gaussian policy (same as LSTM policy but with a Gaussian head on top)
@@ -165,7 +200,7 @@ class LSTMGaussianPolicy(LSTMPolicy):
         """
         batch_size, sequence_length = states.shape[:2]
 
-        gauss_in, new_hidden = super().forward(states, lhidden_states)
+        gauss_in, new_hidden = super().forward(states, hidden_states)
 
         gauss_in = gauss_in.contiguous().view(batch_size * sequence_length,
                                               *gauss_in.shape[2:])

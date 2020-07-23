@@ -48,3 +48,18 @@ class LinearPolicy(nn.Module):
         Returns the policy output for the input
         """
         return self.linear(inp)
+
+
+class LinearSAPolicy(LinearPolicy):
+    """
+    A linear policy that takes state-action inputs (e.g. continuous Q-policy)
+    """
+    def __init__(self, state_n, act_n, out_n, hidden_size, num_hidden,
+        activation_fn):
+        super().__init__(
+            state_n + act_n, out_n, hidden_size, num_hidden, activation_fn
+        )
+
+    def forward(self, state, actions):
+        lin_in = torch.cat([state, actions], dim=-1)
+        return super().forward(lin_in)
