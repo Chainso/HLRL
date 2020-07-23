@@ -147,31 +147,36 @@ if(__name__ == "__main__"):
     if args["recurrent"]:
         b_num_hidden = 1 if args["num_hidden"] > 0 else 0
 
-        qfunc = LSTMPolicy(env.state_space[0], env.action_space[0], 1,
-                           args["hidden_size"], b_num_hidden,
-                           args["hidden_size"], 1, args["hidden_size"],
-                           args["num_hidden"] - 1, activation_fn)
-        policy = LSTMGaussianPolicy(env.state_space[0], env.action_space[0],
-                                    env.action_space[0], args["hidden_size"],
-                                    b_num_hidden, args["hidden_size"], 1,
-                                    args["hidden_size"], args["num_hidden"] - 1,
-                                    activation_fn, squished=True)
-        algo = SACRecurrent(env.action_space, qfunc, policy, args["discount"],
-                            args["polyak"], args["target_update_interval"],
-                            optim, optim, optim, args["twin"],
-                            args["burn_in_length"],
-                            logger)
+        qfunc = LSTMSAPolicy(
+            env.state_space[0], env.action_space[0], 1, args["hidden_size"],
+            b_num_hidden, args["hidden_size"], 1, args["hidden_size"],
+            args["num_hidden"] - 1, activation_fn
+        )
+        policy = LSTMGaussianPolicy(
+            env.state_space[0], env.action_space[0], args["hidden_size"],
+            b_num_hidden, args["hidden_size"], 1, args["hidden_size"],
+            args["num_hidden"] - 1, activation_fn, squished=True
+        )
+        algo = SACRecurrent(
+            env.action_space, qfunc, policy, args["discount"], args["polyak"],
+            args["target_update_interval"], optim, optim, optim, args["twin"],
+            args["burn_in_length"], logger
+        )
     else:
-        qfunc = LinearPolicy(env.state_space[0] + env.action_space[0], 1,
-                             args["hidden_size"], args["num_hidden"],
-                             activation_fn)
-        policy = TanhGaussianPolicy(env.state_space[0], env.action_space[0],
-                                    args["hidden_size"], args["num_hidden"],
-                                    activation_fn)
+        qfunc = LinearSAPolicy(
+            env.state_space[0], env.action_space[0], 1, args["hidden_size"],
+            args["num_hidden"], activation_fn
+        )
+        policy = TanhGaussianPolicy(
+            env.state_space[0], env.action_space[0], args["hidden_size"],
+            args["num_hidden"], activation_fn
+        )
 
-        algo = SAC(env.action_space, qfunc, policy, args["discount"],
-                   args["polyak"], args["target_update_interval"], optim, optim,
-                   optim, args["twin"], logger)
+        algo = SAC(
+            env.action_space, qfunc, policy, args["discount"], args["polyak"],
+            args["target_update_interval"], optim, optim, optim, args["twin"],
+            logger
+        )
 
     algo = algo.to(torch.device(args["device"]))
 
