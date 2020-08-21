@@ -1,0 +1,11 @@
+# ML Framework
+pytorch
+
+# Vision modules
+mss
+opencv-python
+Pillow
+
+# I/O
+PyUserInput
+h5py
