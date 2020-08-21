@@ -68,14 +68,18 @@ class ExperienceSequenceAgent(MethodWrapper):
             # Concatenate experiences first
             experiences_to_send = {}
             for key in self.ready_experiences:
-                if key == "hidden_state":
-                    # Only need the first hidden state, transposing num layers
-                    # and batch since num layers acts like a sequence dimension
-                    experiences_to_send[key] = self.ready_experiences[key][0].transpose(0, 1)
-                else:
-                    experiences_to_send[key] = torch.cat(
-                        self.ready_experiences[key]
-                    )
+                if not key.endswith("hidden_state") or key == "hidden_state":
+                    if key == "hidden_state":
+                        # Only need the first hidden state, transposing num layers
+                        # and batch since num layers acts like a sequence dimension
+                        experiences_to_send[key] = self.ready_experiences[key][0].transpose(
+                            0, 1
+                        ).contiguous()
+                    else:
+                        # Concatenate to sequence dimension
+                        experiences_to_send[key] = torch.cat(
+                            self.ready_experiences[key], dim=1
+                        )
 
             experience_queue.put(experiences_to_send)
             keep_start = len(self.ready_experiences) - self.keep_length

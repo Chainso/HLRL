@@ -63,7 +63,7 @@ class PER(ExperienceReplay):
         q_val = experience.pop("q_val")
         target_q_val = experience.pop("target_q_val")
 
-        error = self._get_error(q_val, target_q_val)
+        error = self._get_error(q_val, target_q_val).item()
 
         current_index = self.priorities.next_index()
     
@@ -75,6 +75,7 @@ class PER(ExperienceReplay):
             self.experiences[key][current_index] = experience[key]
 
         priority = self._get_priority(error)
+
         self.priorities.add(priority)
 
     def sample(self, size):

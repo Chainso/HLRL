@@ -43,19 +43,6 @@ class TorchPSER(TorchPER):
 
             self.priorities.set(updated_prio, decay_idx)
 
-    def sample(self, size):
-        """
-        Samples "size" number of experiences from the buffer
-
-        size : The number of experiences to sample
-        """
-        batch, indices, is_weights = super().sample(size)
-
-        # Transpose batch and sequence dimensions
-        batch = {key: value.transpose(0, 1) for key, value in batch.items()}
-
-        return batch, indices, is_weights
-
     def update_priority(self, index, error):
         """
         Updates the priority of the experience at the given index, using the

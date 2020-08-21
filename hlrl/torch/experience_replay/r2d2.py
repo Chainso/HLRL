@@ -32,20 +32,7 @@ class TorchR2D2(TorchPER):
         """
         reg_error = torch.abs(q_val - q_target)
 
-        error = (self.max_factor * reg_error.max()
-                 + (1 - self.max_factor) * reg_error.mean())
+        error = (self.max_factor * reg_error.max(dim=1).values
+                 + (1 - self.max_factor) * reg_error.mean(dim=1))
 
         return error
-
-    def sample(self, size):
-        """
-        Samples "size" number of experiences from the buffer
-
-        size : The number of experiences to sample
-        """
-        batch, indices, is_weights = super().sample(size)
-
-        # Transpose batch and sequence dimensions
-        batch = {key: value.transpose(0, 1) for key, value in batch.items()}
-
-        return batch, indices, is_weights

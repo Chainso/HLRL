@@ -17,6 +17,7 @@ class TorchRecurrentAgent(RecurrentAgent):
         """
         Appends the hidden state to the algorithm inputs.
         """
+        # Transposing here to go (batch, 2, num layers, hidden size)
         transed_state = super().transform_state(state)
         transed_state["hidden_state"] = torch.stack(
             transed_state["hidden_state"]

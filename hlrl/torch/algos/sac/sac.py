@@ -192,7 +192,9 @@ class SAC(TorchOffPolicyAlgo):
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
             polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
-            polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
+
+            if (self._twin):
+                polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
 
         self.training_steps += 1
         return new_qs, new_q_targ

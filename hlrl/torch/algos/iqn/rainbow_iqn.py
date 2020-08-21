@@ -176,7 +176,9 @@ class RainbowIQN(TorchOffPolicyAlgo):
             )
 
             # Switch to batch major
-            target_quantile_values = target_quantile_values.transpose(0, 1)
+            target_quantile_values = target_quantile_values.transpose(
+                0, 1
+            ).contiguous()
 
         quantile_values, quantiles = self._calculate_quantile_values(
             states, self.q_func
@@ -185,7 +187,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         quantile_values = quantile_values.view(
             self.n_quantiles, states.shape[0], 1
         )
-        quantile_values = quantile_values.transpose(0, 1)
+        quantile_values = quantile_values.transpose(0, 1).contiguous()
 
         bellman_error = target_quantile_values - quantile_values
         abs_bellman_error = torch.abs(bellman_error)
@@ -207,7 +209,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         huber_loss = huber_loss1 + huber_loss2
 
         quantiles = quantiles.view(self.n_quantiles, states.shape[0], 1)
-        quantiles = quantiles.transpose(0, 1)
+        quantiles = quantiles.transpose(0, 1).contiguous()
 
         # Quantile regression loss
         # sum_{i = 1}^{N} sum_{j = 1}^{N'} abs(quantiles - (bellman_error < 0))

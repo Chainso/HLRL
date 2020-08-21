@@ -55,8 +55,9 @@ class SACRecurrent(SAC):
             The action, Q-val, and new hidden state if there is one.
         """
         # Only going to update the hidden state using the policy hidden state
-        action, log_prob, mean, new_hidden = self.policy.sample(observation,
-                                                                hidden_state)
+        action, log_prob, mean, new_hidden = self.policy.sample(
+            observation, hidden_state
+        )
 
         q_val, _ = self.q_func1(observation, action, hidden_state)
 
@@ -95,19 +96,26 @@ class SACRecurrent(SAC):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
-        hidden_states = rollouts["hidden_state"]
+
+        # Switch from (batch size, 2, num layers, hidden size) to
+        # (2, num layers, batch size, hidden size)
+        hidden_states = rollouts["hidden_state"].permute(
+            1, 2, 0, 3
+        ).contiguous()
 
         burn_in_states = states[:, :self.burn_in_length]
+        burn_in_next_states = states[:, 1:self.burn_in_length + 1]
 
-        burn_in_next_states = states[:, self.burn_in_length:self.burn_in_length + 1]
-        burn_in_next_last_act = actions[:, self.burn_in_length:self.burn_in_length + 1]
-        print(hidden_states.shape)
-        print(hidden_states[0].shape)
-        print(hidden_states[1].shape)
-        _, _, _, new_hiddens = self.policy.sample(burn_in_states, hidden_states)
-        _, _, _, next_hiddens = self.policy.sample(burn_in_next_states,
-                                                   burn_in_next_last_act,
-                                                   new_hiddens)
+        _, _, _, new_hiddens = self.policy.sample(
+            burn_in_states, hidden_states
+        )
+
+        _, _, _, next_hiddens = self.policy.sample(
+            burn_in_next_states, new_hiddens
+        )
+
+        new_hiddens = [nh.detach() for nh in new_hiddens]
+        next_hiddens = [nh.detach() for nh in next_hiddens]
 
         states = states[:, self.burn_in_length:]
         actions = actions[:, self.burn_in_length:]
@@ -131,17 +139,27 @@ class SACRecurrent(SAC):
         (states, actions, rewards, next_states, terminals,
          hidden_states, next_hiddens) = self.burn_in_hidden_states(rollouts)
 
-        (full_states, _, full_rewards, full_next_states, full_terminals,
-         full_hidden_states) = rollouts
+        full_states = rollouts["state"]
+        full_rewards = rollouts["reward"]
+        full_next_states = rollouts["next_state"]
+        full_terminals = rollouts["terminal"]
+
+        # Switch from (batch size, 2, num layers, hidden size) to
+        # (2, num layers, batch size, hidden size)
+        full_hidden_states = rollouts["hidden_state"].permute(
+            1, 2, 0, 3
+        ).contiguous()
 
         q_loss_func = nn.MSELoss()
 
         with torch.no_grad():
-            (next_actions, next_log_probs,
-             next_mean, _) = self.policy.sample(next_states, actions,
-                                                next_hiddens)
-            q_targ_pred1, _ = self.q_func_targ1(next_states, next_actions,
-                                                actions, next_hiddens)
+            (next_actions, next_log_probs, next_mean, _) = self.policy.sample(
+                next_states, next_hiddens
+            )
+
+            q_targ_pred1, _ = self.q_func_targ1(
+                next_states, next_actions, next_hiddens
+            )
 
         (pred_actions, pred_log_probs,
          pred_means, _) = self.policy.sample(states, hidden_states)
@@ -151,8 +169,9 @@ class SACRecurrent(SAC):
         # Only get the loss for q_func2 if using the twin Q-function algorithm
         if(self._twin):
             with torch.no_grad():
-                q_targ_pred2, _ = self.q_func_targ2(next_states, next_actions,
-                                                    actions, next_hiddens)
+                q_targ_pred2, _ = self.q_func_targ2(
+                    next_states, next_actions, next_hiddens
+                )
 
             q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
                       - self._temperature * next_log_probs)
@@ -213,22 +232,23 @@ class SACRecurrent(SAC):
              new_hidden) = self.policy.sample(full_states, full_hidden_states)
                                      
             (u_new_acts, u_new_log_probs, u_new_mean,
-             _) = self.policy.sample(full_next_states, updated_actions,
-                                     new_hidden)
+             _) = self.policy.sample(full_next_states, new_hidden)
 
-            new_qs, _ = self.q_func1(full_states, updated_actions,
-                                     full_hidden_states)
-            q_targ, _ = self.q_func1(full_next_states, u_new_acts,
-                                     updated_actions, new_hidden)
+            new_qs, _ = self.q_func1(
+                full_states, updated_actions, full_hidden_states
+            )
+            q_targ, _ = self.q_func1(full_next_states, u_new_acts, new_hidden)
 
             #new_q_targ = new_qs - self._temperature * new_log_pis
-            q_next = (full_rewards + (1 - full_terminals)
-                                     * self._discount * q_targ)
+            new_q_targ = (full_rewards + (1 - full_terminals)
+                                          * self._discount * q_targ)
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
             polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
-            polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
+
+            if (self._twin):
+                polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
 
         self.training_steps += 1
-        return new_qs, q_next
+        return new_qs, new_q_targ

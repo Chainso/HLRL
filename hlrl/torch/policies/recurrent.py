@@ -67,17 +67,12 @@ class LSTMPolicy(nn.Module):
         lin_before = self.lin_before(states)
 
         lstm_in = lin_before.view(
-            sequence_length, batch_size, *lin_before.shape[1:]
-        )
+            batch_size, sequence_length, *lin_before.shape[1:]
+        ).transpose(0, 1).contiguous()
 
-        # Switch from (batch size, num layers, hidden size) to
-        # (num layers, batch size, hidden size)
-        hidden_states = [tens.transpose(1, 0) for tens in hidden_states]
-
+        hidden_states = [hs for hs in hidden_states]
+        
         lstm_out, new_hiddens = self.lstm(lstm_in, hidden_states)
-
-        # Back to batch major
-        new_hiddens = [tens.transpose(1, 0) for tens in hidden_states]
 
         lin_after_in = lstm_out.view(batch_size * sequence_length,
                                      *lstm_out.shape[2:])
