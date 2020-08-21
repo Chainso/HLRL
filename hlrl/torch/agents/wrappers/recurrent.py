@@ -21,5 +21,5 @@ class TorchRecurrentAgent(RecurrentAgent):
         transed_state["hidden_state"] = torch.stack(
             transed_state["hidden_state"]
         )
-        print(transed_state["hidden_state"].shape)
+
         return transed_state
