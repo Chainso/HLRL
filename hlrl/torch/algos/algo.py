@@ -33,13 +33,17 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         model_name = "/model-" + str(self.training_steps) + ".pt"
         torch.save(self.save_dict(), save_path + model_name)
 
-    def load(self, load_path):
-        state = torch.load(load_path)
+    def load_dict(self, load_path):
+        return torch.load(load_path)
 
-        self.load_state_dict(state["state_dict"])
-        self.env_episodes = state["env_episodes"]
-        self.training_steps = state["training_steps"]
-        self.env_steps = state["env_steps"]
+    def load(self, load_path, load_dict=None):
+        if load_dict is None:
+            load_dict = self.load_dict(load_path)
+
+        self.load_state_dict(load_dict["state_dict"])
+        self.env_episodes = load_dict["env_episodes"]
+        self.training_steps = load_dict["training_steps"]
+        self.env_steps = load_dict["env_steps"]
 
 class TorchOffPolicyAlgo(TorchRLAlgo):
     """

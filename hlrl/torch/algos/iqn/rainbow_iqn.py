@@ -250,7 +250,6 @@ class RainbowIQN(TorchOffPolicyAlgo):
         # Update the target
         if (self.training_steps % self.target_update_interval == 0):
             polyak_average(self.q_func, self.target_q_func, self.polyak)
-            self.target_q_func.load_state_dict(self.q_func.state_dict())
 
         self.training_steps += 1
         return new_q_val, new_q_target

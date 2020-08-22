@@ -71,9 +71,17 @@ class RLAlgo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, load_path):
+    def load_dict(self, load_path):
         """
-        Loads the algorithm from a given save path.
+        Reads and returns the load dictionary from the load path.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def load(self, load_path, load_dict=None):
+        """
+        Loads the algorithm from a given save path. Will use the given state
+        dictionary if given, or load from a file otherwise.
         """
         raise NotImplementedError
 

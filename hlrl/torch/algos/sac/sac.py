@@ -201,17 +201,15 @@ class SAC(TorchOffPolicyAlgo):
 
     def save_dict(self):
         # Save all the dicts
-        state_dict = super().state_dict()
+        state_dict = super().save_dict()
         state_dict["temperature"] = self._temperature
 
-        return state
+        return state_dict
 
-    def load(self, load_path):
-        state = torch.load(load_path)
+    def load(self, load_path, load_dict=None):
+        if load_dict is None:
+            load_dict = self.load_dict(load_path)
 
         # Load all the dicts
-        self.load_state_dict(state["state_dict"])
-        self.env_episodes = state["env_episodes"]
-        self.training_steps = state["training_steps"]
-        self.env_steps = state["env_steps"]
-        self._temperature = state["temperature"]
+        super().load(load_path, load_dict)
+        self._temperature = load_dict["temperature"]

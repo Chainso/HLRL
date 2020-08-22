@@ -64,13 +64,23 @@ class RND(MethodWrapper):
         """
         return self._get_loss(states).detach()
 
+    # TODO: Test this behaviour
+    # RND EXTRAS SHOULD BE IN THE STATE DICT OF THE ORIGINAL
+    """
     def save_dict(self):
-        """
+
         Adds the rnd network to the save dict of the algorithm.
-        """
+
         state_dict = self.om.save_dict()
         state_dict["rnd"] = self.rnd.state_dict()
         state_dict["rnd_target"] = self.rnd_target.state_dict()
         state_dict["rnd_optim"] = self.rnd_optim.state_dict()
 
         return state_dict
+
+    def load(self, load_path, load_dict=None):
+        if load_dict is None:
+            load_dict = self.load_dict(load_path)
+
+        super().load(load_path, load_dict)
+    """
