@@ -4,7 +4,7 @@ import torch.nn as nn
 from copy import deepcopy
 
 from hlrl.torch.algos import TorchOffPolicyAlgo
-from hlrl.torch.utils import polyak_average
+from hlrl.torch.common import polyak_average
 
 class SAC(TorchOffPolicyAlgo):
     """

@@ -1,4 +1,4 @@
-from torch.utils.tensorboard import SummaryWriter
+from torch.common.tensorboard import SummaryWriter
 
 class Logger(dict):
     """

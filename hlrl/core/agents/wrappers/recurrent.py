@@ -1,6 +1,6 @@
 import torch
 
-from hlrl.core.utils import MethodWrapper
+from hlrl.core.common import MethodWrapper
 
 
 class RecurrentAgent(MethodWrapper):

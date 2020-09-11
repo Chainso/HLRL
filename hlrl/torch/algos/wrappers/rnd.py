@@ -2,7 +2,7 @@ import torch.nn as nn
 
 from copy import deepcopy
 
-from hlrl.core.utils import MethodWrapper
+from hlrl.core.common import MethodWrapper
 
 class RND(MethodWrapper):
     """
