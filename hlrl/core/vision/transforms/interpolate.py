@@ -11,7 +11,7 @@ class Interpolate(Transform):
     def __init__(self,
         size: Optional[Union[int, Tuple[int], Tuple[int, int],
             Tuple[int, int, int]]] = None,
-        scale_factor: Optional[float, Tuple[float]] = None,
+        scale_factor: Optional[Union[float, Tuple[float]]] = None,
         mode: str = 'nearest', align_corners: Optional[bool] = None,
         recompute_scale_factor: Optional[bool] = None):
         """
@@ -21,15 +21,15 @@ class Interpolate(Transform):
         Args:
             size (Optional[Union[int, Tuple[int], Tuple[int, int],
                 Tuple[int, int, int]]]): The size of the output.
-            scale_factor (float or Tuple[float]): Multiplier for spatial size.
-                Has to match input size if it is a tuple.
+            scale_factor (Optional[Union[float, Tuple[float]]]): Multiplier for
+                spatial size. Has to match input size if it is a tuple.
             mode (str): Algorithm used for upsampling.
             align_pixels (Optional[bool]): If true, aligns tensors by the center
                 of the corner pixels, perserving the values of the corners.
             recompute_scale_factor (Optional[bool]): Will recalculate the scale
                 factor based on the input and output sizes if true.
         """
-        super().__init__(self)
+        super().__init__()
 
         self.size = size
         self.scale_factor = scale_factor

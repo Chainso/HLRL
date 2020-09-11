@@ -50,6 +50,7 @@ class FrameHandler():
             stack_dimension (str): The dimension to stack the frames in.
         """
         frames = self.d3dshot.get_frame_stack(frame_indices, stack_dimension)
+
         for transform in self.transforms:
             frames = transform(frames)
 

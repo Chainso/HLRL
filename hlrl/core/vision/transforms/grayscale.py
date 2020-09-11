@@ -13,8 +13,8 @@ class Grayscale(Transform):
         """
         Calculates grayscale using the ITU-R BT.709 standard.
         """
-        super().__init__(self)
+        super().__init__()
         self.weights = torch.FloatTensor([0.2125, 0.7154, 0.0721])
 
     def __call__(self, tensor: torch.Tensor) -> torch.Tensor:
-        return torch.matmul(tensor, self.weights)
+        return torch.matmul(tensor, self.weights.to(tensor.device)).unsqueeze(1)
