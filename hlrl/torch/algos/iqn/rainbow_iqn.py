@@ -120,7 +120,6 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Get the mean to find the q values
         q_val = torch.mean(quantile_values, dim=0)
-
         action = self.action(q_val)
 
         if greedy:
@@ -215,8 +214,8 @@ class RainbowIQN(TorchOffPolicyAlgo):
         # sum_{i = 1}^{N} sum_{j = 1}^{N'} abs(quantiles - (bellman_error < 0))
         #                                  * (huber_loss / huber_threshold)
         qr_loss = (
-            torch.abs(quantiles - (bellman_error < 0).float().detach()) * huber_loss
-            / self.huber_threshold
+            torch.abs(quantiles - (bellman_error < 0).float().detach())
+            * huber_loss / self.huber_threshold
         )
 
         # Sum over embedding dimension
@@ -252,6 +251,11 @@ class RainbowIQN(TorchOffPolicyAlgo):
             polyak_average(self.q_func, self.target_q_func, self.polyak)
 
         self.training_steps += 1
+
+        # Log the loss
+        if (self.logger is not None):
+            self.logger["Train/QR Loss"] = (qr_loss.item(), self.training_steps)
+
         return new_q_val, new_q_target
 
     def _calculate_q_target(self, rewards, next_states, terminal_mask):

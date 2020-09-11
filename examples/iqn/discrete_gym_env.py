@@ -52,7 +52,7 @@ if(__name__ == "__main__"):
 
     # Logging
     parser.add_argument(
-        "-l, --logs_path ", dest="logs_path", type=str,
+        "-l, --logs_path ", dest="logs_path", type=str, default=None,
         help="log training data to tensorboard using the path"
     )
 
@@ -157,7 +157,7 @@ if(__name__ == "__main__"):
     # Experience Replay args
     parser.add_argument(
 		"--er_capacity", type=float, default=50000,
-		help="the alpha value for PER"
+		help="the maximum amount of episodes in the replay buffer"
 	)
     parser.add_argument(
 		"--er_alpha", type=float, default=0.6,
@@ -165,11 +165,11 @@ if(__name__ == "__main__"):
 	)
     parser.add_argument(
 		"--er_beta", type=float, default=0.4,
-		help="the alpha value for PER"
+		help="the beta value for PER"
 	)
     parser.add_argument(
 		"--er_beta_increment", type=float, default=1e-3,
-		help="the alpha value for PER"
+		help="the increment of the beta value on each sample for PER"
 	)
     parser.add_argument(
 		"--er_epsilon", type=float, default=1e-2,
@@ -206,12 +206,11 @@ if(__name__ == "__main__"):
     b_num_hidden = 1 if args["num_hidden"] > 0 else 0
 
     qfunc = LinearPolicy(
-        args["hidden_size"], env.action_space[0], args["hidden_size"],
-        args["num_hidden"], activation_fn
+        args["hidden_size"], env.action_space[0], args["hidden_size"], 1,
+        activation_fn
     )
 
     if args["recurrent"]:
-
         autoencoder = LSTMPolicy(
             env.state_space[0], args["hidden_size"], 1, args["hidden_size"],
             b_num_hidden, args["hidden_size"], 1, args["hidden_size"],
@@ -288,5 +287,7 @@ if(__name__ == "__main__"):
 
         # Start the worker for the model
         worker = Worker(algo, experience_replay, experience_queue)
-        worker.train(args["batch_size"], args["start_size"], args["save_path"],
-                     args["save_interval"])
+        worker.train(
+            agent_procs, args["batch_size"], args["start_size"],
+            args["save_path"], args["save_interval"]
+        )

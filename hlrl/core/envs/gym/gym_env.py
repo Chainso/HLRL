@@ -1,3 +1,5 @@
+from gym.spaces import Discrete
+
 from hlrl.core.envs.env import Env
 
 class GymEnv(Env):
@@ -17,8 +19,12 @@ class GymEnv(Env):
 
         # Easier to just sample an action than deal with the different action
         # types of gym
-        self._action_space = self.sample_action().shape
-
+        self._action_space = self.env.action_space
+        self._action_space = (
+            (self.env.action_space.n,)
+            if isinstance(self.env.action_space, Discrete)
+            else self.env.action_space.shape
+        )
 
     def step(self, action):
         """
