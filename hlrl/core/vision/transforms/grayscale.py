@@ -3,7 +3,7 @@ import torch
 from torch.nn.functional import interpolate
 from typing import Optional, Union, Tuple
 
-from speedrunnersai.speedrunners.vision.transforms import Transform
+from hlrl.core.vision.transforms import Transform
 
 class Grayscale(Transform):
     """
