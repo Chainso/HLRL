@@ -6,7 +6,7 @@ from hlrl.core.vision.transforms import Transform
 
 class Interpolate(Transform):
     """
-    A generic transform to be used with the frame handler.
+    Uses torch's interpolate function to resize images.
     """
     def __init__(self,
         size: Optional[Union[int, Tuple[int], Tuple[int, int],
