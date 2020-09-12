@@ -23,5 +23,5 @@ class StackDimension(Transform):
         return tensor.view(
             1, *tensor.shape[1:self.dimension],
             batch_size * tensor.shape[self.dimension],
-            tensor.shape[self.dimension + 1:]
+            *tensor.shape[self.dimension + 1:]
         )
