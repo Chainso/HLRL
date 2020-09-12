@@ -18,10 +18,10 @@ class StackDimension(Transform):
         self.dimension = dimension
 
     def __call__(self, tensor: Tensor) -> Tensor:
-        batch_size = frame.shape[0]
+        batch_size = tensor.shape[0]
 
-        return frame.view(
-            1, *frame.shape[1:self.dimension],
-            batch_size * frame.shape[self.dimension],
-            frame.shape[self.dimension + 1:]
+        return tensor.view(
+            1, *tensor.shape[1:self.dimension],
+            batch_size * tensor.shape[self.dimension],
+            tensor.shape[self.dimension + 1:]
         )
