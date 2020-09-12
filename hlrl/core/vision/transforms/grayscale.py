@@ -1,8 +1,5 @@
 import torch
 
-from torch.nn.functional import interpolate
-from typing import Optional, Union, Tuple
-
 from hlrl.core.vision.transforms import Transform
 
 class Grayscale(Transform):
