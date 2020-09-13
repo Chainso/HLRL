@@ -39,7 +39,7 @@ class RLAgent():
         Creates the dictionary of algorithm inputs from the env state
         """
         return OrderedDict({
-            "state": state[0],
+            "state": state[0]
         })
 
     def transform_next_state(self, next_state):
