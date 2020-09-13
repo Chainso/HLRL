@@ -19,7 +19,7 @@ class OffPolicyAgent(TorchRLAgent):
 
         return reward
 
-    def _get_buffer_experience(self, experiences, decay):
+    def get_buffer_experience(self, experiences, decay):
         """
         Perpares the experience to add to the buffer.
         """
@@ -49,7 +49,7 @@ class OffPolicyAgent(TorchRLAgent):
         """
         Adds the experience to the replay buffer.
         """
-        experience = self._get_buffer_experience(experiences, decay)
+        experience = self.get_buffer_experience(experiences, decay)
         experience_queue.put(experience)
 
     def train(self, num_episodes, experience_queue, decay, n_steps):

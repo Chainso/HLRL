@@ -54,7 +54,7 @@ class ExperienceSequenceAgent(MethodWrapper):
         """
         Adds the experience to the replay buffer.
         """
-        experience = self._get_buffer_experience(experiences, decay)
+        experience = self.get_buffer_experience(experiences, decay)
         
         for key in experience:
             if key not in self.ready_experiences:
