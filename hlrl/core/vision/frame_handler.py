@@ -29,6 +29,12 @@ class FrameHandler():
             and not self.d3dshot.get_latest_frame() is None
         )
 
+    def is_capturing(self) -> bool:
+        """
+        Returns true if currently capturing.
+        """
+        return self.d3dshot.is_capturing
+
     def get_new_frame(self) -> Any:
         """
         Retrieves a fresh captured frame using d3dshot.
