@@ -15,12 +15,12 @@ class GymEnv(Env):
         """
         Env.__init__(self)
         self.env = env
-        self._state_space = self.env.observation_space.shape
+        self.state_space = self.env.observation_space.shape
 
         # Easier to just sample an action than deal with the different action
         # types of gym
-        self._action_space = self.env.action_space
-        self._action_space = (
+        self.action_space = self.env.action_space
+        self.action_space = (
             (self.env.action_space.n,)
             if isinstance(self.env.action_space, Discrete)
             else self.env.action_space.shape
@@ -33,10 +33,10 @@ class GymEnv(Env):
         Args:
             action (object): The action to take in the environment.
         """
-        (self._state, self._reward, self._terminal,
-         self._info) = self.env.step(action)
+        (self.state, self.reward, self.terminal,
+            self.info) = self.env.step(action)
 
-        return self._state, self._reward, self._terminal, self._info
+        return self.state, self.reward, self.terminal, self.info
 
     def sample_action(self):
         return self.env.action_space.sample()
@@ -51,8 +51,8 @@ class GymEnv(Env):
         """
         Resets the environment.
         """
-        self._state = self.env.reset()
-        self._reward = 0
-        self._terminal = False
+        self.state = self.env.reset()
+        self.reward = 0
+        self.terminal = False
 
-        return self._state
+        return self.state
