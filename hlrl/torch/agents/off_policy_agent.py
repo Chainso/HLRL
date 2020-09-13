@@ -1,5 +1,4 @@
 from collections import deque
-from hlrl.core.logger import TensorboardLogger
 
 from .agent import TorchRLAgent
 
