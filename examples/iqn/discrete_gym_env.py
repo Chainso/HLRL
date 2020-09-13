@@ -206,7 +206,7 @@ if(__name__ == "__main__"):
 
         algo = RainbowIQN(
             args["hidden_size"], autoencoder, qfunc, args["discount"],
-            args["polyak"], args["embedding_dim"], args["n_quantiles"],
+            args["polyak"], args["n_quantiles"], args["embedding_dim"],
             args["huber_threshold"], args["target_update_interval"], optim,
             optim, logger
         )
