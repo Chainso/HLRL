@@ -36,7 +36,7 @@ if(__name__ == "__main__"):
 
     from hlrl.core.logger import TensorboardLogger
     from hlrl.torch.algos import SAC, SACRecurrent
-    from hlrl.core.envs import GymEnv
+    from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool
     from hlrl.torch.agents import (
         OffPolicyAgent, SequenceInputAgent, ExperienceSequenceAgent,
