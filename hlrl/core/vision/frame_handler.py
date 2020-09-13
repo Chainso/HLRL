@@ -6,7 +6,7 @@ from d3dshot import D3DShot
 from typing import Any, Union, List, Tuple, Optional, Callable
 from torch import Tensor
 
-class FrameHandler():
+class WindowsFrameHandler():
     """
     Handles a d3dshot instance to return fresh frames.
     """
