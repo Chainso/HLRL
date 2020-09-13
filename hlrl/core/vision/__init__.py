@@ -1,1 +1,1 @@
-from .frame_handler import FrameHandler
+from .frame_handler import WindowsFrameHandler
