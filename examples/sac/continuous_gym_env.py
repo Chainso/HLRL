@@ -1,33 +1,8 @@
-import torch
-import torch.nn as nn
 
-from hlrl.torch.policies import (
-    LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy, LSTMSAPolicy,
-    LSTMGaussianPolicy,
-)
-
-def train(args, algo, experience_replay, experience_queue, agent_procs):
-    done_count = 0
-    while any(proc.is_alive() for proc in agent_procs):
-        if done_count == len(agent_procs):
-            # Wait on the train processes
-            for proc in agent_procs:
-                proc.join()
-        else:
-            experience = experience_queue.get()
-
-            if experience is None:
-                done_count += 1
-            else:
-                experience_replay.add(experience)
-                algo.train_from_buffer(experience_replay, args["batch_size"],
-                                    args["start_size"], args["save_path"],
-                                    args["save_interval"])
-
-def play(args, agent):
-    agent.play(args["episodes"])
 
 if(__name__ == "__main__"):
+    import torch
+    import torch.nn as nn
     import torch.multiprocessing as mp
     import gym
     
@@ -35,15 +10,20 @@ if(__name__ == "__main__"):
     from argparse import ArgumentParser
 
     from hlrl.core.logger import TensorboardLogger
-    from hlrl.torch.algos import SAC, SACRecurrent
+    from hlrl.core.trainers import Worker
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool
+    from hlrl.torch.algos import SAC, SACRecurrent
     from hlrl.torch.agents import (
         OffPolicyAgent, SequenceInputAgent, ExperienceSequenceAgent,
         TorchRecurrentAgent
     )
+    from hlrl.torch.policies import (
+        LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy, LSTMSAPolicy,
+        LSTMGaussianPolicy
+    )
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
-    from hlrl.core.trainers import Worker
+
 
     mp.set_start_method("spawn")
     mp.set_sharing_strategy("file_system")
@@ -198,7 +178,7 @@ if(__name__ == "__main__"):
 
     if args["play"]:
         algo.eval()
-        play(args, agent)
+        agent.play(args["episodes"])
     else:
         algo.train()
         algo.share_memory()
