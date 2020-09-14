@@ -25,7 +25,7 @@ class TorchR2D2(TorchPER):
 
         self.max_factor = max_factor
 
-    def _get_error(self, q_val, q_target):
+    def get_error(self, q_val, q_target):
         """
         Computes the error (absolute difference) between the Q-value and the
         target Q-value

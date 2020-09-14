@@ -42,9 +42,12 @@ class Conv2dPolicy(nn.Module):
             layers.append(block)
  
 
-        last_layer = nn.Conv2d(
-            channel_sizes[-2], channel_sizes[-1], kernel_sizes[-1], strides[-1],
-            paddings[-1]
+        last_layer = (
+            nn.Conv2d(
+                channel_sizes[-2], channel_sizes[-1], kernel_sizes[-1],
+                strides[-1], paddings[-1]
+            )
+            if len(kernel_sizes) > 0 else nn.Identity()
         )
     
         self.conv = nn.Sequential(*layers, last_layer)

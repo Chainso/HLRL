@@ -3,26 +3,23 @@ import torch
 from collections import deque
 
 from hlrl.core.common import MethodWrapper
+from .agent import TorchRLAgent
 
-
-class SequenceInputAgent(MethodWrapper):
+class SequenceInputAgent(TorchRLAgent):
     """
     An agent that provides sequences of input to the model (of length 1).
     """
-    def __init__(self, agent):
-        super().__init__(agent)
-
     def make_tensor(self, data):
         """
         Creates a float tensor of the data of batch size 1.
         """
-        return self.om.make_tensor([data])
+        return super().make_tensor([data])
 
     def transform_action(self, action):
         """
         Remove the sequence axis for the environment.
         """
-        transed_action = self.om.transform_action(action)
+        transed_action = super().transform_action(action)
         transed_action = transed_action.squeeze(0)
 
         return transed_action
@@ -70,11 +67,10 @@ class ExperienceSequenceAgent(MethodWrapper):
             for key in self.ready_experiences:
                 if not key.endswith("hidden_state") or key == "hidden_state":
                     if key == "hidden_state":
-                        # Only need the first hidden state, transposing num layers
-                        # and batch since num layers acts like a sequence dimension
-                        experiences_to_send[key] = self.ready_experiences[key][0].transpose(
-                            0, 1
-                        ).contiguous()
+                        # Only need the first hidden state
+                        experiences_to_send[key] = (
+                            self.ready_experiences[key][0].permute(2, 0, 1, 3)
+                        )
                     else:
                         # Concatenate to sequence dimension
                         experiences_to_send[key] = torch.cat(
@@ -86,5 +82,7 @@ class ExperienceSequenceAgent(MethodWrapper):
 
             self.num_experiences = self.keep_length
             for key in self.ready_experiences:
-                self.ready_experiences[key] = self.ready_experiences[key][keep_start:]
+                self.ready_experiences[key] = (
+                    self.ready_experiences[key][keep_start:]
+                )
 

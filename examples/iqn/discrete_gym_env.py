@@ -1,17 +1,21 @@
 if(__name__ == "__main__"):
+    import torch
     import torch.nn as nn
     import torch.multiprocessing as mp
     import gym
     
     from argparse import ArgumentParser
+    from functools import partial
 
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.trainers import Worker
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import AgentPool, RecurrentAgent
+    from hlrl.core.agents import AgentPool, OffPolicyAgent
     from hlrl.torch.algos import RainbowIQN
-    from hlrl.torch.agents import OffPolicyAgent, SequenceInputAgent, \
-                                  ExperienceSequenceAgent
+    from hlrl.torch.agents import (
+        TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
+        TorchRecurrentAgent
+    )
     from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
@@ -45,8 +49,8 @@ if(__name__ == "__main__"):
         help="the size of each hidden layer"
     )
     parser.add_argument(
-        "--num_hidden", type=int, default=2,
-        help="the number of hidden layers before the output layers"
+        "--num_layers", type=int, default=3,
+        help="the number of layers before the output layers"
     )
 
     # Algo args
@@ -161,106 +165,110 @@ if(__name__ == "__main__"):
         help="if recurrent, factor of max priority to mean priority for R2D2"
     )
 
-    args = vars(parser.parse_args())
+    args = parser.parse_args()
 
     # Initialize the environment, and rescale for Tanh policy
-    gym_env = gym.make(args["env"])
+    gym_env = gym.make(args.env)
     env = GymEnv(gym_env)
 
     # The logger
-    logger = args["logs_path"]
+    logger = args.logs_path
     logger = None if logger is None else TensorboardLogger(logger)
     
-    # Initialize SAC
+    # Initialize IQN
     activation_fn = nn.ReLU
-    optim = lambda params: torch.optim.Adam(params, lr=args["lr"])
+    optim = partial(torch.optim.Adam, lr=args.lr)
 
     # Setup networks
-    b_num_hidden = 1 if args["num_hidden"] > 0 else 0
+    if args.num_layers > 1:
+        qfunc_num_layers = 1
+        autoencoder_out_n = args.hidden_size
+    else:
+        qfunc_num_layers = 0
+        autoencoder_out_n = env.action_space[0]
 
     qfunc = LinearPolicy(
-        args["hidden_size"], env.action_space[0], args["hidden_size"], 1,
-        activation_fn
+        args.hidden_size, env.action_space[0], args.hidden_size,
+        qfunc_num_layers, activation_fn
     )
 
-    if args["recurrent"]:
+    if args.recurrent:
+        num_lin_before = 1 if args.num_layers > 2 else 0
+
         autoencoder = LSTMPolicy(
-            env.state_space[0], args["hidden_size"], 1, args["hidden_size"],
-            b_num_hidden, args["hidden_size"], 1, args["hidden_size"],
-            args["num_hidden"] - 1, activation_fn
+            env.state_space[0], autoencoder_out_n, args.hidden_size,
+            num_lin_before, args.hidden_size, max(args.num_layers - 2, 1), 0, 0,
+            activation_fn
         )
-        """ Commented out until rainbow iqn recurrent implemented
-        algo = SACRecurrent(env.action_space, qfunc, policy, args["discount"],
-                            args["polyak"], args["target_update_interval"],
-                            optim, optim, optim, args["twin"],
-                            args["burn_in_length"],
-                            logger).to(torch.device(args["device"]))"""
+        # TODO CREATE RAINBOW IQN INSTANCE HERE ONCE IMPLEMENTED
     else:
-        autoencoder = nn.Sequential(
-            LinearPolicy(
-                env.state_space[0], args["hidden_size"], args["hidden_size"],
-                args["num_hidden"] - 1, activation_fn
-            ),
-            nn.ReLU()
+        autoencoder = LinearPolicy(
+            env.state_space[0], autoencoder_out_n, args.hidden_size,
+            min(args.num_layers - 1, 1), activation_fn
         )
 
+        if args.num_layers > 1:
+            autoencoder = nn.Sequential(autoencoder, activation_fn())
+
         algo = RainbowIQN(
-            args["hidden_size"], autoencoder, qfunc, args["discount"],
-            args["polyak"], args["n_quantiles"], args["embedding_dim"],
-            args["huber_threshold"], args["target_update_interval"], optim,
+            args.hidden_size, autoencoder, qfunc, args.discount,
+            args.polyak, args.n_quantiles, args.embedding_dim,
+            args.huber_threshold, args.target_update_interval, optim,
             optim, logger
         )
 
-    algo = algo.to(torch.device(args["device"]))
+    algo = algo.to(torch.device(args.device))
 
-    if args["load_path"] is not None:
-        algo.load(args["load_path"])
+    if args.load_path is not None:
+        algo.load(args.load_path)
 
     # Create agent class
-    agent = OffPolicyAgent(
-        env, algo, args["render"], logger=logger, device=args["device"]
-    )
+    agent = OffPolicyAgent(env, algo, args.render, logger=logger)
 
-    if args["recurrent"]:
-        agent = SequenceInputAgent(agent)
-        agent = RecurrentAgent(agent)
-
-    if args["play"]:
-        algo.eval()
-        agent.play(args["episodes"])
+    if args.recurrent:
+        agent = SequenceInputAgent(agent, device=args.device)
+        agent = TorchRecurrentAgent(agent)
     else:
+        agent = TorchRLAgent(agent, device=args.device)
+
+    if args.play:
+        algo.eval()
+        agent.play(args.episodes)
+    else:
+        algo.create_optimizers()
+
         algo.train()
         algo.share_memory()
 
         experience_queue = mp.Queue()
 
         # Experience replay
-        if args["recurrent"]:
+        if args.recurrent:
             experience_replay = TorchR2D2(
-                args["er_capacity"], args["er_alpha"], args["er_beta"],
-                args["er_beta_increment"], args["er_epsilon"],
-                args["max_factor"]
+                args.er_capacity, args.er_alpha, args.er_beta,
+                args.er_beta_increment, args.er_epsilon,
+                args.max_factor
             )
             agent = ExperienceSequenceAgent(
-                agent, args["burn_in_length"] + args["sequence_length"],
-                args["burn_in_length"]
+                agent, args.burn_in_length + args.sequence_length,
+                args.burn_in_length
             )
         else:
             experience_replay = TorchPER(
-                args["er_capacity"], args["er_alpha"], args["er_beta"],
-                args["er_beta_increment"], args["er_epsilon"]
+                args.er_capacity, args.er_alpha, args.er_beta,
+                args.er_beta_increment, args.er_epsilon
             )
 
         agents = [agent]
 
         agent_pool = AgentPool(agents)
         agent_procs = agent_pool.train(
-            args["episodes"], experience_queue, args["decay"], args["n_steps"]
+            args.episodes, experience_queue, args.decay, args.n_steps
         )
 
         # Start the worker for the model
         worker = Worker(algo, experience_replay, experience_queue)
         worker.train(
-            agent_procs, args["batch_size"], args["start_size"],
-            args["save_path"], args["save_interval"]
+            agent_procs, args.batch_size, args.start_size,
+            args.save_path, args.save_interval
         )

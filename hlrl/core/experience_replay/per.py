@@ -45,7 +45,7 @@ class PER(ExperienceReplay):
         """
         return (error + self.epsilon) ** self.alpha
 
-    def _get_error(self, q_val, q_target):
+    def get_error(self, q_val, q_target):
         """
         Computes the error (absolute difference) between the Q-value plus the
         reward and the discounted Q-value of the next state
@@ -63,7 +63,7 @@ class PER(ExperienceReplay):
         q_val = experience.pop("q_val")
         target_q_val = experience.pop("target_q_val")
 
-        error = self._get_error(q_val, target_q_val).item()
+        error = self.get_error(q_val, target_q_val).item()
 
         current_index = self.priorities.next_index()
     
@@ -127,7 +127,7 @@ class PER(ExperienceReplay):
 
             discounted_next_qs ([float]): The target Q-values
         """
-        errors = self._get_error(q_vals, q_targets)
+        errors = self.get_error(q_vals, q_targets)
 
         for index, error in zip(indices, errors):
             index = index

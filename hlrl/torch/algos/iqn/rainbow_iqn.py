@@ -4,6 +4,7 @@ import math
 
 from torch.distributions import Categorical
 from copy import deepcopy
+from itertools import chain
 
 from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.common import polyak_average
@@ -47,21 +48,29 @@ class RainbowIQN(TorchOffPolicyAlgo):
         self.embedding_dim = embedding_dim
         self.huber_threshold = huber_threshold
         self.target_update_interval = target_update_interval
+        self.q_optim_func = q_optim
+        self.enc_optim_func = enc_optim
 
         # Networks
         self.autoencoder = autoencoder
-        self.enc_optim = enc_optim(self.autoencoder.parameters())
 
         self.q_func = q_func
-        self.q_optim = q_optim(self.q_func.parameters())
         self.target_q_func = deepcopy(q_func)
 
         # Quantile layer
         self.quantiles = nn.Linear(self.embedding_dim, enc_dim)
         nn.init.uniform_(self.quantiles.weight)
+
         self.relu = nn.ReLU()
 
         self.action = nn.Softmax(-1)
+
+    def create_optimizers(self):
+        self.q_optim = self.q_optim_func(self.q_func.parameters())
+
+        self.enc_optim = self.enc_optim_func(
+            chain(self.autoencoder.parameters(), self.quantiles.parameters())
+        )
 
     def _calculate_quantile_values(self, observation, q_func):
         """
@@ -78,18 +87,20 @@ class RainbowIQN(TorchOffPolicyAlgo):
         latent_tiled = latent.repeat(self.n_quantiles, 1)
 
         # Sample a random number and tile for the embedding dimension
-        quantiles = torch.rand(self.n_quantiles * observation.shape[0], 1)
-        quantiles = quantiles.to(observation.device)
+        quantiles = torch.rand(
+            self.n_quantiles * observation.shape[0], 1,
+            device=observation.device
+        )
         quantiles_tiled = quantiles.repeat(1, self.embedding_dim)
 
         # RELU(sum_{i = 1}^{n} (cos(pi * i * sample) * w_ij + b_j))
         # No bias in this calculation however
         # Paper also has {i = 0}^{n - 1}, but is inconsistent with loss function
         quantile_values = torch.arange(
-            1, self.embedding_dim + 1
-        ).to(observation.device)
+            1, self.embedding_dim + 1, device=observation.device
+        )
         quantile_values = quantile_values * math.pi * quantiles_tiled
-        quantile_values = self.relu(torch.cos(quantiles))
+        quantile_values = self.relu(self.quantiles(torch.cos(quantile_values)))
 
         # Multiple with input feature dim
         quantile_values = latent_tiled * quantiles
@@ -167,17 +178,14 @@ class RainbowIQN(TorchOffPolicyAlgo):
         # Tile parameters for the quantiles
         actions = actions.repeat(self.n_quantiles, 1)
         rewards = rewards.repeat(self.n_quantiles, 1)
+
         terminal_mask = (1 - terminals).repeat(self.n_quantiles, 1)
 
         with torch.no_grad():
             target_quantile_values = self._calculate_q_target(
                 rewards, next_states, terminal_mask
             )
-
-            # Switch to batch major
-            target_quantile_values = target_quantile_values.transpose(
-                0, 1
-            ).contiguous()
+            target_quantile_values = target_quantile_values.transpose(0, 1)
 
         quantile_values, quantiles = self._calculate_quantile_values(
             states, self.q_func
@@ -186,7 +194,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         quantile_values = quantile_values.view(
             self.n_quantiles, states.shape[0], 1
         )
-        quantile_values = quantile_values.transpose(0, 1).contiguous()
+        quantile_values = quantile_values.transpose(0, 1)
 
         bellman_error = target_quantile_values - quantile_values
         abs_bellman_error = torch.abs(bellman_error)
@@ -208,7 +216,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         huber_loss = huber_loss1 + huber_loss2
 
         quantiles = quantiles.view(self.n_quantiles, states.shape[0], 1)
-        quantiles = quantiles.transpose(0, 1).contiguous()
+        quantiles = quantiles.transpose(0, 1)
 
         # Quantile regression loss
         # sum_{i = 1}^{N} sum_{j = 1}^{N'} abs(quantiles - (bellman_error < 0))
@@ -280,12 +288,13 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Use the greedy action to get target quantiles
         next_quantile_values = next_quantile_values.gather(1, next_actions)
+
         target_quantile_values = (
             rewards + terminal_mask * self.discount * next_quantile_values
         )
-
+        
         target_quantile_values = target_quantile_values.view(
-            self.n_quantiles, next_states.shape[0], -1
+            self.n_quantiles, next_states.shape[0], 1
         )
 
         return target_quantile_values

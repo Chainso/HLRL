@@ -42,32 +42,69 @@ class SAC(TorchOffPolicyAlgo):
         self._discount = discount
         self._polyak = polyak
         self._target_update_interval = target_update_interval
-        self._twin = twin
+        self.twin = twin
+        self.q_optim_func = q_optim
+        self.p_optim_func = p_optim
+        self.temp_optim_func = temp_optim
 
         # The networks
         self.q_func1 = q_func
         self.q_func_targ1 = deepcopy(self.q_func1)
-        self.q_optim1 = q_optim(self.q_func1.parameters())
 
         # Instantiate a second Q-function for twin SAC
-        if(self._twin):
+        if(self.twin):
             def init_weights(m):
                 if hasattr(m, "weight"):
                     nn.init.xavier_uniform_(m.weight.data)
 
             self.q_func2 = deepcopy(q_func).apply(init_weights)
             self.q_func_targ2 = deepcopy(self.q_func2)
-            self.q_optim2 = q_optim(self.q_func2.parameters())
 
         self.policy = policy
-        self.p_optim = p_optim(self.policy.parameters())
 
         # Entropy tuning, starting at 1 due to auto-tuning
         self._temperature = 1
         self.target_entropy = -torch.prod(torch.Tensor(action_space)).item()
         self.log_temp = nn.Parameter(torch.zeros(1), requires_grad=True)
 
-        self.temp_optim = temp_optim([self.log_temp])
+    def create_optimizers(self):
+        self.q_optim1 = self.q_optim_func(self.q_func1.parameters())
+
+        if self.twin:
+            self.q_optim2 = self.q_optim_func(self.q_func2.parameters())
+
+        self.p_optim = self.p_optim_func(self.policy.parameters())
+
+        self.temp_optim = self.temp_optim_func([self.log_temp])
+
+    def _step_optimizers(self, states):
+        """
+        Assumes the gradients have been computed and updates the parameters of
+        the network with the optimizers.
+        """
+        if self.twin:
+            self.q_optim2.step()
+
+        self.q_optim1.step()
+        self.p_optim.step()
+        self.temp_optim.step()
+
+        self._temperature = torch.exp(self.log_temp).item()
+
+        # Get the new q value to update the experience replay
+        with torch.no_grad():
+            updated_actions, new_log_pis, _ = self.policy(states)
+            new_qs = self.q_func1(states, updated_actions)
+            new_q_targ = new_qs - self._temperature * new_log_pis
+
+        # Update the target
+        if (self.training_steps % self._target_update_interval == 0):
+            polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
+
+            if (self.twin):
+                polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
+
+        return new_qs, new_q_targ
 
     def forward(self, observation):
         """
@@ -80,7 +117,7 @@ class SAC(TorchOffPolicyAlgo):
         Returns:
             The action and Q-value.
         """
-        action, log_prob, mean = self.policy.sample(observation)
+        action, log_prob, mean = self.policy(observation)
         q_val = self.q_func1(observation, action)
 
         return action, q_val
@@ -120,15 +157,15 @@ class SAC(TorchOffPolicyAlgo):
         q_loss_func = nn.MSELoss()
 
         with torch.no_grad():
-            next_actions, next_log_probs, next_mean = self.policy.sample(next_states)
+            next_actions, next_log_probs, _ = self.policy(next_states)
             q_targ_pred1 = self.q_func_targ1(next_states, next_actions)
 
-        pred_actions, pred_log_probs, pred_means = self.policy.sample(states)
+        pred_actions, pred_log_probs, _ = self.policy(states)
 
         p_q_pred1 = self.q_func1(states, pred_actions)
 
         # Only get the loss for q_func2 if using the twin Q-function algorithm
-        if(self._twin):
+        if(self.twin):
             with torch.no_grad():
                 q_targ_pred2 = self.q_func_targ2(next_states, next_actions)
 
@@ -144,7 +181,6 @@ class SAC(TorchOffPolicyAlgo):
 
             self.q_optim2.zero_grad()
             q_loss2.backward()
-            self.q_optim2.step()
         else:
             q_targ = q_targ_pred1 - self._temperature * next_log_probs
             q_next = rewards + (1 - terminals) * self._discount * q_targ
@@ -155,13 +191,11 @@ class SAC(TorchOffPolicyAlgo):
 
         self.q_optim1.zero_grad()
         q_loss1.backward()
-        self.q_optim1.step()
 
         p_loss = torch.mean(self._temperature * pred_log_probs - p_q_pred)
 
         self.p_optim.zero_grad()
         p_loss.backward()
-        self.p_optim.step()
 
         # Tune temperature
         targ_entropy = pred_log_probs.detach() + self.target_entropy
@@ -169,34 +203,28 @@ class SAC(TorchOffPolicyAlgo):
 
         self.temp_optim.zero_grad()
         temp_loss.backward()
-        self.temp_optim.step()
-        self._temperature = torch.exp(self.log_temp).item()
 
         # Log the losses if a logger was given
         if(self.logger is not None):
-            self.logger["Train/Q1 Loss"] = (q_loss1, self.training_steps)
-            self.logger["Train/Policy Loss"] = (p_loss, self.training_steps)
-            self.logger["Train/Temperature"] = (self._temperature,
-                                                self.training_steps)
+            self.logger["Train/Q1 Loss"] = (
+                q_loss1.detach().item(), self.training_steps
+            )
+            self.logger["Train/Policy Loss"] = (
+                p_loss.detach().item(), self.training_steps
+            )
+            self.logger["Train/Temperature"] = (
+                self._temperature, self.training_steps
+            )
 
-            # Only log the Q2
-            if(self._twin):
-                self.logger["Train/Q2 Loss"] = (q_loss2, self.training_steps)
+            # Only log the Q2 if twin
+            if(self.twin):
+                self.logger["Train/Q2 Loss"] = (
+                    q_loss2, self.training_steps
+                )
 
-        # Get the new q value to update the experience replay
-        with torch.no_grad():
-            updated_actions, new_log_pis, mean = self.policy.sample(states)
-            new_qs = self.q_func1(states, updated_actions)
-            new_q_targ = new_qs - self._temperature * new_log_pis
-
-        # Update the target
-        if (self.training_steps % self._target_update_interval == 0):
-            polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
-
-            if (self._twin):
-                polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
-
+        new_qs, new_q_targ = self._step_optimizers(states)
         self.training_steps += 1
+
         return new_qs, new_q_targ
 
     def save_dict(self):

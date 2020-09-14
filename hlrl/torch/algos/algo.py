@@ -18,6 +18,14 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         RLAlgo.__init__(self, logger)
         nn.Module.__init__(self)
 
+    def create_optimizers(self):
+        """
+        Creates the optimizers for the algorithm, separate from the
+        intialization so that the model can be moved to a different device first
+        if needed.
+        """
+        pass
+
     def save_dict(self):
         # Save all the dicts
         state = {

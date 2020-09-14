@@ -39,7 +39,7 @@ class RLAgent():
         Creates the dictionary of algorithm inputs from the env state
         """
         return OrderedDict({
-            "state": state[0]
+            "state": state
         })
 
     def transform_next_state(self, next_state):
@@ -87,6 +87,15 @@ class RLAgent():
         """
         return action
 
+    def reward_to_float(self, reward):
+        """
+        Converts the reward to a single float value.
+
+        Args:
+            reward (Any): The reward to turn into a float.
+        """
+        return reward
+
     def reset(self):
         """
         Resets the agent.
@@ -124,7 +133,7 @@ class RLAgent():
         next_state = next_algo_inp.pop("next_state")
         reward = self.transform_reward(reward)
         terminal = self.transform_terminal(terminal)
-
+    
         experience = OrderedDict({
             "state": state,
             **algo_inp,

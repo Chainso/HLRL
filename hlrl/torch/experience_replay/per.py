@@ -8,12 +8,38 @@ class TorchPER(PER):
     A Prioritized Experience Replay implementation using torch tensors
     https://arxiv.org/abs/1511.05952
     """
-    def _get_error(self, q_val, q_target):
+    def get_error(self, q_val, q_target):
         """
         Computes the error (absolute difference) between the Q-value and the
         target Q-value
         """
         return torch.abs(q_val - q_target)
+
+    def add(self, experience):
+        """
+        Adds the given experience to the replay buffer with the priority being
+        the given error added to the epsilon value.
+
+        Args:
+            experience (tuple) : The experience dictionary to add to the buffer
+        """
+        q_val = experience.pop("q_val")
+        target_q_val = experience.pop("target_q_val")
+
+        error = self.get_error(q_val, target_q_val).item()
+
+        current_index = self.priorities.next_index()
+    
+        # Store individually for faster "zipping"
+        for key in experience:
+            if key not in self.experiences:
+                self.experiences[key] = np.zeros(self.capacity, dtype=object)
+
+            self.experiences[key][current_index] = experience[key]
+
+        priority = self._get_priority(error)
+
+        self.priorities.add(priority)
 
     def sample(self, size):
         """
@@ -24,14 +50,14 @@ class TorchPER(PER):
         assert(size > 0)
 
         priorities = self.priorities.get_leaves() / self.priorities.sum()
-
-        # A hack right now
         priorities /= priorities.sum()
 
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        batch = {key: torch.cat(self.experiences[key][indices].tolist())
-            for key in self.experiences}
+        batch = {
+            key: torch.cat(self.experiences[key][indices].tolist())
+            for key in self.experiences
+        }
 
         probabilities = priorities[indices]
 
@@ -58,7 +84,7 @@ class TorchPER(PER):
 
             discounted_next_qs ([float]): The target Q-values
         """
-        errors = self._get_error(q_vals, q_targets)
+        errors = self.get_error(q_vals, q_targets)
 
         for index, error in zip(indices, errors):
             index = index.item()

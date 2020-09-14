@@ -1,9 +1,8 @@
 from collections import deque
 
-from .agent import TorchRLAgent
+from hlrl.core.agents import RLAgent
 
-
-class OffPolicyAgent(TorchRLAgent):
+class OffPolicyAgent(RLAgent):
     """
     An agent that collects (state, action, reward, next state) tuple
     observations
@@ -73,7 +72,7 @@ class OffPolicyAgent(TorchRLAgent):
             while(not self.env.terminal):
                 experience = self.step(True)
 
-                ep_reward += experience["reward"].item()
+                ep_reward += self.reward_to_float(experience["reward"])
                 
                 experiences.append(experience)
 
