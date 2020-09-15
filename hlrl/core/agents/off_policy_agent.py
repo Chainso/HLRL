@@ -44,17 +44,41 @@ class OffPolicyAgent(RLAgent):
 
         return transed_algo_step
 
-    def add_to_buffer(self, experience_queue, experiences, decay):
+    def add_to_buffer(self, experiences, decay, experience_queue):
         """
         Adds the experience to the replay buffer.
         """
         experience = self.get_buffer_experience(experiences, decay)
         experience_queue.put(experience)
 
-    def train(self, num_episodes, experience_queue, decay, n_steps):
+    def train_algo(self, experiences, decay, experience_replay, algo,
+        *algo_args, **algo_kwargs):
+        """
+        Puts an experience in the buffer and trains the algorithm with a single
+        batch from the buffer.
+
+        Args:
+            experiences: The experiences to add to the buffer.
+            decay (float): The decay value for n_step decay.
+            experience_replay (ExperienceReplay): The experience play buffer to
+                store experiences in.
+            algo (RLAlgo): The off policy algirithm to train.
+            *algo_args (Tuple[Any, ...]): Any positional arguments for the
+                algorithm training.
+            **algo_kwargs (Dict[str, ...]): Any keyword arguments for the
+                algorithm training. 
+        """
+        experience = self.get_buffer_experience(experiences, decay)
+        experience_replay.add(experience)
+
+        algo.train_from_buffer(
+            experience_replay, *algo_args, **algo_kwargs
+        )
+
+    def train_process(self, num_episodes, decay, n_steps, experience_queue):
         """
         Trains the algorithm for the number of episodes specified on the
-        environment.
+        environment, to be called in a separate process.
 
         Args:
             num_episodes (int): The number of episodes to train for.
@@ -80,11 +104,11 @@ class OffPolicyAgent(RLAgent):
 
                 if (len(experiences) == n_steps):
                     # Do n-step decay and add to the buffer
-                    self.add_to_buffer(experience_queue, experiences, decay)
+                    self.add_to_buffer(experiences, decay, experience_queue)
 
             # Add the rest to the buffer
             while len(experiences) > 0:
-                self.add_to_buffer(experience_queue, experiences, decay)
+                self.add_to_buffer(experiences, decay, experience_queue)
 
             if(self.logger is not None):
                 self.logger["Train/Episode Reward"] = (ep_reward, episode)
@@ -96,3 +120,60 @@ class OffPolicyAgent(RLAgent):
             self.algo.env_episodes += 1
 
         experience_queue.put(None)
+
+    def train(self, num_episodes, decay, n_steps, experience_replay, algo,
+        *algo_args, **algo_kwargs):
+        """
+        Trains the algorithm for the number of episodes specified on the
+        environment, to be called in a separate process.
+
+        Args:
+            num_episodes (int): The number of episodes to train for.
+            decay (float): The decay of the next.
+            n_steps (int): The number of steps.
+            experience_replay (ExperienceReplay): The experience play buffer to
+                store experiences in.
+            algo (RLAlgo): The off policy algirithm to train.
+            *algo_args (Tuple[Any, ...]): Any positional arguments for the
+                algorithm training.
+            **algo_kwargs (Dict[str, ...]): Any keyword arguments for the
+                algorithm training. 
+        """
+        for episode in range(self.algo.env_episodes + 1, num_episodes + 1):
+            self.reset()
+            self.env.reset()
+
+            ep_reward = 0
+            experiences = deque(maxlen=n_steps)
+
+            while(not self.env.terminal):
+                experience = self.step(True)
+
+                ep_reward += self.reward_to_float(experience["reward"])
+                
+                experiences.append(experience)
+
+                self.algo.env_steps += 1
+
+                if (len(experiences) == n_steps):
+                    # Do n-step decay and add to the buffer
+                    self.train_algo(
+                        experiences, decay, experience_replay, algo, *algo_args,
+                        **algo_kwargs
+                    )
+
+            # Add the rest to the buffer
+            while len(experiences) > 0:
+                self.train_algo(
+                    experiences, decay, experience_replay, algo, *algo_args,
+                    **algo_kwargs
+                )
+
+            if(self.logger is not None):
+                self.logger["Train/Episode Reward"] = (ep_reward, episode)
+
+            print("Episode {0} Step {1} Reward: {2}".format(
+                self.algo.env_episodes, self.algo.env_steps, ep_reward
+            ))
+
+            self.algo.env_episodes += 1

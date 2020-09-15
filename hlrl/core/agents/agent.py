@@ -207,14 +207,14 @@ class AgentPool():
         """
         self.agents = agents
 
-    def train(self, *agent_train_args):
+    def train_process(self, *agent_train_args):
         """
         Trains each agent using the arguments given.
 
         Args:
             agent_train_args (*[object]): The list of arguments for each agent.
         """
-        procs = [mp.Process(target = agent.train, args=agent_train_args)
+        procs = [mp.Process(target = agent.train_process, args=agent_train_args)
                  for agent in self.agents]
 
         for proc in procs:
