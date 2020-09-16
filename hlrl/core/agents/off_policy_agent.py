@@ -39,8 +39,10 @@ class OffPolicyAgent(RLAgent):
         Transforms the algorithm step on the observation to a dictionary.
         """
         # Action then q val
-        transed_algo_step = super().transform_algo_step(algo_step)
-        transed_algo_step["q_val"] = algo_step[1]
+        transed_algo_step = {
+            **super().transform_algo_step(algo_step[:-1]),
+            "q_val": algo_step[-1]
+        }
 
         return transed_algo_step
 
