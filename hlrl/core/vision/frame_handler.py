@@ -11,23 +11,47 @@ class WindowsFrameHandler():
     Handles a d3dshot instance to return fresh frames.
     """
     def __init__(self, d3dshot: D3DShot,
-        transforms: List[Callable[[Any], Any]] = []):
+        frame_transforms: List[Callable[[Any], Any]] = [],
+        stack_transforms: List[Callable[[Any], Any]] = []):
+        """
+        Creates the frame handler on the d3dshot instance.
+
+        Args:
+            d3dshot (D3DShot): The d3dshot instance to wrap.
+            frame_transforms (List[Callable[[Any], Any]]): A list of transforms
+                to apply to each frame on capture.
+            stack_transforms: (List[Callable[[Any], Any]]): A list of transforms
+                to apply to an entire stack of frames.
+        """
         self.d3dshot = d3dshot
-        self.transforms = transforms
+        self.frame_transforms = frame_transforms
+        self.stack_transforms = stack_transforms
         self.latest_polled = False
 
         # Syncing variables
         self.lock = threading.Lock()
         self.cond = threading.Condition(self.lock)
 
-    def _apply_transforms(self, frame) -> Any:
+    def _apply_frame_transforms(self, frame) -> Any:
         """
         Applies the transforms to the frame given.
 
         Args:
             frame (Any): The frame to apply transforms to.
         """
-        for transform in self.transforms:
+        for transform in self.frame_transforms:
+            frame = transform(frame)
+
+        return frame
+
+    def _apply_stack_transforms(self, frame) -> Any:
+        """
+        Applies the transforms to the stack given.
+
+        Args:
+            frame (Any): The frame to apply transforms to.
+        """
+        for transform in self.stack_transforms:
             frame = transform(frame)
 
         return frame
@@ -68,6 +92,7 @@ class WindowsFrameHandler():
             stack_dimension (str): The dimension to stack the frames in.
         """
         frames = self.d3dshot.get_frame_stack(frame_indices, stack_dimension)
+        frames = self._apply_stack_transforms(frames)
 
         return frames
 
@@ -92,10 +117,9 @@ class WindowsFrameHandler():
                 region=self.d3dshot._validate_region(region)
             )
 
-            frame = self._apply_transforms(frame)
-
             with self.cond:
                 if frame is not None:
+                    frame = self._apply_frame_transforms(frame)
                     self.d3dshot.frame_buffer.appendleft(frame)
                 else:
                     if len(self.d3dshot.frame_buffer):
