@@ -1,6 +1,6 @@
 from torch import Tensor
 
-from hlrl.core.vision.transforms import Transform
+from hlrl.torch.vision.transforms import Transform
 
 class ConvertDimensionOrder(Transform):
     """
