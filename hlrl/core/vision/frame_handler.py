@@ -57,9 +57,6 @@ class WindowsFrameHandler():
         """
         frames = self.d3dshot.get_frame_stack(frame_indices, stack_dimension)
 
-        for transform in self.transforms:
-            frames = transform(frames)
-
         return frames
 
     def _capture(self, target_fps: int = 60,
@@ -84,16 +81,16 @@ class WindowsFrameHandler():
             )
 
             with self.cond:
+                if frame is not None:
+                    self.d3dshot.frame_buffer.appendleft(frame)
+                else:
+                    if len(self.d3dshot.frame_buffer):
+                        self.d3dshot.frame_buffer.appendleft(
+                            self.d3dshot.frame_buffer[0]
+                        )
+
                 self.latest_polled = False
                 self.cond.notify()
-
-            if frame is not None:
-                self.d3dshot.frame_buffer.appendleft(frame)
-            else:
-                if len(self.d3dshot.frame_buffer):
-                    self.d3dshot.frame_buffer.appendleft(
-                        self.d3dshot.frame_buffer[0]
-                    )
 
             gc.collect()
 
