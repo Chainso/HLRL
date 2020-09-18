@@ -228,10 +228,10 @@ if(__name__ == "__main__"):
     if args.recurrent:
         agent = SequenceInputAgent(agent, device=args.device)
         agent = TorchRecurrentAgent(agent)
-        agent = MunchausenAgent(agent, 0.9, 0.03)
+        #agent = MunchausenAgent(agent, 0.9, 0.03)
     else:
         agent = TorchRLAgent(agent, device=args.device)
-        agent = MunchausenAgent(agent, 0.9, 0.03)
+        #agent = MunchausenAgent(agent, 0.9, 0.03)
 
     if args.play:
         algo.eval()

@@ -164,9 +164,9 @@ class RainbowIQN(TorchOffPolicyAlgo):
             action, q_val, probs  = self(observation)
 
         q_val = q_val.gather(1, action)
-        log_probs = torch.clamp(torch.log(probs.gather(1, action)), -1, 0)
+        #log_probs = torch.clamp(torch.log(probs.gather(1, action)), -1, 0)
 
-        return action, q_val, log_probs
+        return action, q_val
 
     def train_batch(self, rollouts, is_weights=None):
         """
