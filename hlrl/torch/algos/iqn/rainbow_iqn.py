@@ -257,7 +257,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Calculate the new Q-values and target for PER
         with torch.no_grad():
-            _, new_q_val, _ = self.step(states)
+            _, new_q_val = self.step(states)
 
             new_quantile_values_target = self._calculate_q_target(
                 rewards, next_states, terminal_mask
