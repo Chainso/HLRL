@@ -20,6 +20,18 @@ class WindowsFrameHandler():
         self.lock = threading.Lock()
         self.cond = threading.Condition(self.lock)
 
+    def _apply_transforms(self, frame) -> Any:
+        """
+        Applies the transforms to the frame given.
+
+        Args:
+            frame (Any): The frame to apply transforms to.
+        """
+        for transform in self.transforms:
+            frame = transform(frame)
+
+        return frame
+
     def _is_latest_new(self) -> bool:
         """
         Returns true if the latest frame has not been polled.
@@ -79,6 +91,8 @@ class WindowsFrameHandler():
                 self.d3dshot.capture_output.process,
                 region=self.d3dshot._validate_region(region)
             )
+
+            frame = self._apply_transforms(frame)
 
             with self.cond:
                 if frame is not None:

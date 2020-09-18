@@ -2,7 +2,8 @@ from torch import Tensor
 from torch.nn.functional import interpolate
 from typing import Optional, Union, Tuple
 
-from hlrl.torch.vision.transforms import Transform
+from hlrl.core.vision.transforms import Transform
+
 
 class Interpolate(Transform):
     """
@@ -38,7 +39,8 @@ class Interpolate(Transform):
         self.recompute_scale_factor = recompute_scale_factor
 
     def __call__(self, tensor: Tensor) -> Tensor:
+        # Cloning fixes interpolate's memory leaks
         return interpolate(
             tensor, self.size, self.scale_factor, self.mode, self.align_corners,
             self.recompute_scale_factor
-        )
+        ).clone()
