@@ -10,7 +10,7 @@ if(__name__ == "__main__"):
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.trainers import Worker
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import AgentPool, OffPolicyAgent
+    from hlrl.core.agents import AgentPool, OffPolicyAgent, MunchausenAgent
     from hlrl.torch.algos import RainbowIQN
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
@@ -228,8 +228,10 @@ if(__name__ == "__main__"):
     if args.recurrent:
         agent = SequenceInputAgent(agent, device=args.device)
         agent = TorchRecurrentAgent(agent)
+        agent = MunchausenAgent(agent, 0.9, 0.03)
     else:
         agent = TorchRLAgent(agent, device=args.device)
+        agent = MunchausenAgent(agent, 0.9, 0.03)
 
     if args.play:
         algo.eval()

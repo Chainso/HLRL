@@ -131,14 +131,23 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Get the mean to find the q values
         q_val = torch.mean(quantile_values, dim=0)
-        action = self.action(q_val)
+        probs = self.action(q_val)
+
+        if self.logger is not None and observation.shape[0] == 1:
+            action_gap = torch.topk(probs, 2).values
+            action_gap = action_gap[:, 0] - action_gap[:, 1]
+            action_gap = action_gap.detach().item()
+
+            self.logger["Training/Action-Gap"] = (
+                action_gap, self.env_steps
+            )
 
         if greedy:
-            action = torch.argmax(action, dim=1, keepdim=True)
+            action = torch.argmax(probs, dim=1, keepdim=True)
         else:
-            action = torch.multinomial(action, 1)
+            action = torch.multinomial(probs, 1)
 
-        return action, q_val
+        return action, q_val, probs
 
     def step(self, observation):
         """
@@ -152,11 +161,12 @@ class RainbowIQN(TorchOffPolicyAlgo):
             The action and Q-value of the action.
         """
         with torch.no_grad():
-            action, q_val = self(observation)
+            action, q_val, probs  = self(observation)
 
         q_val = q_val.gather(1, action)
+        log_probs = torch.clamp(torch.log(probs.gather(1, action)), -1, 0)
 
-        return action, q_val
+        return action, q_val, log_probs
 
     def train_batch(self, rollouts, is_weights=None):
         """
@@ -247,7 +257,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Calculate the new Q-values and target for PER
         with torch.no_grad():
-            _, new_q_val = self.step(states)
+            _, new_q_val, _ = self.step(states)
 
             new_quantile_values_target = self._calculate_q_target(
                 rewards, next_states, terminal_mask
@@ -278,7 +288,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
                                            predictions.
         """
         # Get the online actions of the next states
-        next_actions, _ = self(next_states, True)
+        next_actions, _, _ = self(next_states, True)
         next_actions = next_actions.repeat(self.n_quantiles, 1)
 
         # Target network quantile values
