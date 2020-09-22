@@ -164,9 +164,9 @@ class RainbowIQN(TorchOffPolicyAlgo):
             action, q_val, probs  = self(observation)
 
         q_val = q_val.gather(1, action)
-        log_probs = torch.clamp(torch.log(probs.gather(1, action)), -1, 0)
+        #log_probs = torch.clamp(torch.log(probs.gather(1, action)), -1, 0)
 
-        return action, q_val, log_probs
+        return action, q_val
 
     def train_batch(self, rollouts, is_weights=None):
         """
@@ -257,7 +257,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Calculate the new Q-values and target for PER
         with torch.no_grad():
-            _, new_q_val, _ = self.step(states)
+            _, new_q_val = self.step(states)
 
             new_quantile_values_target = self._calculate_q_target(
                 rewards, next_states, terminal_mask
