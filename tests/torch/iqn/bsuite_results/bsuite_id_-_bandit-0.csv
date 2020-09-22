@@ -1,0 +1,2 @@
+steps,episode,total_return,episode_len,episode_return,total_regret
+1,1,0.8,1,0.8,0.19999999999999996
