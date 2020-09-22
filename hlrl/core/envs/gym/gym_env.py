@@ -11,7 +11,7 @@ class GymEnv(Env):
         Creates the given environment from OpenAI Gym
 
         Args:
-            env (gym.env): The name of the environment to create
+            env (gym.env): The gym environment to wrap.
         """
         Env.__init__(self)
         self.env = env
@@ -53,6 +53,7 @@ class GymEnv(Env):
         """
         self.state = self.env.reset()
         self.reward = 0
+
         self.terminal = False
 
         return self.state

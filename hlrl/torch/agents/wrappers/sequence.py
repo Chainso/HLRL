@@ -11,7 +11,11 @@ class SequenceInputAgent(TorchRLAgent):
     """
     def make_tensor(self, data):
         """
-        Creates a float tensor of the data of batch size 1.
+        Creates a float tensor of the data of batch size 1, and sequence length
+        of 1.
+
+        Args:
+            data (Any): The data to transform into a tensor.
         """
         return super().make_tensor([data])
 

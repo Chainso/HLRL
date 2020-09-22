@@ -10,7 +10,7 @@ if(__name__ == "__main__"):
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.trainers import Worker
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import AgentPool, OffPolicyAgent, MunchausenAgent
+    from hlrl.core.agents import AgentPool, OffPolicyAgent
     from hlrl.torch.algos import RainbowIQN
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
@@ -228,10 +228,8 @@ if(__name__ == "__main__"):
     if args.recurrent:
         agent = SequenceInputAgent(agent, device=args.device)
         agent = TorchRecurrentAgent(agent)
-        agent = MunchausenAgent(agent, 0.9, 0.03)
     else:
         agent = TorchRLAgent(agent, device=args.device)
-        agent = MunchausenAgent(agent, 0.9, 0.03)
 
     if args.play:
         algo.eval()
@@ -243,6 +241,7 @@ if(__name__ == "__main__"):
         algo.share_memory()
 
         experience_queue = mp.Queue()
+        mp_event = mp.Event()
 
         # Experience replay
         if args.recurrent:
@@ -265,12 +264,12 @@ if(__name__ == "__main__"):
 
         agent_pool = AgentPool(agents)
         agent_procs = agent_pool.train_process(
-            args.episodes, args.decay, args.n_steps, experience_queue
+            args.episodes, args.decay, args.n_steps, experience_queue, mp_event
         )
 
         # Start the worker for the model
         worker = Worker(algo, experience_replay, experience_queue)
         worker.train(
-            agent_procs, args.batch_size, args.start_size, args.save_path,
-            args.save_interval
+            agent_procs, mp_event, args.batch_size, args.start_size,
+            args.save_path, args.save_interval
         )

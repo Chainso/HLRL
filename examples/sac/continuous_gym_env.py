@@ -242,6 +242,7 @@ if(__name__ == "__main__"):
         algo.share_memory()
 
         experience_queue = mp.Queue()
+        mp_event = mp.Event()
 
         # Experience replay
         if args.recurrent:
@@ -263,12 +264,12 @@ if(__name__ == "__main__"):
 
         agent_pool = AgentPool(agents)
         agent_procs = agent_pool.train_process(
-            args.episodes, args.decay, args.n_steps, experience_queue
+            args.episodes, args.decay, args.n_steps, experience_queue, mp_event
         )
 
         # Start the worker for the model
         worker = Worker(algo, experience_replay, experience_queue)
         worker.train(
-            agent_procs, args.batch_size, args.start_size, args.save_path,
-            args.save_interval
+            agent_procs, mp_event, args.batch_size, args.start_size,
+            args.save_path, args.save_interval
         )

@@ -77,16 +77,18 @@ class OffPolicyAgent(RLAgent):
             experience_replay, *algo_args, **algo_kwargs
         )
 
-    def train_process(self, num_episodes, decay, n_steps, experience_queue):
+    def train_process(self, num_episodes, decay, n_steps, experience_queue,
+        mp_event):
         """
         Trains the algorithm for the number of episodes specified on the
         environment, to be called in a separate process.
 
         Args:
             num_episodes (int): The number of episodes to train for.
-            experience_queue (Queue): The queue to store experiences in.
             decay (float): The decay of the next.
             n_steps (int): The number of steps.
+            experience_queue (Queue): The queue to store experiences in.
+            mp_event (Event): The event to wait on before exiting the process.
         """
         for episode in range(self.algo.env_episodes + 1, num_episodes + 1):
             self.reset()
@@ -112,16 +114,19 @@ class OffPolicyAgent(RLAgent):
             while len(experiences) > 0:
                 self.add_to_buffer(experiences, decay, experience_queue)
 
-            if(self.logger is not None):
+            if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (ep_reward, episode)
 
-            print("Episode {0} Step {1} Reward: {2}".format(
-                self.algo.env_episodes, self.algo.env_steps, ep_reward
-            ))
+            if not self.silent:
+                print("Episode {0} Step {1} Reward: {2}".format(
+                    self.algo.env_episodes, self.algo.env_steps, ep_reward
+                ))
 
             self.algo.env_episodes += 1
 
         experience_queue.put(None)
+        mp_event.wait()
+
 
     def train(self, num_episodes, decay, n_steps, experience_replay, algo,
         *algo_args, **algo_kwargs):
@@ -174,8 +179,9 @@ class OffPolicyAgent(RLAgent):
             if(self.logger is not None):
                 self.logger["Train/Episode Reward"] = (ep_reward, episode)
 
-            print("Episode {0} Step {1} Reward: {2}".format(
-                self.algo.env_episodes, self.algo.env_steps, ep_reward
-            ))
+            if not self.silent:
+                print("Episode {0} Step {1} Reward: {2}".format(
+                    self.algo.env_episodes, self.algo.env_steps, ep_reward
+                ))
 
             self.algo.env_episodes += 1

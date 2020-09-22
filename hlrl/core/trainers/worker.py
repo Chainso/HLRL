@@ -19,15 +19,16 @@ class Worker():
         self.experience_replay = experience_replay
         self.experience_queue = experience_queue
 
-
-    def train(self, agent_procs, batch_size, start_size, save_path,
+    def train(self, agent_procs, mp_event, batch_size, start_size, save_path,
         save_interval):
         """
         Trains the algorithm until all agent processes have ended.
 
         Args:
-            agent_procs ([torch.multiprocess.Process]): A list of agent
-                                                        processes.
+            agent_procs ([torch.multiprocessing.Process]): A list of agent
+                                                           processes.
+            mp_event (torch.multiprocessing.Event): The event to set to awaken
+                the agents to exit.
             batch_size (int):   The size of the training batch.
             start_size (int):   The number of samples in the buffer to start
                                 training.
@@ -39,13 +40,13 @@ class Worker():
         while any(proc.is_alive() for proc in agent_procs):
             if done_count == len(agent_procs):
                 # Wait on the train processes
+                mp_event.set()
                 for proc in agent_procs:
                     proc.join()
             else:
                 experience = self.experience_queue.get()
 
                 if experience is None:
-                    print("Done!")
                     done_count += 1
                 else:
                     self.experience_replay.add(experience)

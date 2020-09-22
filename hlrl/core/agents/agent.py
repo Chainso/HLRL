@@ -9,7 +9,7 @@ class RLAgent():
     An agent that collects (state, action, reward, next state) tuple
     observations
     """
-    def __init__(self, env, algo, render=False, logger=None):
+    def __init__(self, env, algo, render=False, silent=False, logger=None):
         """
         Creates an agent that interacts with the given environment using the
         algorithm given.
@@ -20,12 +20,14 @@ class RLAgent():
             algo (RLAlgo): The algorithm the agent will use the explore the
                            environment.
             render (bool): If the environment is to be rendered (if applicable)
+            silent (bool): If true, does not output to standard output.
             logger (Logger, optional) : The logger to log results while
                                         interacting with the environment.
         """
         self.env = env
         self.algo = algo
         self.render = render
+        self.silent = silent
         self.logger = logger
 
     def _add_prefix(self, map, prefix):
@@ -170,18 +172,20 @@ class RLAgent():
             while(not self.env.terminal):
                 ep_reward += self.step()["reward"]
 
-            if(self.logger is not None):
+            if self.logger is not None:
                 self.logger["Play/Episode Reward"] = ep_reward, episode
 
-            print("Episode {0} Reward: {1}".format(episode, ep_reward))
+            if not self.silent:
+                print("Episode {0} Reward: {1}".format(episode, ep_reward))
 
             avg_reward += ep_reward / num_episodes
 
-        if(self.logger is not None):
+        if self.logger is not None:
             self.logger["Play/Average Reward"] = avg_reward
 
-        print("-------------------")
-        print("Average Reward:", avg_reward)
+        if not self.silent:
+            print("-------------------")
+            print("Average Reward:", avg_reward)
 
         return avg_reward
 
