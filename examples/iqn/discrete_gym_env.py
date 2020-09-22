@@ -167,7 +167,7 @@ if(__name__ == "__main__"):
 
     args = parser.parse_args()
 
-    # Initialize the environment, and rescale for Tanh policy
+    # Initialize the environment
     gym_env = gym.make(args.env)
     env = GymEnv(gym_env)
 
