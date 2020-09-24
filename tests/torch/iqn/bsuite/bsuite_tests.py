@@ -163,8 +163,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    envs = sweep.BANDIT
-    #envs = ["bandit/0"]
+    #envs = sweep.BANDIT
+    envs = ["bandit/0"]
 
     for bsuite_id in envs:
         # Initialize the environment
@@ -266,7 +266,7 @@ if __name__ == "__main__":
 
         agent_pool = AgentPool(agents)
         agent_procs = agent_pool.train_process(
-            2, args.decay, args.n_steps, experience_queue,
+            args.episodes, args.decay, args.n_steps, experience_queue,
             mp_event
         )
 
