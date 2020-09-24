@@ -36,7 +36,7 @@ class TorchRLAgent(MethodWrapper):
         state_dict = self.om.transform_state(state)
 
         if self.batch_state:
-            state_dict["states"] = [state_dict["state"]]
+            state_dict["state"] = [state_dict["state"]]
 
         state_dict["state"] = self.make_tensor(state_dict["state"])
 

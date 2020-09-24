@@ -5,7 +5,7 @@ if __name__ == "__main__":
     import gym
 
 
-    from rebar.fsm import ObliviousConstantReward
+    from hlrl.torch.fsm import ObliviousConstantReward
     from argparse import ArgumentParser
     from functools import partial
 
