@@ -90,7 +90,7 @@ def get_args():
 
     # Agent args
     parser.add_argument(
-		"--episodes", type=int, default=1000,
+		"--episodes", type=int, default=10000,
 		help="the number of episodes to train for"
 	)
     parser.add_argument(

@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
         # Initialize the environment
         bsuite_env = load_and_record_to_csv(
-            bsuite_id, results_dir=results_dir, overwrite=True
+            bsuite_id, results_dir=csv_dir, overwrite=True
         )
         gym_env = gym_wrapper.GymFromDMEnv(bsuite_env)
         env = GymEnv(gym_env)
