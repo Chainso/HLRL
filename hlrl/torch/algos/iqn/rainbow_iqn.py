@@ -135,7 +135,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         q_val = torch.mean(quantile_values, dim=0)
         probs = self.action(q_val)
 
-        if observation.shape[0] == 1:
+        if self.logger is not None and observation.shape[0] == 1:
             action_gap = torch.topk(probs, 2).values
             action_gap = action_gap[:, 0] - action_gap[:, 1]
             action_gap = action_gap.detach().item()

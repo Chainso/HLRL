@@ -170,7 +170,10 @@ class RLAgent():
             ep_reward = 0
             
             while(not self.env.terminal):
-                ep_reward += self.step()["reward"]
+                reward = self.step()["reward"]
+                reward = self.reward_to_float(reward)
+
+                ep_reward += reward
 
             if self.logger is not None:
                 self.logger["Play/Episode Reward"] = ep_reward, episode
