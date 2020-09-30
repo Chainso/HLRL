@@ -139,15 +139,11 @@ class RainbowIQN(TorchOffPolicyAlgo):
             action_gap = torch.topk(probs, 2).values
             action_gap = action_gap[:, 0] - action_gap[:, 1]
             action_gap = action_gap.detach().item()
-            """
+
             self.logger["Training/Action-Gap"] = (
                 action_gap, self.env_steps
             )
-            """
-            action_gap = torch.topk(probs, 2).values
-            action_gap = action_gap[:, 0] - action_gap[:, 1]
-            action_gap = action_gap.detach().item()
-            print(probs, action_gap)
+
 
         if greedy:
             action = torch.argmax(probs, dim=1, keepdim=True)
