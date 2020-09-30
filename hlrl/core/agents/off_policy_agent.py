@@ -90,7 +90,7 @@ class OffPolicyAgent(RLAgent):
             experience_queue (Queue): The queue to store experiences in.
             mp_event (Event): The event to wait on before exiting the process.
         """
-        for episode in range(self.algo.env_episodes + 1, num_episodes + 1):
+        for episode in range(1, num_episodes + 1):
             self.reset()
             self.env.reset()
 
@@ -114,15 +114,17 @@ class OffPolicyAgent(RLAgent):
             while len(experiences) > 0:
                 self.add_to_buffer(experiences, decay, experience_queue)
 
+            self.algo.env_episodes += 1
+
             if self.logger is not None:
-                self.logger["Train/Episode Reward"] = (ep_reward, episode)
+                self.logger["Train/Episode Reward"] = (
+                    ep_reward, self.algo.env_episodes
+                )
 
             if not self.silent:
                 print("Episode {0} Step {1} Reward: {2}".format(
                     self.algo.env_episodes, self.algo.env_steps, ep_reward
                 ))
-
-            self.algo.env_episodes += 1
 
         experience_queue.put(None)
         mp_event.wait()
@@ -145,7 +147,7 @@ class OffPolicyAgent(RLAgent):
             **algo_kwargs (Dict[str, ...]): Any keyword arguments for the
                 algorithm training. 
         """
-        for episode in range(self.algo.env_episodes + 1, num_episodes + 1):
+        for episode in range(1, num_episodes + 1):
             self.reset()
             self.env.reset()
 
@@ -175,12 +177,14 @@ class OffPolicyAgent(RLAgent):
                     **algo_kwargs
                 )
 
+            self.algo.env_episodes += 1
+
             if(self.logger is not None):
-                self.logger["Train/Episode Reward"] = (ep_reward, episode)
+                self.logger["Train/Episode Reward"] = (
+                    ep_reward, self.algo.env_episodes
+                )
 
             if not self.silent:
                 print("Episode {0} Step {1} Reward: {2}".format(
                     self.algo.env_episodes, self.algo.env_steps, ep_reward
                 ))
-
-            self.algo.env_episodes += 1

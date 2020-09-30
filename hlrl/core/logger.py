@@ -41,12 +41,6 @@ class TensorboardLogger(Logger):
         self._logs_path = logs_path
         self._tensorboard = SummaryWriter(logs_path)
 
-    def __setitem__(self, key, value):
-        # The value is likely to be a tuple of a number and step/episode/epoch
-        # count
-        super().__setitem__(key, value)
-        self._on_update(key, value)
-
     def __reduce__(self):
         return (TensorboardLogger, (self._logs_path,))
 

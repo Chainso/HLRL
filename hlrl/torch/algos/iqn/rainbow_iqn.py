@@ -9,6 +9,8 @@ from itertools import chain
 from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.common import polyak_average
 
+from hlrl.core.logger import TensorboardLogger
+
 class RainbowIQN(TorchOffPolicyAlgo):
     """
     Implicit Quantile Networks with the rainbow of improvements used for DQN.
@@ -133,14 +135,19 @@ class RainbowIQN(TorchOffPolicyAlgo):
         q_val = torch.mean(quantile_values, dim=0)
         probs = self.action(q_val)
 
-        if self.logger is not None and observation.shape[0] == 1:
+        if observation.shape[0] == 1:
             action_gap = torch.topk(probs, 2).values
             action_gap = action_gap[:, 0] - action_gap[:, 1]
             action_gap = action_gap.detach().item()
-
+            """
             self.logger["Training/Action-Gap"] = (
                 action_gap, self.env_steps
             )
+            """
+            action_gap = torch.topk(probs, 2).values
+            action_gap = action_gap[:, 0] - action_gap[:, 1]
+            action_gap = action_gap.detach().item()
+            print(probs, action_gap)
 
         if greedy:
             action = torch.argmax(probs, dim=1, keepdim=True)

@@ -58,7 +58,7 @@ def get_args():
 		help="the threshhold of the huber loss (kappa) for IQN"
 	)
     parser.add_argument(
-        "--target_update_interval", type=float, default=500,
+        "--target_update_interval", type=int, default=1,
         help="the number of training steps in-between target network updates"
     )
     parser.add_argument(
@@ -90,7 +90,7 @@ def get_args():
 
     # Agent args
     parser.add_argument(
-		"--episodes", type=int, default=10000,
+		"--episodes", type=int, default=1000,
 		help="the number of episodes to train for"
 	)
     parser.add_argument(
@@ -101,6 +101,10 @@ def get_args():
 		"--n_steps", type=int, default=5,
 		help="the number of decay steps"
 	)
+    parser.add_argument(
+        "--verbose", action="store_true",
+        help="outputs episode information to standard output"
+    )
 
     # Experience Replay args
     parser.add_argument(

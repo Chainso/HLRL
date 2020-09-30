@@ -83,7 +83,7 @@ if(__name__ == "__main__"):
 		help="the threshhold of the huber loss (kappa) for IQN"
 	)
     parser.add_argument(
-        "--target_update_interval", type=float, default=500,
+        "--target_update_interval", type=int, default=1,
         help="the number of training steps in-between target network updates"
     )
     parser.add_argument(

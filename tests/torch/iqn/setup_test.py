@@ -1,14 +1,9 @@
 import torch
 import torch.nn as nn
-import torch.multiprocessing as mp
-import gym
 
-from argparse import ArgumentParser
 from functools import partial
 
 from hlrl.core.logger import TensorboardLogger
-from hlrl.core.trainers import Worker
-from hlrl.core.envs.gym import GymEnv
 from hlrl.core.agents import AgentPool, OffPolicyAgent
 from hlrl.torch.algos import RainbowIQN
 from hlrl.torch.agents import (
@@ -18,7 +13,7 @@ from hlrl.torch.agents import (
 from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
-def setup_experiment(args, env):
+def setup_test(args, env):
     # The logger
     logger = args.logs_path
     logger = None if logger is None else TensorboardLogger(logger)
@@ -48,7 +43,7 @@ def setup_experiment(args, env):
             num_lin_before, args.hidden_size, max(args.num_layers - 2, 1),
             0, 0, activation_fn
         )
-        # TODO CREATE RAINBOW IQN INSTANCE HERE ONCE IMPLEMENTED
+        # TODO CREATE RECURRENT RAINBOW IQN INSTANCE HERE ONCE IMPLEMENTED
     else:
         autoencoder = LinearPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,
@@ -72,7 +67,7 @@ def setup_experiment(args, env):
 
     # Create agent class
     agent = OffPolicyAgent(
-        env, algo, args.render, silent=True, logger=logger
+        env, algo, args.render, silent=not args.verbose, logger=logger
     )
 
     if args.recurrent:

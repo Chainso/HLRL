@@ -82,7 +82,7 @@ if(__name__ == "__main__"):
         help="the polyak constant for the target network updates"
     )
     parser.add_argument(
-        "--target_update_interval", type=float, default=1,
+        "--target_update_interval", type=int, default=1,
         help="the number of training steps inbetween target network updates"
     )
     parser.add_argument(
