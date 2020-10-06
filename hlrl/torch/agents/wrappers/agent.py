@@ -42,8 +42,10 @@ class TorchRLAgent(MethodWrapper):
 
         return state_dict
 
-    def transform_reward(self, reward):
-        return self.make_tensor([[self.om.transform_reward(reward)]])
+    def transform_reward(self, state, algo_step, reward, next_state):
+        return self.make_tensor([[
+            self.om.transform_reward(state, algo_step, reward, next_state)
+        ]])
 
     def transform_terminal(self, terminal):
         return self.make_tensor([[self.om.transform_terminal(terminal)]])

@@ -70,9 +70,15 @@ class RLAgent():
 
         return transed_nas
 
-    def transform_reward(self, reward):
+    def transform_reward(self, state, algo_step, reward, next_state):
         """
         Transforms the reward of an environment step.
+
+        Args:
+            state (Any): The state of the environment.
+            action (Any): The last action taken in the environment.
+            reward (Any): The reward from the environment.
+            next_state (Any): The new state of the environment.
         """
         return reward
 
@@ -133,7 +139,7 @@ class RLAgent():
 
         next_algo_inp = self.transform_next_state(next_state)
         next_state = next_algo_inp.pop("next_state")
-        reward = self.transform_reward(reward)
+        reward = self.transform_reward(algo_inp, algo_step, reward, next_state)
         terminal = self.transform_terminal(terminal)
     
         experience = OrderedDict({

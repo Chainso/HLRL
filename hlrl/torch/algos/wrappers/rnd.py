@@ -1,32 +1,28 @@
+import torch
 import torch.nn as nn
 
-from copy import deepcopy
+from hlrl.core.algos import IntrinsicRewardAlgo
 
-from hlrl.core.common import MethodWrapper
-
-class RND(MethodWrapper):
+class RND(IntrinsicRewardAlgo):
     """
     The Random Network Distillation Algorithm
     https://arxiv.org/abs/1810.12894
     """
-    def __init__(self, algo, rnd_network, rnd_optim):
+    def __init__(self, algo, rnd_network, rnd_target, rnd_optim):
         """
         Creates the wrapper to use RND exploration with the algorithm.
 
         Args:
-            algo (TorchRLAlgo): The algorithm to run.
+            algo (TorchRLAlgo): The algorithm to wrap.
             rnd_network (torch.nn.Module): The RND network.
+            rnd_target (torch.nn.Module): The RND target network
             rnd_optim (callable): The function to create the optimizer for RND.
         """
         super().__init__(algo)
 
         self.rnd = rnd_network
+        self.rnd_target = rnd_target
 
-        def init_weights(m):
-            if hasattr(m, "weight"):
-                nn.init.xavier_uniform_(m.weight.data)
-
-        self.rnd_target = deepcopy(self.rnd).apply(init_weights)
         self.rnd_optim = rnd_optim(self.rnd.parameters())
 
     def _get_loss(self, states):
@@ -46,7 +42,8 @@ class RND(MethodWrapper):
         """
         Trains the RND network before training the batch on the algorithm.
         """
-        _, _, _, next_states, _ = rollouts
+        next_states = rollouts["next_state"]
+
         rnd_loss = self._get_loss(next_states)
 
         self.rnd_optim.zero_grad()
@@ -62,15 +59,13 @@ class RND(MethodWrapper):
         """
         Computes the intrinsic reward of the states.
         """
-        return self._get_loss(states).detach()
+        with torch.no_grad():
+            return self._get_loss(states).item()
 
-    # TODO: Test this behaviour
-    # RND EXTRAS SHOULD BE IN THE STATE DICT OF THE ORIGINAL
-    """
     def save_dict(self):
-
+        """
         Adds the rnd network to the save dict of the algorithm.
-
+        """
         state_dict = self.om.save_dict()
         state_dict["rnd"] = self.rnd.state_dict()
         state_dict["rnd_target"] = self.rnd_target.state_dict()
@@ -83,4 +78,3 @@ class RND(MethodWrapper):
             load_dict = self.load_dict(load_path)
 
         super().load(load_path, load_dict)
-    """

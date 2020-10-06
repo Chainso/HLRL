@@ -26,8 +26,11 @@ class MunchausenAgent(MethodWrapper):
 
         return self.om.transform_algo_step(algo_step[:-1])
 
-    def transform_reward(self, reward):
+    def transform_reward(self, state, algo_step, reward, next_state):
         """
         Adds the Munchausen reward to the reward
         """
-        return self.om.transform_reward(reward) + self.log_probs
+        return self.om.transform_reward(
+            state, algo_step, reward + self.temperature * self.log_probs,
+            next_state
+        )

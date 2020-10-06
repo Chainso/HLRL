@@ -14,7 +14,7 @@ if(__name__ == "__main__"):
     from hlrl.core.trainers import Worker
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent
-    from hlrl.torch.algos import SAC, SACRecurrent
+    from hlrl.torch.algos import SAC, SACRecurrent, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
         TorchRecurrentAgent
@@ -68,6 +68,10 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "--recurrent", action="store_true",
         help="make the network recurrent (using LSTM)"
+    )
+    parser.add_argument(
+        "--exploration", default=None, choices=["rnd"],
+        help="The type of exploration to use [rnd]"
     )
     parser.add_argument(
         "--discount", type=float, default=0.99,
@@ -216,6 +220,18 @@ if(__name__ == "__main__"):
             args.target_update_interval, optim, optim, optim, args.twin,
             logger
         )
+
+    if args.exploration == "rnd":
+        rnd_network = LinearPolicy(
+            env.state_space[0], args.hidden_size, args.num_layers, activation_fn
+        )
+
+        rnd_target = LinearPolicy(
+            env.state_space[0], args.hidden_size, args.num_layers + 2,
+            activation_fn
+        )
+
+        algo = RND(algo, rnd_network, rnd_target, optim)
 
     algo = algo.to(torch.device(args.device))
 
