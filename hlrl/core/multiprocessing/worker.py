@@ -10,10 +10,10 @@ class Worker():
 
         Args:
             algo (torch.nn.Module): The algorithm to train.
-            experience_replay (ExperienceReplay):   The replay buffer to add
-                                                    experiences into.
+            experience_replay (ExperienceReplay): The replay buffer to add
+                experiences into.
             experience_queue (torch.multiprocessing.Queue): The queue to receive
-                                                            experiences from.
+                experiences from.
         """
         self.algo = algo
         self.experience_replay = experience_replay

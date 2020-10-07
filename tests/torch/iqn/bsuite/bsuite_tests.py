@@ -1,4 +1,4 @@
-from hlrl.core.trainers import Worker
+from hlrl.core.multiprocessing import Worker
 
 def run_experiment(args, algo, agent_pool, env, experience_replay,
     experience_queue, mp_event):

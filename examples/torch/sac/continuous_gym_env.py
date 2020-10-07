@@ -11,7 +11,7 @@ if(__name__ == "__main__"):
     from functools import partial
 
     from hlrl.core.logger import TensorboardLogger
-    from hlrl.core.trainers import Worker
+    from hlrl.core.multiprocessing import Worker
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import SAC, SACRecurrent, RND
