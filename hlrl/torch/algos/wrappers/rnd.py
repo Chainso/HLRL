@@ -42,6 +42,7 @@ class RND(IntrinsicRewardAlgo):
         """
         Trains the RND network before training the batch on the algorithm.
         """
+
         next_states = rollouts["next_state"]
 
         rnd_loss = self._get_loss(next_states)
@@ -77,4 +78,4 @@ class RND(IntrinsicRewardAlgo):
         if load_dict is None:
             load_dict = self.load_dict(load_path)
 
-        super().load(load_path, load_dict)
+        self.om.load(load_path, load_dict)
