@@ -139,7 +139,7 @@ class RLAgent():
 
         next_algo_inp = self.transform_next_state(next_state)
         next_state = next_algo_inp.pop("next_state")
-        reward = self.transform_reward(algo_inp, algo_step, reward, next_state)
+        reward = self.transform_reward(state, algo_step, reward, next_state)
         terminal = self.transform_terminal(terminal)
     
         experience = OrderedDict({

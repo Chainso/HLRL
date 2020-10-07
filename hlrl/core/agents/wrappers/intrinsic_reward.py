@@ -33,5 +33,6 @@ class IntrinsicRewardAgent(MethodWrapper):
             next_state (Any): The new state of the environment.
         """
         return self.om.transform_reward(
-            state, algo_step, reward + self.intrinsic_reward(state), next_state
+            state, algo_step, reward + self.algo.intrinsic_reward(state),
+            next_state
         )

@@ -13,7 +13,7 @@ if(__name__ == "__main__"):
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.trainers import Worker
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import AgentPool, OffPolicyAgent
+    from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import SAC, SACRecurrent, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
@@ -223,12 +223,13 @@ if(__name__ == "__main__"):
 
     if args.exploration == "rnd":
         rnd_network = LinearPolicy(
-            env.state_space[0], args.hidden_size, args.num_layers, activation_fn
+            env.state_space[0], args.hidden_size, args.hidden_size,
+            args.num_layers, activation_fn
         )
 
         rnd_target = LinearPolicy(
-            env.state_space[0], args.hidden_size, args.num_layers + 2,
-            activation_fn
+            env.state_space[0], args.hidden_size, args.hidden_size,
+            args.num_layers + 2, activation_fn
         )
 
         algo = RND(algo, rnd_network, rnd_target, optim)
@@ -246,6 +247,9 @@ if(__name__ == "__main__"):
         agent = TorchRecurrentAgent(agent)
     else:
         agent = TorchRLAgent(agent, device=args.device)
+
+    if args.exploration == "rnd":
+        agent = IntrinsicRewardAgent(agent)
 
     if args.play:
         algo.eval()

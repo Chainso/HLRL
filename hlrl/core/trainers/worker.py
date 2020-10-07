@@ -25,16 +25,16 @@ class Worker():
         Trains the algorithm until all agent processes have ended.
 
         Args:
-            agent_procs ([torch.multiprocessing.Process]): A list of agent
-                                                           processes.
+            agent_procs (List[torch.multiprocessing.Process]): A list of agent
+                processes.
             mp_event (torch.multiprocessing.Event): The event to set to awaken
                 the agents to exit.
-            batch_size (int):   The size of the training batch.
-            start_size (int):   The number of samples in the buffer to start
-                                training.
-            save_path (str):    The directory to save the model to.
-            save_interval (int):    The number of training steps in-between
-                                    model saves.
+            batch_size (int): The size of the training batch.
+            start_size (int): The number of samples in the buffer to start
+                training.
+            save_path (str): The directory to save the model to.
+            save_interval (int): The number of training steps in-between
+                model saves.
         """
         done_count = 0
         while any(proc.is_alive() for proc in agent_procs):

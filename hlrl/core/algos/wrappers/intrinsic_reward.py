@@ -3,7 +3,7 @@ from abc import abstractmethod
 from hlrl.core.algos import RLAlgo
 from hlrl.core.common import MethodWrapper
 
-class InstrinsicRewardAlgo(MethodWrapper):
+class IntrinsicRewardAlgo(MethodWrapper):
     """
     A generic instrinsic reward algorithm.
     """

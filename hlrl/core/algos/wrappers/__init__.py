@@ -1,1 +1,1 @@
-from .intrisic_reward import IntrinsicRewardAlgo
+from .intrinsic_reward import IntrinsicRewardAlgo
