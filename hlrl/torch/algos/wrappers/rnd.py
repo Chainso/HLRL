@@ -24,17 +24,16 @@ class RND(IntrinsicRewardAlgo):
         self.rnd_target = rnd_target
 
         self.rnd_optim = rnd_optim(self.rnd.parameters())
+        self.rnd_loss_func = nn.MSELoss()
 
     def _get_loss(self, states):
         """
         Returns the loss of the RND network on the given states.
         """
-        rnd_loss_func = nn.MSELoss()
-
         rnd_pred = self.rnd(states)
         rnd_target = self.rnd_target(states)
 
-        rnd_loss = rnd_loss_func(rnd_pred, rnd_target)
+        rnd_loss = self.rnd_loss_func(rnd_pred, rnd_target)
 
         return rnd_loss
 
