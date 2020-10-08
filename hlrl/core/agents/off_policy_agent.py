@@ -61,6 +61,8 @@ class OffPolicyAgent(RLAgent):
         """
         experience = self.get_buffer_experience(experiences, decay)
 
+        #experience = {key: value.cpu() for key, value in experience.items()}
+
         try:
             experience_queue.put_nowait(experience)
         except queue.Full:

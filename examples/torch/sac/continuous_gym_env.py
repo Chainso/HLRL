@@ -181,7 +181,8 @@ if(__name__ == "__main__"):
 
     # The algorithm logger
     algo_logger = (
-        None if args.logs_path is None else TensorboardLogger(args.logs_path)
+        None if args.logs_path is None
+        else TensorboardLogger(args.logs_path + "/algo")
     )
     
     # Initialize SAC
@@ -260,10 +261,10 @@ if(__name__ == "__main__"):
     if args.play:
         algo.eval()
 
-        agent_logger = None
-        if args.logs_path is not None:
-            agent_logs_path = args.logs_path + "/play-agent"
-            agent_logger = TensorboardLogger(agent_logs_path)
+        agent_logger = (
+            None if args.logs_path is None
+            else TensorboardLogger(args.logs_path + "/play-agent")
+        )
 
         agent = agent_builder(logger=agent_logger)
         agent.play(args.episodes)
