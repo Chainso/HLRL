@@ -296,12 +296,9 @@ if(__name__ == "__main__"):
 
         done_event = mp.Event()
 
-        # The maximum queue size is quite arbitrary
-        max_queue_size = 64
-
-        agent_queue = mp.Queue(maxsize=max_queue_size)
-        sample_queue = mp.Queue(maxsize=max_queue_size)
-        priority_queue = mp.Queue(maxsize=max_queue_size)
+        agent_queue = mp.Queue()
+        sample_queue = mp.Queue()
+        priority_queue = mp.Queue()
 
         learner_args = (
                 algo, done_event, sample_queue, priority_queue, args.save_path,
