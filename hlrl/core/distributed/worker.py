@@ -2,6 +2,8 @@ import queue
 
 from multiprocessing import Queue, Event
 
+from hlrl.core.experience_replay import ExperienceReplay
+
 class Worker():
     """
     A worker for an off-policy algorithm, used to separate training and the
@@ -10,7 +12,7 @@ class Worker():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def train(self, experience_replay: ExperienceReplay, mp_event: Event,
+    def train(self, experience_replay: ExperienceReplay, done_event: Event,
         agent_queue: Queue, sample_queue: Queue, priority_queue: Queue,
         batch_size: int, start_size: int):
         """
@@ -19,7 +21,7 @@ class Worker():
         Args:
             experience_replay (ExperienceReplay): The replay buffer to add
                 experiences into.
-            mp_event (multiprocessing.Event): The event to set to awaken
+            done_event (multiprocessing.Event): The event to set to awaken
                 the agents to exit.
             agent_queue (multiprocessing.Queue): The queue of experiences to
                 receive from agents.
@@ -31,7 +33,7 @@ class Worker():
             start_size (int): The number of samples in the buffer to start
                 training.
         """
-        while not mp_event.is_set():
+        while not done_event.is_set():
             # Add all new experiences to the queue
             try:
                 for _ in range(agent_queue.qsize()):

@@ -1,16 +1,16 @@
 from hlrl.core.distributed import Worker
 
 def run_experiment(args, algo, agent_pool, env, experience_replay,
-    experience_queue, mp_event):
+    experience_queue, done_event):
     agent_procs = agent_pool.train_process(
         args.episodes, args.decay, args.n_steps, experience_queue,
-        mp_event
+        done_event
     )
 
     # Start the worker for the model
     worker = Worker(algo, experience_replay, experience_queue)
     worker.train(
-        agent_procs, mp_event, args.batch_size, args.start_size,
+        agent_procs, done_event, args.batch_size, args.start_size,
         args.save_path, args.save_interval
     )
 
@@ -61,11 +61,11 @@ if __name__ == "__main__":
         algo, agent_pool, env, experience_replay = setup_test(args, env)
 
         experience_queue = mp.Queue()
-        mp_event = mp.Event()
+        done_event = mp.Event()
 
         run_experiment(
             args, algo, agent_pool, env, experience_replay, experience_queue,
-            mp_event
+            done_event
         )
 
         # Analyze performance

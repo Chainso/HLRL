@@ -79,7 +79,7 @@ class OffPolicyAgent(RLAgent):
         )
 
     def train_process(self, num_episodes, decay, n_steps, experience_queue,
-        mp_event):
+        done_event):
         """
         Trains the algorithm for the number of episodes specified on the
         environment, to be called in a separate process.
@@ -89,7 +89,7 @@ class OffPolicyAgent(RLAgent):
             decay (float): The decay of the next.
             n_steps (int): The number of steps.
             experience_queue (Queue): The queue to store experiences in.
-            mp_event (Event): The event to wait on before exiting the process.
+            done_event (Event): The event to wait on before exiting the process.
         """
         for episode in range(1, num_episodes + 1):
             self.reset()
@@ -128,7 +128,7 @@ class OffPolicyAgent(RLAgent):
                 ))
 
         experience_queue.put(None)
-        mp_event.wait()
+        done_event.wait()
 
     def train(self, num_episodes, decay, n_steps, experience_replay, algo,
         *algo_args, **algo_kwargs):

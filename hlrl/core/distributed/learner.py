@@ -10,7 +10,7 @@ class Learner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def train(self, algo: RLAlgo, mp_event: Event, sample_queue: Queue,
+    def train(self, algo: RLAlgo, done_event: Event, sample_queue: Queue,
         priority_queue: Queue, save_path: str = None,
         save_interval: int = 10000):
         """
@@ -18,7 +18,7 @@ class Learner():
 
         Args:
             algo (RLAlgo): The algorithm to train.
-            mp_event (multiprocessing.Event): The event to set to allow the
+            done_event (multiprocessing.Event): The event to set to allow the
                 process to exit.
             sample_queue (multiprocessing.Queue): The queue to receive
                 buffer samples from.
@@ -45,4 +45,4 @@ class Learner():
                     and self.training_steps % save_interval == 0):
                     self.save(save_path)
 
-        mp_event.wait()
+        done_event.wait()

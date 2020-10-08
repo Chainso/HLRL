@@ -11,7 +11,8 @@ if(__name__ == "__main__"):
     from functools import partial
 
     from hlrl.core.logger import TensorboardLogger
-    from hlrl.core.distributed import Worker
+    from hlrl.core.common.functional import compose
+    from hlrl.core.distributed import Learner, Worker
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import SAC, SACRecurrent, RND
@@ -134,6 +135,10 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "--n_steps", type=int, default=1, help="the number of decay steps"
     )
+    parser.add_argument(
+        "--num_agents", type=int, default=1,
+        help="the number of agents to run concurrently"
+    )
 
     # Experience Replay args
     parser.add_argument(
@@ -240,55 +245,101 @@ if(__name__ == "__main__"):
         algo.load(args.load_path)
 
     # Create agent class
-    agent = partial(OffPolicyAgent, env, algo, args.render, logger=logger)
+    agent_builder = partial(
+        OffPolicyAgent, env, algo, args.render, logger=logger
+    )
 
     if args.recurrent:
-        agent = partial(SequenceInputAgent, device=args.device)
-        agent = TorchRecurrentAgent(agent)
+        agent_builder = compose([
+            agent_builder, partial(SequenceInputAgent, device=args.device),
+            TorchRecurrentAgent
+        ])
     else:
-        agent = TorchRLAgent(agent, device=args.device)
-
-    if args.exploration == "rnd":
-        agent = IntrinsicRewardAgent(agent)
+        agent_builder = compose([
+            agent_builder, partial(TorchRLAgent, device=args.device)
+        ])
 
     if args.play:
         algo.eval()
+
+        agent = agent_builder()
         agent.play(args.episodes)
     else:
+        if args.exploration == "rnd":
+            agent_builder = compose(agent_builder, IntrinsicRewardAgent)
+
         algo.create_optimizers()
 
         algo.train()
         algo.share_memory()
 
-        experience_queue = mp.Queue()
-        mp_event = mp.Event()
-
         # Experience replay
         if args.recurrent:
-            experience_replay = TorchR2D2(args.er_capacity, args.er_alpha,
-                                          args.er_beta,
-                                          args.er_beta_increment,
-                                          args.er_epsilon,
-                                          args.max_factor)
-            agent = ExperienceSequenceAgent(agent, args.burn_in_length
-                                                   + args.sequence_length,
-                                            args.burn_in_length)
+            experience_replay = TorchR2D2(
+                args.er_capacity, args.er_alpha, args.er_beta,
+                args.er_beta_increment, args.er_epsilon, args.max_factor
+            )
+
+            agent_builder = compose([
+                agent_builder,
+                partial(
+                    ExperienceSequenceAgent,
+                    args.burn_in_length + args.sequence_length,
+                    args.burn_in_length
+                )
+            ])
         else:
-            experience_replay = TorchPER(args.er_capacity, args.er_alpha,
-                                         args.er_beta,
-                                         args.er_beta_increment,
-                                         args.er_epsilon)
+            experience_replay = TorchPER(
+                args.er_capacity, args.er_alpha, args.er_beta,
+                args.er_beta_increment, args.er_epsilon
+            )
 
-        agents = [agent]
+        done_event = mp.Event()
 
-        agent_pool = AgentPool(agents)
-        agent_procs = agent_pool.train_process(
-            args.episodes, args.decay, args.n_steps, experience_queue, mp_event
+        # Max queue size is rather arbitrary
+        max_experiences_in_queue = 32
+
+        agent_queue = mp.Queue(maxsize=max_experiences_in_queue)
+        sample_queue = mp.Queue(maxsize=max_experiences_in_queue)
+        priority_queue = mp.Queue(maxsize=max_experiences_in_queue)
+
+        # Start the learner
+        learner = Learner()
+
+        learner_proc = mp.Process(
+            target=learner.train,
+            args=(
+                algo, done_event, sample_queue, priority_queue, args.save_path,
+                args.save_interval
+            )
         )
 
         # Start the worker for the model
-        worker = Worker(algo, experience_replay, experience_queue)
-        worker.train(
-            agent_procs, mp_event, args.batch_size, args.start_size,
-            args.save_path, args.save_interval
+        worker = Worker()
+        worker_proc = mp.Process(
+            target=worker.train,
+            args=(
+                experience_replay, done_event, agent_queue, sample_queue,
+                priority_queue, args.batch_size, args.start_size,
+            )
         )
+
+        # Start the agents
+        agents = [agent_builder() for _ in range(args.num_agents)]
+
+        # Start all processes
+        learner_proc.start()
+        worker_proc.start()
+
+        agent_pool = AgentPool(agents)
+        agent_procs = agent_pool.train_process(
+            args.episodes, args.decay, args.n_steps, agent_queue, done_event
+        )
+
+        # Wait for processes to end
+        # TODO MAKE SURE TO SET DONE_EVENT IN ONE OF THE PROCESS PROPERLY
+        learner_proc.join()
+        worker_proc.join()
+
+        for agent_proc in agent_procs:
+            agent_proc.join()
