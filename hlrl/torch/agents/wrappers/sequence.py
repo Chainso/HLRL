@@ -1,4 +1,5 @@
 import torch
+import queue
 
 from collections import deque
 
@@ -80,7 +81,10 @@ class ExperienceSequenceAgent(MethodWrapper):
                         self.ready_experiences[key], dim=1
                     )
 
-            experience_queue.put(experiences_to_send)
+            try:
+                experience_queue.put_nowait(experiences_to_send)
+            except queue.Full:
+                pass
 
             keep_start = len(self.ready_experiences) - self.keep_length
             self.num_experiences = self.keep_length

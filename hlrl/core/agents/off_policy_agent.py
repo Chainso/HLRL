@@ -1,3 +1,5 @@
+import queue
+
 from collections import deque
 from time import time
 
@@ -58,7 +60,11 @@ class OffPolicyAgent(RLAgent):
             decay (float): The decay value for n_step decay.
         """
         experience = self.get_buffer_experience(experiences, decay)
-        experience_queue.put(experience)
+
+        try:
+            experience_queue.put_nowait(experience)
+        except queue.Full:
+            pass
 
     def train_algo(self, experiences, decay, experience_replay, algo,
         *algo_args, **algo_kwargs):
@@ -98,6 +104,8 @@ class OffPolicyAgent(RLAgent):
             done_event (Event): The event to wait on before exiting the process.
         """
         for episode in range(1, num_episodes + 1):
+            episode_time = time()
+
             self.reset()
             self.env.reset()
 
@@ -121,8 +129,8 @@ class OffPolicyAgent(RLAgent):
                     self.add_to_buffer(experience_queue, experiences, decay)
 
                 if self.logger is not None:
-                    self.logger["Train/Environment Step Time (s)"] = (
-                        time() - step_time, self.algo._env_steps
+                    self.logger["Train/Agent Step Time (s)"] = (
+                        time() - step_time, self.algo.env_steps
                     )
 
             # Add the rest to the buffer
@@ -134,6 +142,10 @@ class OffPolicyAgent(RLAgent):
             if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (
                     ep_reward, self.algo.env_episodes
+                )
+
+                self.logger["Train/Agent Episode Time (s)"] = (
+                    time() - episode_time, self.algo.env_episodes
                 )
 
             if not self.silent:
@@ -162,6 +174,8 @@ class OffPolicyAgent(RLAgent):
                 algorithm training. 
         """
         for episode in range(1, num_episodes + 1):
+            episode_time = time()
+
             self.reset()
             self.env.reset()
 
@@ -188,8 +202,12 @@ class OffPolicyAgent(RLAgent):
                     )
 
                 if self.logger is not None:
-                    self.logger["Train/Environment Step Time (s)"] = (
-                        time() - step_time, self.algo._env_steps
+                    self.logger["Train/Agent Step Time (s)"] = (
+                        time() - step_time, self.algo.env_steps
+                    )
+
+                    self.logger["Train/Agent Episode Time (s)"] = (
+                        time() - episode_time, self.algo.env_episodes
                     )
 
             # Add the rest to the buffer
