@@ -37,7 +37,7 @@ class Learner():
             priority_queue.put((idxs, new_qs, new_q_targs))
 
             if(save_path is not None
-                and self.training_steps % save_interval == 0):
-                self.save(save_path)
+                and algo.training_steps % save_interval == 0):
+                algo.save(save_path)
 
         done_event.wait()
