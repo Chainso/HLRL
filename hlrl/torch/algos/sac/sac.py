@@ -12,7 +12,7 @@ class SAC(TorchOffPolicyAlgo):
     """
     def __init__(self, action_space, q_func, policy, discount, polyak,
                  target_update_interval, q_optim, p_optim, temp_optim,
-                 twin=True, logger=None):
+                 twin=True, device="cpu", logger=None):
         """
         Creates the soft actor-critic algorithm with the given parameters
 
@@ -33,10 +33,11 @@ class SAC(TorchOffPolicyAlgo):
             temp_optim (toch.nn.Module) : The optimizer for the temperature.
             twin (bool, optional) : If the twin Q-function algorithm should be
                                     used, default True.
+            device (str): The device of the tensors in the module.
             logger (Logger, optional) : The logger to log results while training
                                         and evaluating, default None.
         """
-        super().__init__(logger)
+        super().__init__(device, logger)
 
         # All constants
         self._discount = discount
@@ -147,6 +148,10 @@ class SAC(TorchOffPolicyAlgo):
                                network.
             is_weights (numpy.array) : The importance sampling weights for PER.
         """
+        rollouts = {
+            key: value.to(self.device) for key, value in rollouts.items()
+        }
+
         # Get all the parameters from the rollouts
         states = rollouts["state"]
         actions = rollouts["action"]

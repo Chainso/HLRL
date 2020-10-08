@@ -71,15 +71,16 @@ def setup_test(args, env):
     )
 
     if args.recurrent:
-        agent = SequenceInputAgent(agent, device=args.device)
+        agent = SequenceInputAgent(agent)
         agent = TorchRecurrentAgent(agent)
     else:
-        agent = TorchRLAgent(agent, batch_state=False, device=args.device)
+        agent = TorchRLAgent(agent, batch_state=False)
 
     algo.create_optimizers()
 
     algo.train()
     algo.share_memory()
+    
     # Experience replay
     if args.recurrent:
         experience_replay = TorchR2D2(

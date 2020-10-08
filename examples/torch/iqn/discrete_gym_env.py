@@ -214,7 +214,7 @@ if(__name__ == "__main__"):
             args.hidden_size, autoencoder, qfunc, args.discount,
             args.polyak, args.n_quantiles, args.embedding_dim,
             args.huber_threshold, args.target_update_interval, optim,
-            optim, logger
+            optim, args.device, logger
         )
 
     algo = algo.to(torch.device(args.device))
@@ -226,11 +226,11 @@ if(__name__ == "__main__"):
     agent = OffPolicyAgent(env, algo, args.render, logger=logger)
 
     if args.recurrent:
-        agent = SequenceInputAgent(agent, device=args.device)
+        agent = SequenceInputAgent(agent)
         agent = TorchRecurrentAgent(agent)
         #agent = MunchausenAgent(agent, 0.9, 0.03)
     else:
-        agent = TorchRLAgent(agent, device=args.device)
+        agent = TorchRLAgent(agent)
         #agent = MunchausenAgent(agent, 0.9, 0.03)
 
     if args.play:

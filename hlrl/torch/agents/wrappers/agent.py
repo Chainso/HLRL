@@ -10,8 +10,7 @@ class TorchRLAgent(MethodWrapper):
     """
     def __init__(self,
         agent: RLAgent,
-        batch_state: bool = True,
-        device: str ="cpu"):
+        batch_state: bool = True):
         """
         Creates an agent that interacts with the given environment using the
         algorithm given.
@@ -20,17 +19,16 @@ class TorchRLAgent(MethodWrapper):
             agent (RLAgent): The agent to wrap.
             batch_state (bool): If the state should be batched with a batch size
                 of 1 when transformed.
-            device (str): The device for the agent to run on.
         """
         super().__init__(agent)
+        
         self.batch_state = batch_state
-        self.device = torch.device(device)
 
     def make_tensor(self, data):
         """
         Creates a float tensor of the data of batch size 1.
         """
-        return torch.FloatTensor(data).to(self.device)
+        return torch.FloatTensor(data).to(self.algo.device)
 
     def transform_state(self, state):
         state_dict = self.om.transform_state(state)

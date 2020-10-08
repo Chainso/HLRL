@@ -18,7 +18,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
     """
     def __init__(self, enc_dim, autoencoder, q_func, discount, polyak,
         n_quantiles, embedding_dim, huber_threshold, target_update_interval,
-        enc_optim, q_optim, logger=None):
+        enc_optim, q_optim, device="cpu", logger=None):
         """
         Creates the Rainbow-IQN network.
 
@@ -38,10 +38,11 @@ class RainbowIQN(TorchOffPolicyAlgo):
                                           between target updates.
             enc_optim (torch.nn.Module) : The optimizer for the autoencoder.
             q_optim (torch.nn.Module) : The optimizer for the Q-function.
+            device (str): The device of the tensors in the module.
             logger (Logger, optional) : The logger to log results while training
                                         and evaluating, default None.
         """
-        super().__init__(logger)
+        super().__init__(device, logger)
 
         # Constants
         self.discount = discount

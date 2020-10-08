@@ -179,9 +179,10 @@ if(__name__ == "__main__"):
     gym_env = RescaleAction(gym_env, -1, 1)
     env = GymEnv(gym_env)
 
-    # The logger
-    logger = args.logs_path
-    logger = None if logger is None else TensorboardLogger(logger)
+    # The algorithm logger
+    algo_logger = (
+        None if args.logs_path is None else TensorboardLogger(args.logs_path)
+    )
     
     # Initialize SAC
     activation_fn = nn.ReLU
@@ -207,7 +208,7 @@ if(__name__ == "__main__"):
         algo = SACRecurrent(
             env.action_space, qfunc, policy, args.discount, args.polyak,
             args.target_update_interval, optim, optim, optim, args.twin,
-            args.burn_in_length, logger
+            args.burn_in_length, args.device, algo_logger
         )
     else:
         qfunc = LinearSAPolicy(
@@ -223,7 +224,7 @@ if(__name__ == "__main__"):
         algo = SAC(
             env.action_space, qfunc, policy, args.discount, args.polyak,
             args.target_update_interval, optim, optim, optim, args.twin,
-            logger
+            args.device, algo_logger
         )
 
     if args.exploration == "rnd":
@@ -246,23 +247,25 @@ if(__name__ == "__main__"):
 
     # Create agent class
     agent_builder = partial(
-        OffPolicyAgent, env, algo, args.render, logger=logger
+        OffPolicyAgent, env, algo, args.render
     )
 
     if args.recurrent:
         agent_builder = compose([
-            agent_builder, partial(SequenceInputAgent, device=args.device),
-            TorchRecurrentAgent
+            agent_builder, SequenceInputAgent, TorchRecurrentAgent
         ])
     else:
-        agent_builder = compose([
-            agent_builder, partial(TorchRLAgent, device=args.device)
-        ])
+        agent_builder = compose([agent_builder, TorchRLAgent])
 
     if args.play:
         algo.eval()
 
-        agent = agent_builder()
+        agent_logger = None
+        if args.logs_path is not None:
+            agent_logs_path = args.logs_path + "/play-agent"
+            agent_logger = TensorboardLogger(agent_logs_path)
+
+        agent = agent_builder(logger=agent_logger)
         agent.play(args.episodes)
     else:
         if args.exploration == "rnd":
@@ -310,10 +313,23 @@ if(__name__ == "__main__"):
                 priority_queue, args.batch_size, args.start_size,
         )
 
-        agent_train_args = tuple(
-            (args.episodes, args.decay, args.n_steps, agent_queue, done_event)
-            for _ in range(args.num_agents)
-        )
+        agents = []
+        agent_train_args = []
+
+        base_agents_logs_path = None
+        if args.logs_path is not None:
+            base_agents_logs_path = args.logs_path + "/train-agent-"
+
+        for i in range(args.num_agents):
+            agent_logger = None
+            if base_agents_logs_path is not None:
+                agent_logs_path = base_agents_logs_path + str(i + 1)
+                agent_logger = TensorboardLogger(agent_logs_path)
+
+            agents.append(agent_builder(logger=agent_logger))
+            agent_train_args.append((
+                args.episodes, args.decay, args.n_steps, agent_queue, done_event
+            ))
 
         runner = ApexRunner(done_event)
-        runner.start(learner_args, worker_args, agent_builder, agent_train_args)
+        runner.start(learner_args, worker_args, agents, agent_train_args)

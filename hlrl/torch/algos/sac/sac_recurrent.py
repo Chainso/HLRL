@@ -10,7 +10,7 @@ class SACRecurrent(SAC):
     """
     def __init__(self, action_space, q_func, policy, discount, polyak,
                  target_update_interval, q_optim, p_optim, temp_optim,
-                 twin=True, burn_in_length=0, logger=None):
+                 twin=True, burn_in_length=0, device="cpu", logger=None):
         """
         Creates the soft actor-critic algorithm with the given parameters
 
@@ -33,12 +33,13 @@ class SACRecurrent(SAC):
                                     used, default True.
             burn_in_length (int): The number of samples to "burn in" the hidden
                                   states.
+            device (str): The device of the tensors in the module.
             logger (Logger, optional) : The logger to log results while training
                                         and evaluating, default None.
         """
         super().__init__(action_space, q_func, policy, discount, polyak,
                          target_update_interval, q_optim, p_optim, temp_optim,
-                         twin=twin, logger=logger)
+                         twin=twin, device=device, logger=logger)
 
         self.burn_in_length = burn_in_length
 
@@ -164,6 +165,10 @@ class SACRecurrent(SAC):
             rollouts (tuple) : The (s, a, r, s', t, la, h, nh) of training data
                                for the network.
         """
+        rollouts = {
+            key: value.to(self.device) for key, value in rollouts.items()
+        }
+
         # Switch from (batch size, 2, num layers, hidden size) to
         # (2, batch size, num layers, hidden size)
         rollouts["hidden_state"] = (

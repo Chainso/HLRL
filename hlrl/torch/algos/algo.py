@@ -1,22 +1,26 @@
 import torch
 import torch.nn as nn
 
+from hlrl.core.logger import Logger
 from hlrl.core.algos import RLAlgo
 
 class TorchRLAlgo(RLAlgo, nn.Module):
     """
     An abstract reinforcement learning algorithm.
     """
-    def __init__(self, logger=None):
+    def __init__(self, device:str = "cpu", logger: Logger = None):
         """
         Creates the reinforcement learning algorithm.
 
         Args:
+            device (str): The device of the tensors in the module.
             logger (Logger, optional): The logger to log results while training
-                                       and evaluating.
+                nd evaluating.
         """
         RLAlgo.__init__(self, logger)
         nn.Module.__init__(self)
+
+        self.device = torch.device(device)
 
     def create_optimizers(self):
         """
@@ -57,15 +61,16 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
     """
     The base class of an off-policy torch algorithm.
     """
-    def __init__(self, logger=None):
+    def __init__(self, device: str = "cpu", logger: Logger = None):
         """
         Creates the off-policy algorithm.
 
         Args:
+            device (str): The device of the tensors in the module.
             logger (Logger, optional): The logger to log results while training
                                        and evaluating.
         """
-        super().__init__(logger)
+        super().__init__(device, logger)
 
 
     def train_from_buffer(self, experience_replay, batch_size, start_size,

@@ -38,7 +38,7 @@ class ExperienceSequenceAgent(MethodWrapper):
     def __init__(self, agent, sequence_length, keep_length=0):
         """
         Args:
-            agent (OffPolicyAgent): The agent to wrap.
+            agent (TorchRLAgent): The agent to wrap.
             sequence_length (int): The length of the sequences.
             keep_length (int): Keeps the last n experiences from the previous
                                batch.
@@ -80,7 +80,6 @@ class ExperienceSequenceAgent(MethodWrapper):
                     experiences_to_send[key] = torch.cat(
                         self.ready_experiences[key], dim=1
                     )
-
             try:
                 experience_queue.put_nowait(experiences_to_send)
             except queue.Full:

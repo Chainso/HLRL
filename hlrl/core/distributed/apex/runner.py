@@ -29,8 +29,10 @@ class ApexRunner():
         """
         self.done_event.set()
 
-    def start(self, learner_args: Tuple[Any], worker_args: Tuple[Any],
-        agent_builder: Callable[[], RLAgent],
+    def start(self,
+        learner_args: Tuple[Any],
+        worker_args: Tuple[Any],
+        agents: Tuple[RLAgent, ...],
         agent_train_args: Tuple[Tuple[Any]]):
         """
         Starts the runner, creating and starting the learner, worker and agent
@@ -39,11 +41,12 @@ class ApexRunner():
         Args:
             learner_args (Tuple[Any]): Arguments for the Ape-X learner.
             worker_args (Tuple[Any]): Arguments for the Ape-X worker.
-            agent_builder (Callable[[], RLAgent]): A nullary function that
-                constructs an agent.
+            agents (Tuple[RLAgent, ...]): The pool of agents to run.
             agent_train_args (Tuple[Tuple[Any]]): Arguments for the agent
                 training processes.
         """
+        assert len(agents) == len(agent_train_args)
+
         # Create the learner
         learner = ApexLearner()
         learner_proc = mp.Process(target=learner.train, args=learner_args)
@@ -52,17 +55,13 @@ class ApexRunner():
         worker = ApexWorker()
         worker_proc = mp.Process(target=worker.train, args=worker_args)
 
-        # Create the agents
-        agents = []
-        agent_procs = []
-
-        for i in range(len(agent_train_args)):
-            agent = agent_builder()
-
-            agents.append(agent)
-            agent_procs.append(
-                mp.Process(target=agent.train_process, args=agent_train_args[i])
+        # Create agent processes
+        agent_procs = tuple(
+            mp.Process(
+                target=agents[i].train_process, args=agent_train_args[i]
             )
+            for i in range(len(agents))
+        )
 
         # Start all processes
         learner_proc.start()
