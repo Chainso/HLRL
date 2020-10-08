@@ -127,7 +127,6 @@ class OffPolicyAgent(RLAgent):
                     self.algo.env_episodes, self.algo.env_steps, ep_reward
                 ))
 
-        experience_queue.put(None)
         done_event.wait()
 
     def train(self, num_episodes, decay, n_steps, experience_replay, algo,

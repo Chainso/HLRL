@@ -28,21 +28,16 @@ class Learner():
             save_interval (int): The number of training steps in-between
                 model saves.
         """
-        running = True
+        while not done_event.is_set():
+            sample = sample_queue.get()
+            rollouts, idxs, is_weights = sample
 
-        while running:
-            sample = experience_queue.get()
+            new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
 
-            if sample is None:
-                running = False
-            else:
-                rollouts, idxs, is_weights = sample
-                new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
+            priority_queue.put((idxs, new_qs, new_q_targs))
 
-                experience_queue.put((idxs, new_qs, new_q_targs))
-
-                if(save_path is not None
-                    and self.training_steps % save_interval == 0):
-                    self.save(save_path)
+            if(save_path is not None
+                and self.training_steps % save_interval == 0):
+                self.save(save_path)
 
         done_event.wait()

@@ -45,7 +45,7 @@ class Worker():
             # Receive new Q-values and targets to update
             try:
                 for _ in range(sample_queue.qsize()):
-                    idxs, new_qs, new_q_targs = sample_queue.get_nowait()
+                    idxs, new_qs, new_q_targs = priority_queue.get_nowait()
                     experience_replay.update_priorities(
                         idxs, new_qs, new_q_targs
                     )
@@ -57,6 +57,6 @@ class Worker():
                 and len(experience_replay) >= start_size):
                 try:
                     sample = experience_replay.sample(batch_size)
-                    priority_queue.put_nowait(sample)
+                    sample_queue.put_nowait(sample)
                 except queue.Full:
                     pass

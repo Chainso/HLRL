@@ -296,12 +296,9 @@ if(__name__ == "__main__"):
 
         done_event = mp.Event()
 
-        # Max queue size is rather arbitrary
-        max_experiences_in_queue = 32
-
-        agent_queue = mp.Queue(maxsize=max_experiences_in_queue)
-        sample_queue = mp.Queue(maxsize=max_experiences_in_queue)
-        priority_queue = mp.Queue(maxsize=max_experiences_in_queue)
+        agent_queue = mp.Queue()
+        sample_queue = mp.Queue()
+        priority_queue = mp.Queue()
 
         # Start the learner
         learner = Learner()
