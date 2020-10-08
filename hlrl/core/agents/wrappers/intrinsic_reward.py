@@ -4,7 +4,7 @@ from typing import Any
 
 from hlrl.core.agents import RLAgent
 from hlrl.core.algos import IntrinsicRewardAlgo
-from hlrl.core.common import MethodWrapper
+from hlrl.core.common.wrappers import MethodWrapper
 
 
 class IntrinsicRewardAgent(MethodWrapper):

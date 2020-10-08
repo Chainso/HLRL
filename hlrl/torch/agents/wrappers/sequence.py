@@ -2,7 +2,7 @@ import torch
 
 from collections import deque
 
-from hlrl.core.common import MethodWrapper
+from hlrl.core.common.wrappers import MethodWrapper
 from .agent import TorchRLAgent
 
 class SequenceInputAgent(TorchRLAgent):

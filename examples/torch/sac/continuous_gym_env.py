@@ -240,10 +240,10 @@ if(__name__ == "__main__"):
         algo.load(args.load_path)
 
     # Create agent class
-    agent = OffPolicyAgent(env, algo, args.render, logger=logger)
+    agent = partial(OffPolicyAgent, env, algo, args.render, logger=logger)
 
     if args.recurrent:
-        agent = SequenceInputAgent(agent, device=args.device)
+        agent = partial(SequenceInputAgent, device=args.device)
         agent = TorchRecurrentAgent(agent)
     else:
         agent = TorchRLAgent(agent, device=args.device)

@@ -2,7 +2,7 @@ import types
 
 from multiprocessing.managers import Server, SharedMemoryServer, NamespaceProxy
 
-from hlrl.core.common import MethodWrapper
+from hlrl.core.common.wrappers import MethodWrapper
 
 from hlrl.torch.experience_replay import TorchPER
 def create(self, c, typeid, /, *args, **kwargs):

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 from hlrl.core.algos import RLAlgo
-from hlrl.core.common import MethodWrapper
+from hlrl.core.common.wrappers import MethodWrapper
 
 class IntrinsicRewardAlgo(MethodWrapper):
     """
