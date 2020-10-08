@@ -8,7 +8,7 @@ if(__name__ == "__main__"):
     from functools import partial
 
     from hlrl.core.logger import TensorboardLogger
-    from hlrl.core.multiprocessing import Worker
+    from hlrl.core.distributed import Worker
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent
     from hlrl.torch.algos import RainbowIQN

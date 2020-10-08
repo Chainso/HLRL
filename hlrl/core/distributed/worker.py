@@ -1,7 +1,12 @@
+from multiprocessing import Queue, Event
+
 class Worker():
     """
     A worker for an off-policy algorithm, used to separate training and the
     agent.
+
+    Based on Ape-X:
+    https://arxiv.org/pdf/1803.00933.pdf
     """
     def __init__(self, algo, experience_replay, experience_queue):
         """
@@ -19,6 +24,21 @@ class Worker():
         self.experience_replay = experience_replay
         self.experience_queue = experience_queue
 
+    def _send_rollouts_thread(self, learner_queue: Queue):
+        """
+        Sends samples from a replay buffer to a queue, then recieves the updated
+        Q-value and Q-target to update the experience priorities in the replay
+        buffer.
+
+        Args:
+            learner_queue (multiprocessing.Queue): The queue to send experiences
+                to and received updated values and targets from.
+        """
+        running = True
+
+        while self.running:
+            pass
+        
     def train(self, agent_procs, mp_event, batch_size, start_size, save_path,
         save_interval):
         """
