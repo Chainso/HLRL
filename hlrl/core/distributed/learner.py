@@ -10,17 +10,20 @@ class Learner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def train(self, algo: RLAlgo, experience_queue: Queue, mp_event: Event,
-        save_path: str = None, save_interval: int = 10000):
+    def train(self, algo: RLAlgo, mp_event: Event, sample_queue: Queue,
+        priority_queue: Queue, save_path: str = None,
+        save_interval: int = 10000):
         """
         Trains the algorithm until all agent processes have ended.
 
         Args:
             algo (RLAlgo): The algorithm to train.
-            experience_queue (multiprocessing.Queue): The queue to receive
-                experiences from and send updated values and targets to.
-            mp_event (multiprocessing.Event): The event to set to awaken
-                to allow the process to exit.
+            mp_event (multiprocessing.Event): The event to set to allow the
+                process to exit.
+            sample_queue (multiprocessing.Queue): The queue to receive
+                buffer samples from.
+            priority_queue (multiprocessing.Queue): The queue to send updated
+                values to.
             save_path (str): The directory to save the model to.
             save_interval (int): The number of training steps in-between
                 model saves.

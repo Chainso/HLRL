@@ -1,3 +1,5 @@
+import queue
+
 from multiprocessing import Queue, Event
 
 class Worker():
@@ -8,69 +10,51 @@ class Worker():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def __init__(self, algo, experience_replay, experience_queue):
-        """
-        Creates worker for the algorithm, and with an experience queue to be fed
-        experiences from.
-
-        Args:
-            algo (torch.nn.Module): The algorithm to train.
-            experience_replay (ExperienceReplay): The replay buffer to add
-                experiences into.
-            experience_queue (torch.multiprocessing.Queue): The queue to receive
-                experiences from.
-        """
-        self.algo = algo
-        self.experience_replay = experience_replay
-        self.experience_queue = experience_queue
-
-    def _send_rollouts_thread(self, learner_queue: Queue):
-        """
-        Sends samples from a replay buffer to a queue, then recieves the updated
-        Q-value and Q-target to update the experience priorities in the replay
-        buffer.
-
-        Args:
-            learner_queue (multiprocessing.Queue): The queue to send experiences
-                to and received updated values and targets from.
-        """
-        running = True
-
-        while self.running:
-            pass
-        
-    def train(self, agent_procs, mp_event, batch_size, start_size, save_path,
-        save_interval):
+    def train(self, experience_replay: ExperienceReplay, mp_event: Event,
+        agent_queue: Queue, sample_queue: Queue, priority_queue: Queue,
+        batch_size: int, start_size: int):
         """
         Trains the algorithm until all agent processes have ended.
 
         Args:
-            agent_procs (List[torch.multiprocessing.Process]): A list of agent
-                processes.
-            mp_event (torch.multiprocessing.Event): The event to set to awaken
+            experience_replay (ExperienceReplay): The replay buffer to add
+                experiences into.
+            mp_event (multiprocessing.Event): The event to set to awaken
                 the agents to exit.
+            agent_queue (multiprocessing.Queue): The queue of experiences to
+                receive from agents.
+            sample_queue (multiprocessing.Queue): The queue to send batches
+                to the learner.
+            priority_queue (multiprocessing.Queue): The queue to receive updated
+                values for priority calculation from the learner.
             batch_size (int): The size of the training batch.
             start_size (int): The number of samples in the buffer to start
                 training.
-            save_path (str): The directory to save the model to.
-            save_interval (int): The number of training steps in-between
-                model saves.
         """
-        done_count = 0
-        while any(proc.is_alive() for proc in agent_procs):
-            if done_count == len(agent_procs):
-                # Wait on the train processes
-                mp_event.set()
-                for proc in agent_procs:
-                    proc.join()
-            else:
-                experience = self.experience_queue.get()
+        while not mp_event.is_set():
+            # Add all new experiences to the queue
+            try:
+                for _ in range(agent_queue.qsize()):
+                    experience = agent_queue.get_nowait()
+                    experience_replay.add(experience)
+            except queue.Empty:
+                pass
 
-                if experience is None:
-                    done_count += 1
-                else:
-                    self.experience_replay.add(experience)
-                    self.algo.train_from_buffer(
-                        self.experience_replay, batch_size, start_size,
-                        save_path, save_interval
+            # Receive new Q-values and targets to update
+            try:
+                for _ in range(sample_queue.qsize()):
+                    idxs, new_qs, new_q_targs = sample_queue.get_nowait()
+                    experience_replay.update_priorities(
+                        idxs, new_qs, new_q_targs
                     )
+            except queue.Empty:
+                pass
+
+            # Send a sample to the learner to train on
+            if (len(experience_replay) >= batch_size
+                and len(experience_replay) >= start_size):
+                try:
+                    sample = experience_replay.sample(batch_size)
+                    priority_queue.put_nowait(sample)
+                except queue.Full:
+                    pass
