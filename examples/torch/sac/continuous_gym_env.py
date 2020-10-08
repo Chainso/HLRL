@@ -12,7 +12,7 @@ if(__name__ == "__main__"):
 
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.common.functional import compose
-    from hlrl.core.distributed import Learner, Worker
+    from hlrl.core.distributed import ApexLearner, ApexWorker
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import SAC, SACRecurrent, RND
@@ -301,7 +301,7 @@ if(__name__ == "__main__"):
         priority_queue = mp.Queue()
 
         # Start the learner
-        learner = Learner()
+        learner = ApexLearner()
 
         learner_proc = mp.Process(
             target=learner.train,
@@ -312,7 +312,7 @@ if(__name__ == "__main__"):
         )
 
         # Start the worker for the model
-        worker = Worker()
+        worker = ApexWorker()
         worker_proc = mp.Process(
             target=worker.train,
             args=(

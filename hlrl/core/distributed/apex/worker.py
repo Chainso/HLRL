@@ -4,7 +4,7 @@ from multiprocessing import Queue, Event
 
 from hlrl.core.experience_replay import ExperienceReplay
 
-class Worker():
+class ApexWorker():
     """
     A worker for an off-policy algorithm, used to separate training and the
     agent.

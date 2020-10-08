@@ -47,9 +47,15 @@ class OffPolicyAgent(RLAgent):
 
         return transed_algo_step
 
-    def add_to_buffer(self, experiences, decay, experience_queue):
+    def add_to_buffer(self, experience_queue, experiences, decay):
         """
         Adds the experience to the replay buffer.
+
+        Args:
+            experience_queue (multiprocessing.Queue): The queue to put
+                experiences in.
+            experiences: The experiences to add to the buffer.
+            decay (float): The decay value for n_step decay.
         """
         experience = self.get_buffer_experience(experiences, decay)
         experience_queue.put(experience)
@@ -109,11 +115,11 @@ class OffPolicyAgent(RLAgent):
 
                 if (len(experiences) == n_steps):
                     # Do n-step decay and add to the buffer
-                    self.add_to_buffer(experiences, decay, experience_queue)
+                    self.add_to_buffer(experience_queue, experiences, decay)
 
             # Add the rest to the buffer
             while len(experiences) > 0:
-                self.add_to_buffer(experiences, decay, experience_queue)
+                self.add_to_buffer(experience_queue, experiences, decay)
 
             self.algo.env_episodes += 1
 
@@ -161,7 +167,7 @@ class OffPolicyAgent(RLAgent):
                 experience = self.step(True)
 
                 ep_reward += self.reward_to_float(experience["reward"])
-                
+
                 experiences.append(experience)
 
                 self.algo.env_steps += 1

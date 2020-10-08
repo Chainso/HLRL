@@ -3,7 +3,7 @@ from multiprocessing import Queue, Event
 
 from hlrl.core.algos import RLAlgo
 
-class Learner():
+class ApexLearner():
     """
     A learner for a distributed algorithm using experience replay.
 

@@ -8,7 +8,7 @@ if(__name__ == "__main__"):
     from functools import partial
 
     from hlrl.core.logger import TensorboardLogger
-    from hlrl.core.distributed import Worker
+    from hlrl.core.distributed import ApexWorker
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent
     from hlrl.torch.algos import RainbowIQN
@@ -270,7 +270,7 @@ if(__name__ == "__main__"):
         )
 
         # Start the worker for the model
-        worker = Worker(algo, experience_replay, experience_queue)
+        worker = ApexWorker(algo, experience_replay, experience_queue)
         worker.train(
             agent_procs, done_event, args.batch_size, args.start_size,
             args.save_path, args.save_interval
