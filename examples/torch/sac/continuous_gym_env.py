@@ -119,7 +119,7 @@ if(__name__ == "__main__"):
         help="the path of the saved model to load"
     )
     parser.add_argument(
-        "--save_interval", type=int, default=500,
+        "--save_interval", type=int, default=5000,
         help="the number of batches in between saves"
     )
 
@@ -229,12 +229,12 @@ if(__name__ == "__main__"):
     if args.exploration == "rnd":
         rnd_network = LinearPolicy(
             env.state_space[0], args.hidden_size, args.hidden_size,
-            args.num_layers, activation_fn
+            args.num_layers + 2, activation_fn
         )
 
         rnd_target = LinearPolicy(
             env.state_space[0], args.hidden_size, args.hidden_size,
-            args.num_layers + 2, activation_fn
+            args.num_layers, activation_fn
         )
 
         algo = RND(algo, rnd_network, rnd_target, optim)

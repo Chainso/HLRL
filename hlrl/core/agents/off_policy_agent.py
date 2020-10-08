@@ -105,6 +105,9 @@ class OffPolicyAgent(RLAgent):
             experiences = deque(maxlen=n_steps)
 
             while(not self.env.terminal):
+                if self.logger is not None:
+                    step_time = time()
+
                 experience = self.step(True)
 
                 ep_reward += self.reward_to_float(experience["reward"])
@@ -116,6 +119,11 @@ class OffPolicyAgent(RLAgent):
                 if (len(experiences) == n_steps):
                     # Do n-step decay and add to the buffer
                     self.add_to_buffer(experience_queue, experiences, decay)
+
+                if self.logger is not None:
+                    self.logger["Train/Environment Step Time (s)"] = (
+                        time() - step_time, self.algo._env_steps
+                    )
 
             # Add the rest to the buffer
             while len(experiences) > 0:
