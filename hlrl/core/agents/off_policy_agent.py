@@ -1,4 +1,5 @@
 from collections import deque
+from time import time
 
 from hlrl.core.agents import RLAgent
 
@@ -155,6 +156,9 @@ class OffPolicyAgent(RLAgent):
             experiences = deque(maxlen=n_steps)
 
             while(not self.env.terminal):
+                if self.logger is not None:
+                    step_time = time()
+
                 experience = self.step(True)
 
                 ep_reward += self.reward_to_float(experience["reward"])
@@ -170,6 +174,11 @@ class OffPolicyAgent(RLAgent):
                         **algo_kwargs
                     )
 
+                if self.logger is not None:
+                    self.logger["Train/Environment Step Time (s)"] = (
+                        time() - step_time, self.algo._env_steps
+                    )
+
             # Add the rest to the buffer
             while len(experiences) > 0:
                 self.train_algo(
@@ -179,7 +188,7 @@ class OffPolicyAgent(RLAgent):
 
             self.algo.env_episodes += 1
 
-            if(self.logger is not None):
+            if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (
                     ep_reward, self.algo.env_episodes
                 )
