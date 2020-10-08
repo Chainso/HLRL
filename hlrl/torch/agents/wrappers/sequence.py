@@ -81,9 +81,10 @@ class ExperienceSequenceAgent(MethodWrapper):
                     )
 
             experience_queue.put(experiences_to_send)
-            keep_start = len(self.ready_experiences) - self.keep_length
 
+            keep_start = len(self.ready_experiences) - self.keep_length
             self.num_experiences = self.keep_length
+
             for key in self.ready_experiences:
                 self.ready_experiences[key] = (
                     self.ready_experiences[key][keep_start:]
