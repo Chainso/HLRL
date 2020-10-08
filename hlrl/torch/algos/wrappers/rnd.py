@@ -51,7 +51,9 @@ class RND(IntrinsicRewardAlgo):
         self.rnd_optim.step()
 
         if self.logger is not None:
-            self.logger["Train/RND Loss"] = (rnd_loss, self.training_steps)
+            self.logger["Train/RND Loss"] = (
+                rnd_loss.detach().item(), self.training_steps
+            )
 
         return self.om.train_batch(rollouts, *training_args)
 

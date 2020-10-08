@@ -206,10 +206,6 @@ class OffPolicyAgent(RLAgent):
                         time() - step_time, self.algo.env_steps
                     )
 
-                    self.logger["Train/Agent Episode Time (s)"] = (
-                        time() - episode_time, self.algo.env_episodes
-                    )
-
             # Add the rest to the buffer
             while len(experiences) > 0:
                 self.train_algo(
@@ -222,6 +218,10 @@ class OffPolicyAgent(RLAgent):
             if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (
                     ep_reward, self.algo.env_episodes
+                )
+
+                self.logger["Train/Agent Episode Time (s)"] = (
+                    time() - episode_time, self.algo.env_episodes
                 )
 
             if not self.silent:

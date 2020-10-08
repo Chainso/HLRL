@@ -219,7 +219,7 @@ class SAC(TorchOffPolicyAlgo):
             # Only log the Q2 if twin
             if(self.twin):
                 self.logger["Train/Q2 Loss"] = (
-                    q_loss2, self.training_steps
+                    q_loss2.detach().item(), self.training_steps
                 )
 
         new_qs, new_q_targ = self._step_optimizers(states)

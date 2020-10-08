@@ -275,7 +275,9 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Log the loss
         if (self.logger is not None):
-            self.logger["Train/QR Loss"] = (qr_loss.item(), self.training_steps)
+            self.logger["Train/QR Loss"] = (
+                qr_loss.detach().item(), self.training_steps
+            )
 
         return new_q_val, new_q_target
 

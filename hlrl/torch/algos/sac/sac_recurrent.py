@@ -178,7 +178,7 @@ class SACRecurrent(SAC):
         full_next_states = rollouts["next_state"]
         full_hidden_states = rollouts["hidden_state"]
 
-        q_loss_func = nn.MSELoss()
+        q_loss_func = nn.MSELoss(reduce=False)
 
         with torch.no_grad():
             (next_actions, next_log_probs, _, _) = self.policy(
@@ -210,7 +210,9 @@ class SACRecurrent(SAC):
             p_q_pred = torch.min(p_q_pred1, p_q_pred2)
 
             q_pred2, _ = self.q_func2(states, actions, hidden_states)
-            q_loss2 = q_loss_func(q_pred2, q_next)
+
+            q_loss2 = q_loss_func(q_pred2, q_next) * is_weights
+            q_loss2 = torch.mean(q_loss2)
 
             self.q_optim2.zero_grad()
             q_loss2.backward()
@@ -221,19 +223,24 @@ class SACRecurrent(SAC):
             p_q_pred = p_q_pred1
 
         q_pred1, _ = self.q_func1(states, actions, hidden_states)
-        q_loss1 = q_loss_func(q_pred1, q_next)
+
+        q_loss1 = q_loss_func(q_pred1, q_next) * is_weights
+        q_loss1 = torch.mean(q_loss1)
 
         self.q_optim1.zero_grad()
         q_loss1.backward()
 
-        p_loss = torch.mean(self._temperature * pred_log_probs - p_q_pred)
+        p_loss = self._temperature * pred_log_probs - p_q_pred
+        p_loss = torch.mean(p_loss * is_weights)
 
         self.p_optim.zero_grad()
         p_loss.backward()
 
         # Tune temperature
         targ_entropy = pred_log_probs.detach() + self.target_entropy
-        temp_loss = -torch.mean(self.log_temp * targ_entropy)
+
+        temp_loss = self.log_temp * targ_entropy
+        temp_loss = -torch.mean(temp_loss * is_weights)
 
         self.temp_optim.zero_grad()
         temp_loss.backward()
@@ -242,18 +249,26 @@ class SACRecurrent(SAC):
 
         # Log the losses if a logger was given
         if(self.logger is not None):
-            self.logger["Train/Q1_Loss"] = (q_loss1, self.training_steps)
-            self.logger["Train/Policy_Loss"] = (p_loss, self.training_steps)
-            self.logger["Train/Temperature"] = (self._temperature,
-                                                self.training_steps)
+            self.logger["Train/Q1 Loss"] = (
+                q_loss1.detach().item(), self.training_steps
+            )
+            self.logger["Train/Policy Loss"] = (
+                p_loss.detach().item(), self.training_steps
+            )
+            self.logger["Train/Temperature"] = (
+                self._temperature, self.training_steps
+            )
 
             # Only log the Q2
             if(self.twin):
-                self.logger["Train/Q2_Loss"] = (q_loss2, self.training_steps)
+                self.logger["Train/Q2 Loss"] = (
+                    q_loss2.detach().item(), self.training_steps
+            )
 
         new_qs, new_q_targ = self._step_optimizers(
             full_states, full_next_states, full_hidden_states
         )
 
         self.training_steps += 1
+
         return new_qs, new_q_targ
