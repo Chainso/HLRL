@@ -44,10 +44,6 @@ class ApexRunner():
             agent_train_args (Tuple[Tuple[Any]]): Arguments for the agent
                 training processes.
         """
-        agent_queue = mp.Queue()
-        sample_queue = mp.Queue()
-        priority_queue = mp.Queue()
-
         # Create the learner
         learner = ApexLearner()
         learner_proc = mp.Process(target=learner.train, args=learner_args)

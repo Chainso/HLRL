@@ -12,7 +12,7 @@ if(__name__ == "__main__"):
 
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.common.functional import compose
-    from hlrl.core.distributed import ApexLearner, ApexWorker
+    from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import SAC, SACRecurrent, RND
@@ -300,43 +300,20 @@ if(__name__ == "__main__"):
         sample_queue = mp.Queue()
         priority_queue = mp.Queue()
 
-        # Start the learner
-        learner = ApexLearner()
-
-        learner_proc = mp.Process(
-            target=learner.train,
-            args=(
+        learner_args = (
                 algo, done_event, sample_queue, priority_queue, args.save_path,
                 args.save_interval
-            )
         )
 
-        # Start the worker for the model
-        worker = ApexWorker()
-        worker_proc = mp.Process(
-            target=worker.train,
-            args=(
+        worker_args = (
                 experience_replay, done_event, agent_queue, sample_queue,
                 priority_queue, args.batch_size, args.start_size,
-            )
         )
 
-        # Start the agents
-        agents = [agent_builder() for _ in range(args.num_agents)]
-
-        # Start all processes
-        learner_proc.start()
-        worker_proc.start()
-
-        agent_pool = AgentPool(agents)
-        agent_procs = agent_pool.train_process(
-            args.episodes, args.decay, args.n_steps, agent_queue, done_event
+        agent_train_args = tuple(
+            (args.episodes, args.decay, args.n_steps, agent_queue, done_event)
+            for _ in range(args.num_agents)
         )
 
-        # Wait for processes to end
-        # TODO MAKE SURE TO SET DONE_EVENT IN ONE OF THE PROCESS PROPERLY
-        learner_proc.join()
-        worker_proc.join()
-
-        for agent_proc in agent_procs:
-            agent_proc.join()
+        runner = ApexRunner(done_event)
+        runner.start(learner_args, worker_args, agent_builder, agent_train_args)
