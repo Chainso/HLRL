@@ -43,6 +43,7 @@ class ApexWorker():
                 pass
 
             # Receive new Q-values and targets to update
+            """
             try:
                 for _ in range(sample_queue.qsize()):
                     idxs, new_qs, new_q_targs = priority_queue.get_nowait()
@@ -60,3 +61,4 @@ class ApexWorker():
                     sample_queue.put_nowait(sample)
                 except queue.Full:
                     pass
+            """

@@ -34,6 +34,8 @@ class TorchPSER(TorchPER):
         self.window_size = 0 if threshold == 0 else np.floor(np.log(threshold)
                                                              / np.log(decay))
 
+        current_index = self.priorities.next_index()
+
         # Decay priority
         for i in range(1, self.window_size + 1):
             decay_idx = current_index - i

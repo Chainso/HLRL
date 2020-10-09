@@ -35,7 +35,7 @@ class TorchPER(PER):
             if key not in self.experiences:
                 self.experiences[key] = np.zeros(self.capacity, dtype=object)
 
-            self.experiences[key][current_index] = experience[key]
+            self.experiences[key][current_index] = experience[key].clone()
 
         priority = self._get_priority(error)
 
@@ -54,10 +54,16 @@ class TorchPER(PER):
 
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        batch = {
-            key: torch.cat(self.experiences[key][indices].tolist())
-            for key in self.experiences
-        }
+        batch = {}
+        for key in self.experiences:
+            value = torch.cat(self.experiences[key][indices].tolist())
+
+            # Cloning before sending prevents FD for CPU, not necessary
+            # for CUDA, since CUDA memory is inherently shared
+            if str(value.device) == "cpu":
+                value = value.clone()
+
+            batch[key] = value
 
         probabilities = priorities[indices]
 
