@@ -105,6 +105,9 @@ class OffPolicyAgent(RLAgent):
             experience_queue (Queue): The queue to store experiences in.
             done_event (Event): The event to wait on before exiting the process.
         """
+        if self.logger is not None:
+            agent_train_start_time = time()
+
         for episode in range(1, num_episodes + 1):
             episode_time = time()
 
@@ -144,6 +147,10 @@ class OffPolicyAgent(RLAgent):
             if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (
                     ep_reward, self.algo.env_episodes
+                )
+
+                self.logger["Train/Episode Reward over Wall Time (s)"] = (
+                    ep_reward, time() - agent_train_start_time
                 )
 
                 self.logger["Train/Agent Episodes per Second"] = (
