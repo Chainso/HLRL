@@ -58,8 +58,8 @@ class TorchPER(PER):
         for key in self.experiences:
             value = torch.cat(self.experiences[key][indices].tolist())
 
-            # Cloning before sending prevents FD for CPU, not necessary
-            # for CUDA, since CUDA memory is inherently shared
+            # Cloning before sending prevents FD for CPU, not necessary for CUDA
+            # since CUDA memory is inherently shared
             if str(value.device) == "cpu":
                 value = value.clone()
 

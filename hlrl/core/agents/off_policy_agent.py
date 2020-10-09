@@ -131,8 +131,8 @@ class OffPolicyAgent(RLAgent):
                     self.add_to_buffer(experience_queue, experiences, decay)
 
                 if self.logger is not None:
-                    self.logger["Train/Agent Step Time (s)"] = (
-                        time() - step_time, self.algo.env_steps
+                    self.logger["Train/Agent Steps per Second"] = (
+                        1 / (time() - step_time), self.algo.env_steps
                     )
 
             # Add the rest to the buffer
@@ -146,8 +146,8 @@ class OffPolicyAgent(RLAgent):
                     ep_reward, self.algo.env_episodes
                 )
 
-                self.logger["Train/Agent Episode Time (s)"] = (
-                    time() - episode_time, self.algo.env_episodes
+                self.logger["Train/Agent Episodes per Second"] = (
+                    1 / (time() - episode_time), self.algo.env_episodes
                 )
 
             if not self.silent:

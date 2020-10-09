@@ -5,10 +5,11 @@ if(__name__ == "__main__"):
     import torch.nn as nn
     import torch.multiprocessing as mp
     import gym
-    
+
     from gym.wrappers import RescaleAction
     from argparse import ArgumentParser
     from functools import partial
+    from pathlib import Path
 
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.common.functional import compose
@@ -34,19 +35,23 @@ if(__name__ == "__main__"):
             + "environment."
     )
 
-    # Logging
+    # File args
     parser.add_argument(
-        "-l, --logs_path ", dest="logs_path", type=str,
-        help="log training data to tensorboard using the path"
+        "-x", "--experiment_path", type=str,
+        help="the path to save experiment results and models"
+    )
+    parser.add_argument(
+        "--load_path", type=str,
+        help="the path of the saved model to load"
     )
 
     # Env args
     parser.add_argument(
-        "-r, --render", dest="render", action="store_true",
+        "-r", "--render", action="store_true",
         help="render the environment"
     )
     parser.add_argument(
-        "-e,", "--env", dest="env", default="Pendulum-v0",
+        "-e", "--env", default="Pendulum-v0",
         help="the gym environment to train on"
     )
 
@@ -62,7 +67,7 @@ if(__name__ == "__main__"):
 
     # Algo args
     parser.add_argument(
-        "--device", type=str, default="cpu",
+        "--device", type=torch.device, default="cpu",
         help="the device (cpu/gpu) to train and play on"
     )
     parser.add_argument(
@@ -70,7 +75,7 @@ if(__name__ == "__main__"):
         help="make the network recurrent (using LSTM)"
     )
     parser.add_argument(
-        "--exploration", default=None, choices=["rnd"],
+        "--exploration", choices=["rnd"],
         help="The type of exploration to use [rnd]"
     )
     parser.add_argument(
@@ -99,7 +104,7 @@ if(__name__ == "__main__"):
 
     # Training/Playing args
     parser.add_argument(
-        "-p", "--play", dest="play", action="store_true",
+        "-p", "--play", action="store_true",
         help="runs the environment using the model instead of training"
     )
     parser.add_argument(
@@ -109,13 +114,6 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "--start_size", type=int, default=512,
         help="the size of the replay buffer before training"
-    )
-    parser.add_argument(
-        "--save_path", type=str, default=None,
-        help="the path to save the model to")
-    parser.add_argument(
-        "--load_path", type=str, default=None,
-        help="the path of the saved model to load"
     )
     parser.add_argument(
         "--save_interval", type=int, default=5000,
@@ -173,15 +171,27 @@ if(__name__ == "__main__"):
 
     args = parser.parse_args()
 
+    logs_path = None
+    save_path = None
+
+    if args.experiment_path is not None:
+        logs_path = Path(args.experiment_path, "logs")
+        logs_path.mkdir(parents=True, exist_ok=True)
+        logs_path = str(logs_path)
+
+        save_path = Path(args.experiment_path, "models")
+        save_path.mkdir(parents=True, exist_ok=True)
+        save_path = str(save_path)
+
     # Initialize the environment, and rescale for Tanh policy
     gym_env = gym.make(args.env)
     gym_env = RescaleAction(gym_env, -1, 1)
     env = GymEnv(gym_env)
 
+
     # The algorithm logger
     algo_logger = (
-        None if args.logs_path is None
-        else TensorboardLogger(args.logs_path + "/algo")
+        None if logs_path is None else TensorboardLogger(logs_path + "/algo")
     )
     
     # Initialize SAC
@@ -261,8 +271,8 @@ if(__name__ == "__main__"):
         algo.eval()
 
         agent_logger = (
-            None if args.logs_path is None
-            else TensorboardLogger(args.logs_path + "/play-agent")
+            None if logs_path is None
+            else TensorboardLogger(logs_path + "/play-agent")
         )
 
         agent = agent_builder(logger=agent_logger)
@@ -304,7 +314,7 @@ if(__name__ == "__main__"):
         priority_queue = mp.Queue()
 
         learner_args = (
-                algo, done_event, sample_queue, priority_queue, args.save_path,
+                algo, done_event, sample_queue, priority_queue, save_path,
                 args.save_interval
         )
 
@@ -317,8 +327,8 @@ if(__name__ == "__main__"):
         agent_train_args = []
 
         base_agents_logs_path = None
-        if args.logs_path is not None:
-            base_agents_logs_path = args.logs_path + "/train-agent-"
+        if logs_path is not None:
+            base_agents_logs_path = logs_path + "/train-agent-"
 
         for i in range(args.num_agents):
             agent_logger = None
