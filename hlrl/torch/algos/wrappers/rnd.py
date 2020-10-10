@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from hlrl.core.algos import IntrinsicRewardAlgo
+from hlrl.torch.common.functional import initialize_weights
 
 class RND(IntrinsicRewardAlgo):
     """
@@ -21,7 +22,10 @@ class RND(IntrinsicRewardAlgo):
         super().__init__(algo)
 
         self.rnd = rnd_network
+        self.rnd.apply(initialize_weights(nn.init.xavier_uniform_))
+
         self.rnd_target = rnd_target
+        self.rnd_target.apply(initialize_weights(nn.init.xavier_uniform_))
 
         self.rnd_optim = rnd_optim(self.rnd.parameters())
         self.rnd_loss_func = nn.MSELoss()

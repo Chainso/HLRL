@@ -5,6 +5,7 @@ from copy import deepcopy
 
 from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.common import polyak_average
+from hlrl.torch.common.functional import initialize_weights
 
 class SAC(TorchOffPolicyAlgo):
     """
@@ -54,11 +55,9 @@ class SAC(TorchOffPolicyAlgo):
 
         # Instantiate a second Q-function for twin SAC
         if(self.twin):
-            def init_weights(m):
-                if hasattr(m, "weight"):
-                    nn.init.xavier_uniform_(m.weight.data)
-
-            self.q_func2 = deepcopy(q_func).apply(init_weights)
+            self.q_func2 = deepcopy(q_func).apply(
+                initialize_weights(nn.init.xavier_uniform_)
+            )
             self.q_func_targ2 = deepcopy(self.q_func2)
 
         self.policy = policy

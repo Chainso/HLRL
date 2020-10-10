@@ -321,13 +321,13 @@ if(__name__ == "__main__"):
         priority_queue = mp.Queue()
 
         learner_args = (
-                algo, done_event, sample_queue, priority_queue, save_path,
-                args.save_interval
+            algo, done_event, args.training_steps, sample_queue,priority_queue,
+            save_path, args.save_interval
         )
 
         worker_args = (
-                experience_replay, done_event, agent_queue, sample_queue,
-                priority_queue, args.batch_size, args.start_size,
+            experience_replay, done_event, agent_queue, sample_queue,
+            priority_queue, args.batch_size, args.start_size
         )
 
         agents = []
