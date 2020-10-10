@@ -55,11 +55,11 @@ if __name__ == "__main__":
 		help="the device (cpu/gpu) to train and play on"
 	)
     parser.add_argument(
-        "--hidden_size", type=int, default=512,
+        "--hidden_size", type=int, default=256,
         help="the size of each hidden layer"
     )
     parser.add_argument(
-        "--num_layers", type=int, default=3,
+        "--num_layers", type=int, default=2,
         help="the number of layers before the output layers"
     )
 
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         help="the number of training steps in-between target network updates"
     )
     parser.add_argument(
-		"--lr", type=float, default=3e-4,
+		"--lr", type=float, default=1e-3,
 		help="the learning rate"
 	)
 
@@ -107,15 +107,15 @@ if __name__ == "__main__":
         help="runs the environment using the model instead of training"
     )
     parser.add_argument(
-		"--batch_size", type=int, default=256,
+		"--batch_size", type=int, default=128,
 		help="the batch size of the training set"
 	)
     parser.add_argument(
-		"--start_size", type=int, default=1024,
+		"--start_size", type=int, default=256,
 		help="the size of the replay buffer before training"
 	)
     parser.add_argument(
-		"--save_interval", type=int, default=500,
+		"--save_interval", type=int, default=5000,
 		help="the number of batches in between saves"
 	)
     parser.add_argument(
