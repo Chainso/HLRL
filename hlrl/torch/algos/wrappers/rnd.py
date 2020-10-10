@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
+from functools import partial
+from numpy import sqrt
 
 from hlrl.core.algos import IntrinsicRewardAlgo
 from hlrl.torch.common.functional import initialize_weights
+
 
 class RND(IntrinsicRewardAlgo):
     """
@@ -21,11 +24,13 @@ class RND(IntrinsicRewardAlgo):
         """
         super().__init__(algo)
 
+        init_fn = initialize_weights(partial(nn.init.orthogonal_, gain=sqrt(2)))
+
         self.rnd = rnd_network
-        self.rnd.apply(initialize_weights(nn.init.xavier_uniform_))
+        self.rnd.apply(init_fn)
 
         self.rnd_target = rnd_target
-        self.rnd_target.apply(initialize_weights(nn.init.xavier_uniform_))
+        self.rnd_target.apply(init_fn)
 
         self.rnd_optim = rnd_optim(self.rnd.parameters())
         self.rnd_loss_func = nn.MSELoss()
