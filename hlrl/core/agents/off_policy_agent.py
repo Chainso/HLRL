@@ -92,23 +92,20 @@ class OffPolicyAgent(RLAgent):
             experience_replay, *algo_args, **algo_kwargs
         )
 
-    def train_process(self, num_episodes, decay, n_steps, experience_queue,
-        done_event):
+    def train_process(self, done_event, decay, n_steps, experience_queue):
         """
-        Trains the algorithm for the number of episodes specified on the
-        environment, to be called in a separate process.
+        Trains the algorithm until the event is set.
 
         Args:
-            num_episodes (int): The number of episodes to train for.
+            done_event (Event): The event to wait on before exiting the process.
             decay (float): The decay of the next.
             n_steps (int): The number of steps.
             experience_queue (Queue): The queue to store experiences in.
-            done_event (Event): The event to wait on before exiting the process.
         """
         if self.logger is not None:
             agent_train_start_time = time()
 
-        for episode in range(1, num_episodes + 1):
+        while not done_event.is_set():
             episode_time = time()
 
             self.reset()
@@ -117,7 +114,7 @@ class OffPolicyAgent(RLAgent):
             ep_reward = 0
             experiences = deque(maxlen=n_steps)
 
-            while(not self.env.terminal):
+            while not self.env.terminal and not done_event.is_set():
                 if self.logger is not None:
                     step_time = time()
 
@@ -138,11 +135,12 @@ class OffPolicyAgent(RLAgent):
                         1 / (time() - step_time), self.algo.env_steps
                     )
 
+            self.algo.env_episodes += 1
+
             # Add the rest to the buffer
             while len(experiences) > 0:
                 self.add_to_buffer(experience_queue, experiences, decay)
 
-            self.algo.env_episodes += 1
 
             if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (
@@ -161,8 +159,6 @@ class OffPolicyAgent(RLAgent):
                 print("Episode {0} Step {1} Reward: {2}".format(
                     self.algo.env_episodes, self.algo.env_steps, ep_reward
                 ))
-
-        done_event.wait()
 
     def train(self, num_episodes, decay, n_steps, experience_replay, algo,
         *algo_args, **algo_kwargs):

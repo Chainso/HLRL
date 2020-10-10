@@ -119,12 +119,16 @@ if(__name__ == "__main__"):
         "--save_interval", type=int, default=5000,
         help="the number of batches in between saves"
     )
+    parser.add_argument(
+		"--episodes", type=int, default=100,
+		help="the number of episodes to play for if playing"
+	)
+    parser.add_argument(
+        "--training_steps", type=int, default=100000,
+        help="the number of training steps to train for"
+    )
 
     # Agent args
-    parser.add_argument(
-        "--episodes", type=int, default=1000,
-        help="the number of episodes to train for"
-    )
     parser.add_argument(
         "--decay", type=float, default=0.99,
         help="the gamma decay for the target Q-values"
@@ -135,6 +139,10 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "--num_agents", type=int, default=1,
         help="the number of agents to run concurrently"
+    )
+    parser.add_argument(
+        "--silent", action="store_true",
+        help="will run without standard output from agents"
     )
 
     # Experience Replay args
@@ -255,7 +263,9 @@ if(__name__ == "__main__"):
         algo.load(args.load_path)
 
     # Create agent class
-    agent_builder = partial(OffPolicyAgent, env, algo, args.render)
+    agent_builder = partial(
+        OffPolicyAgent, env, algo, render=args.render, silent=args.silent
+    )
 
     if args.recurrent:
         agent_builder = compose([
@@ -335,7 +345,7 @@ if(__name__ == "__main__"):
 
             agents.append(agent_builder(logger=agent_logger))
             agent_train_args.append((
-                args.episodes, args.decay, args.n_steps, agent_queue, done_event
+                done_event, args.decay, args.n_steps, agent_queue
             ))
 
         runner = ApexRunner(done_event)

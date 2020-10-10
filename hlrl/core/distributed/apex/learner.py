@@ -11,8 +11,13 @@ class ApexLearner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def train(self, algo: RLAlgo, done_event: Event, sample_queue: Queue,
-        priority_queue: Queue, save_path: str = None,
+    def train(self,
+        algo: RLAlgo,
+        done_event: Event,
+        training_steps: int,
+        sample_queue: Queue,
+        priority_queue: Queue,
+        save_path: str = None,
         save_interval: int = 10000):
         """
         Trains the algorithm until all agent processes have ended.
@@ -20,7 +25,8 @@ class ApexLearner():
         Args:
             algo (RLAlgo): The algorithm to train.
             done_event (multiprocessing.Event): The event to set to allow the
-                process to exit.
+                other processes to exit.
+            training_steps (int): The number of steps to train for.
             sample_queue (multiprocessing.Queue): The queue to receive
                 buffer samples from.
             priority_queue (multiprocessing.Queue): The queue to send updated
@@ -29,7 +35,7 @@ class ApexLearner():
             save_interval (int): The number of training steps in-between
                 model saves.
         """
-        while not done_event.is_set():
+        for step in range(training_steps):
             if algo.logger is not None:
                 sample_start = time()
 
@@ -62,4 +68,4 @@ class ApexLearner():
                 and algo.training_steps % save_interval == 0):
                 algo.save(save_path)
 
-        done_event.wait()
+        done_event.set()

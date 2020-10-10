@@ -13,7 +13,7 @@ if(__name__ == "__main__"):
     from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
-    from hlrl.torch.algos import RainbowIQN
+    from hlrl.torch.algos import RainbowIQN, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
         TorchRecurrentAgent
@@ -107,23 +107,27 @@ if(__name__ == "__main__"):
         help="runs the environment using the model instead of training"
     )
     parser.add_argument(
-		"--batch_size", type=int, default=32,
+		"--batch_size", type=int, default=256,
 		help="the batch size of the training set"
 	)
     parser.add_argument(
-		"--start_size", type=int, default=64,
+		"--start_size", type=int, default=1024,
 		help="the size of the replay buffer before training"
 	)
     parser.add_argument(
 		"--save_interval", type=int, default=500,
 		help="the number of batches in between saves"
 	)
+    parser.add_argument(
+		"--episodes", type=int, default=100,
+		help="the number of episodes to play for if playing"
+	)
+    parser.add_argument(
+        "--training_steps", type=int, default=100000,
+        help="the number of training steps to train for"
+    )
 
     # Agent args
-    parser.add_argument(
-		"--episodes", type=int, default=10000,
-		help="the number of episodes to train for"
-	)
     parser.add_argument(
 		"--decay", type=float, default=0.99,
 		help="the gamma decay for the target Q-values"
@@ -135,6 +139,10 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "--num_agents", type=int, default=1,
         help="the number of agents to run concurrently"
+    )
+    parser.add_argument(
+        "--silent", action="store_true",
+        help="will run without standard output from agents"
     )
 
     # Experience Replay args
@@ -247,13 +255,17 @@ if(__name__ == "__main__"):
             args.num_layers, activation_fn
         )
 
+        algo = RND(algo, rnd_network, rnd_target, optim)
+
     algo = algo.to(torch.device(args.device))
 
     if args.load_path is not None:
         algo.load(args.load_path)
 
     # Create agent class
-    agent_builder = partial(OffPolicyAgent, env, algo, args.render)
+    agent_builder = partial(
+        OffPolicyAgent, env, algo, render=args.render, silent=args.silent
+    )
 
     if args.recurrent:
         agent_builder = compose([
@@ -309,8 +321,8 @@ if(__name__ == "__main__"):
         priority_queue = mp.Queue()
 
         learner_args = (
-                algo, done_event, sample_queue, priority_queue, save_path,
-                args.save_interval
+                algo, done_event, args.training_steps, sample_queue,
+                priority_queue, save_path, args.save_interval
         )
 
         worker_args = (
@@ -333,7 +345,7 @@ if(__name__ == "__main__"):
 
             agents.append(agent_builder(logger=agent_logger))
             agent_train_args.append((
-                args.episodes, args.decay, args.n_steps, agent_queue, done_event
+                done_event, args.decay, args.n_steps, agent_queue
             ))
 
         runner = ApexRunner(done_event)
