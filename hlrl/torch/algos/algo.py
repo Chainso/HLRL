@@ -8,7 +8,7 @@ class TorchRLAlgo(RLAlgo, nn.Module):
     """
     An abstract reinforcement learning algorithm.
     """
-    def __init__(self, device:str = "cpu", logger: Logger = None):
+    def __init__(self, device: str = "cpu", logger: Logger = None):
         """
         Creates the reinforcement learning algorithm.
 

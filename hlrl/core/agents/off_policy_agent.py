@@ -83,7 +83,7 @@ class OffPolicyAgent(RLAgent):
             *algo_args (Tuple[Any, ...]): Any positional arguments for the
                 algorithm training.
             **algo_kwargs (Dict[str, ...]): Any keyword arguments for the
-                algorithm training. 
+                algorithm training.
         """
         experience = self.get_buffer_experience(experiences, decay)
         experience_replay.add(experience)
@@ -106,7 +106,8 @@ class OffPolicyAgent(RLAgent):
             agent_train_start_time = time()
 
         while not done_event.is_set():
-            episode_time = time()
+            if self.logger is not None:
+                episode_time = time()
 
             self.reset()
             self.env.reset()
@@ -121,7 +122,7 @@ class OffPolicyAgent(RLAgent):
                 experience = self.step(True)
 
                 ep_reward += self.reward_to_float(experience["reward"])
-                
+
                 experiences.append(experience)
 
                 self.algo.env_steps += 1
@@ -176,10 +177,14 @@ class OffPolicyAgent(RLAgent):
             *algo_args (Tuple[Any, ...]): Any positional arguments for the
                 algorithm training.
             **algo_kwargs (Dict[str, ...]): Any keyword arguments for the
-                algorithm training. 
+                algorithm training.
         """
-        for episode in range(1, num_episodes + 1):
-            episode_time = time()
+        if self.logger is not None:
+            agent_train_start_time = time()
+
+        for _ in range(1, num_episodes + 1):
+            if self.logger is not None:
+                episode_time = time()
 
             self.reset()
             self.env.reset()
@@ -207,8 +212,8 @@ class OffPolicyAgent(RLAgent):
                     )
 
                 if self.logger is not None:
-                    self.logger["Train/Agent Step Time (s)"] = (
-                        time() - step_time, self.algo.env_steps
+                    self.logger["Train/Agent Steps per Second"] = (
+                        1 / (time() - step_time), self.algo.env_steps
                     )
 
             # Add the rest to the buffer
@@ -225,8 +230,12 @@ class OffPolicyAgent(RLAgent):
                     ep_reward, self.algo.env_episodes
                 )
 
-                self.logger["Train/Agent Episode Time (s)"] = (
-                    time() - episode_time, self.algo.env_episodes
+                self.logger["Train/Episode Reward over Wall Time (s)"] = (
+                    ep_reward, time() - agent_train_start_time
+                )
+
+                self.logger["Train/Agent Episodes per Second"] = (
+                    1 / (time() - episode_time), self.algo.env_episodes
                 )
 
             if not self.silent:

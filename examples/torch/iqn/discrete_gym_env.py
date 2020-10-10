@@ -1,9 +1,9 @@
-if(__name__ == "__main__"):
+if __name__ == "__main__":
     import torch
     import torch.nn as nn
     import torch.multiprocessing as mp
     import gym
-    
+
     from argparse import ArgumentParser
     from functools import partial
     from pathlib import Path
@@ -12,13 +12,13 @@ if(__name__ == "__main__"):
     from hlrl.core.common.functional import compose
     from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
+    from hlrl.core.agents import OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import RainbowIQN, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
         TorchRecurrentAgent
     )
-    from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
+    from hlrl.torch.experience_replay import TorchPER, TorchR2D2
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
     mp.set_start_method("spawn")
@@ -51,6 +51,10 @@ if(__name__ == "__main__"):
 
     # Model args
     parser.add_argument(
+		"--device", type=torch.device, default="cpu",
+		help="the device (cpu/gpu) to train and play on"
+	)
+    parser.add_argument(
         "--hidden_size", type=int, default=512,
         help="the size of each hidden layer"
     )
@@ -60,10 +64,6 @@ if(__name__ == "__main__"):
     )
 
     # Algo args
-    parser.add_argument(
-		"--device", type=str, default="cpu",
-		help="the device (cpu/gpu) to train and play on"
-	)
     parser.add_argument(
 		"--recurrent", action="store_true",
 		help="make the network recurrent (using LSTM)"
@@ -159,11 +159,11 @@ if(__name__ == "__main__"):
 		help="the beta value for PER"
 	)
     parser.add_argument(
-		"--er_beta_increment", type=float, default=1e-3,
+		"--er_beta_increment", type=float, default=1e-4,
 		help="the increment of the beta value on each sample for PER"
 	)
     parser.add_argument(
-		"--er_epsilon", type=float, default=1e-2,
+		"--er_epsilon", type=float, default=1e-3,
 		help="the epsilon value for PER"
 	)
     parser.add_argument(
@@ -201,7 +201,7 @@ if(__name__ == "__main__"):
     algo_logger = (
         None if logs_path is None else TensorboardLogger(logs_path + "/algo")
     )
-    
+
     # Initialize IQN
     activation_fn = nn.ReLU
     optim = partial(torch.optim.Adam, lr=args.lr)

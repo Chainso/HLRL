@@ -15,7 +15,7 @@ if(__name__ == "__main__"):
     from hlrl.core.common.functional import compose
     from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
+    from hlrl.core.agents import OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import SAC, SACRecurrent, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
@@ -57,6 +57,10 @@ if(__name__ == "__main__"):
 
     # Model args
     parser.add_argument(
+		"--device", type=torch.device, default="cpu",
+		help="the device (cpu/gpu) to train and play on"
+	)
+    parser.add_argument(
         "--hidden_size", type=int, default=256,
         help="the size of each hidden layer"
     )
@@ -66,10 +70,6 @@ if(__name__ == "__main__"):
     )
 
     # Algo args
-    parser.add_argument(
-        "--device", type=torch.device, default="cpu",
-        help="the device (cpu/gpu) to train and play on"
-    )
     parser.add_argument(
         "--recurrent", action="store_true",
         help="make the network recurrent (using LSTM)"
@@ -157,11 +157,11 @@ if(__name__ == "__main__"):
         "--er_beta", type=float, default=0.4, help="the alpha value for PER"
     )
     parser.add_argument(
-        "--er_beta_increment", type=float, default=1e-3,
-        help="the alpha value for PER"
+        "--er_beta_increment", type=float, default=1e-4,
+		help="the increment of the beta value on each sample for PER"
     )
     parser.add_argument(
-        "--er_epsilon", type=float, default=1e-2,
+        "--er_epsilon", type=float, default=1e-3,
         help="the epsilon value for PER"
     )
     parser.add_argument(
