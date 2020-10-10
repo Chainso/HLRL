@@ -6,11 +6,13 @@ if(__name__ == "__main__"):
     
     from argparse import ArgumentParser
     from functools import partial
+    from pathlib import Path
 
     from hlrl.core.logger import TensorboardLogger
-    from hlrl.core.distributed import ApexWorker
+    from hlrl.core.common.functional import compose
+    from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import AgentPool, OffPolicyAgent
+    from hlrl.core.agents import AgentPool, OffPolicyAgent, IntrinsicRewardAgent
     from hlrl.torch.algos import RainbowIQN
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
@@ -27,10 +29,14 @@ if(__name__ == "__main__"):
         description="Rainbow-IQN example on the CartPole-v1 environment."
     )
 
-    # Logging
+    # File args
     parser.add_argument(
-        "-l, --logs_path ", dest="logs_path", type=str, default=None,
-        help="log training data to tensorboard using the path"
+        "-x", "--experiment_path", type=str,
+        help="the path to save experiment results and models"
+    )
+    parser.add_argument(
+        "--load_path", type=str,
+        help="the path of the saved model to load"
     )
 
     # Env args
@@ -62,6 +68,10 @@ if(__name__ == "__main__"):
 		"--recurrent", action="store_true",
 		help="make the network recurrent (using LSTM)"
 	)
+    parser.add_argument(
+        "--exploration", choices=["rnd"],
+        help="The type of exploration to use [rnd]"
+    )
     parser.add_argument(
 		"--discount", type=float, default=0.99,
 		help="the next state reward discount factor"
@@ -105,14 +115,6 @@ if(__name__ == "__main__"):
 		help="the size of the replay buffer before training"
 	)
     parser.add_argument(
-		"--save_path", type=str, default=None,
-		help="the path to save the model to"
-	)
-    parser.add_argument(
-		"--load_path", type=str, default=None,
-		help="the path of the saved model to load"
-	)
-    parser.add_argument(
 		"--save_interval", type=int, default=500,
 		help="the number of batches in between saves"
 	)
@@ -130,6 +132,10 @@ if(__name__ == "__main__"):
 		"--n_steps", type=int, default=5,
 		help="the number of decay steps"
 	)
+    parser.add_argument(
+        "--num_agents", type=int, default=1,
+        help="the number of agents to run concurrently"
+    )
 
     # Experience Replay args
     parser.add_argument(
@@ -167,13 +173,26 @@ if(__name__ == "__main__"):
 
     args = parser.parse_args()
 
+    logs_path = None
+    save_path = None
+
+    if args.experiment_path is not None:
+        logs_path = Path(args.experiment_path, "logs")
+        logs_path.mkdir(parents=True, exist_ok=True)
+        logs_path = str(logs_path)
+
+        save_path = Path(args.experiment_path, "models")
+        save_path.mkdir(parents=True, exist_ok=True)
+        save_path = str(save_path)
+
     # Initialize the environment
     gym_env = gym.make(args.env)
     env = GymEnv(gym_env)
 
-    # The logger
-    logger = args.logs_path
-    logger = None if logger is None else TensorboardLogger(logger)
+    # The algorithm logger
+    algo_logger = (
+        None if logs_path is None else TensorboardLogger(logs_path + "/algo")
+    )
     
     # Initialize IQN
     activation_fn = nn.ReLU
@@ -214,7 +233,18 @@ if(__name__ == "__main__"):
             args.hidden_size, autoencoder, qfunc, args.discount,
             args.polyak, args.n_quantiles, args.embedding_dim,
             args.huber_threshold, args.target_update_interval, optim,
-            optim, args.device, logger
+            optim, args.device, algo_logger
+        )
+
+    if args.exploration == "rnd":
+        rnd_network = LinearPolicy(
+            env.state_space[0], args.hidden_size, args.hidden_size,
+            args.num_layers + 2, activation_fn
+        )
+
+        rnd_target = LinearPolicy(
+            env.state_space[0], args.hidden_size, args.hidden_size,
+            args.num_layers, activation_fn
         )
 
     algo = algo.to(torch.device(args.device))
@@ -223,55 +253,88 @@ if(__name__ == "__main__"):
         algo.load(args.load_path)
 
     # Create agent class
-    agent = OffPolicyAgent(env, algo, args.render, logger=logger)
+    agent_builder = partial(OffPolicyAgent, env, algo, args.render)
 
     if args.recurrent:
-        agent = SequenceInputAgent(agent)
-        agent = TorchRecurrentAgent(agent)
-        #agent = MunchausenAgent(agent, 0.9, 0.03)
+        agent_builder = compose([
+            agent_builder, SequenceInputAgent, TorchRecurrentAgent
+        ])
     else:
-        agent = TorchRLAgent(agent)
-        #agent = MunchausenAgent(agent, 0.9, 0.03)
+        agent_builder = compose([agent_builder, TorchRLAgent])
 
     if args.play:
         algo.eval()
+
+        agent_logger = (
+            None if logs_path is None
+            else TensorboardLogger(logs_path + "/play-agent")
+        )
+
+        agent = agent_builder(logger=agent_logger)
         agent.play(args.episodes)
     else:
+        if args.exploration == "rnd":
+            agent_builder = compose([agent_builder, IntrinsicRewardAgent])
+
         algo.create_optimizers()
 
         algo.train()
         algo.share_memory()
 
-        experience_queue = mp.Queue()
-        done_event = mp.Event()
-
         # Experience replay
         if args.recurrent:
             experience_replay = TorchR2D2(
                 args.er_capacity, args.er_alpha, args.er_beta,
-                args.er_beta_increment, args.er_epsilon,
-                args.max_factor
+                args.er_beta_increment, args.er_epsilon, args.max_factor
             )
-            agent = ExperienceSequenceAgent(
-                agent, args.burn_in_length + args.sequence_length,
-                args.burn_in_length
-            )
+
+            agent_builder = compose([
+                agent_builder,
+                partial(
+                    ExperienceSequenceAgent,
+                    sequence_length=args.burn_in_length + args.sequence_length,
+                    keep_length=args.burn_in_length
+                )
+            ])
         else:
             experience_replay = TorchPER(
                 args.er_capacity, args.er_alpha, args.er_beta,
                 args.er_beta_increment, args.er_epsilon
             )
 
-        agents = [agent]
+        done_event = mp.Event()
 
-        agent_pool = AgentPool(agents)
-        agent_procs = agent_pool.train_process(
-            args.episodes, args.decay, args.n_steps, experience_queue, done_event
+        agent_queue = mp.Queue()
+        sample_queue = mp.Queue()
+        priority_queue = mp.Queue()
+
+        learner_args = (
+                algo, done_event, sample_queue, priority_queue, save_path,
+                args.save_interval
         )
 
-        # Start the worker for the model
-        worker = ApexWorker(algo, experience_replay, experience_queue)
-        worker.train(
-            agent_procs, done_event, args.batch_size, args.start_size,
-            args.save_path, args.save_interval
+        worker_args = (
+                experience_replay, done_event, agent_queue, sample_queue,
+                priority_queue, args.batch_size, args.start_size,
         )
+
+        agents = []
+        agent_train_args = []
+
+        base_agents_logs_path = None
+        if logs_path is not None:
+            base_agents_logs_path = logs_path + "/train-agent-"
+
+        for i in range(args.num_agents):
+            agent_logger = None
+            if base_agents_logs_path is not None:
+                agent_logs_path = base_agents_logs_path + str(i + 1)
+                agent_logger = TensorboardLogger(agent_logs_path)
+
+            agents.append(agent_builder(logger=agent_logger))
+            agent_train_args.append((
+                args.episodes, args.decay, args.n_steps, agent_queue, done_event
+            ))
+
+        runner = ApexRunner(done_event)
+        runner.start(learner_args, worker_args, agents, agent_train_args)

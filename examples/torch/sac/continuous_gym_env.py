@@ -188,7 +188,6 @@ if(__name__ == "__main__"):
     gym_env = RescaleAction(gym_env, -1, 1)
     env = GymEnv(gym_env)
 
-
     # The algorithm logger
     algo_logger = (
         None if logs_path is None else TensorboardLogger(logs_path + "/algo")
@@ -256,9 +255,7 @@ if(__name__ == "__main__"):
         algo.load(args.load_path)
 
     # Create agent class
-    agent_builder = partial(
-        OffPolicyAgent, env, algo, args.render
-    )
+    agent_builder = partial(OffPolicyAgent, env, algo, args.render)
 
     if args.recurrent:
         agent_builder = compose([
