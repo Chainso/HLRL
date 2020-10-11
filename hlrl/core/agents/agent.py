@@ -111,20 +111,20 @@ class RLAgent():
         # The simplest agent doesn't require anything to reset
         pass
 
-    def step(self, with_next_step=False):
+    def step(self, with_next_step: bool = False):
         """
         Takes 1 step in the agent's environment. Returns the experience
         dictionary. Resets the environment if the current state is a
         terminal.
 
         Args:
-            with_next_step (boolean):   If true, runs the next state through the
-                                        model as well.
+            with_next_step (boolean): If true, runs the next state through the
+                model as well.
         """
-        if(self.env.terminal):
+        if self.env.terminal:
             self.env.reset()
 
-        if(self.render):
+        if self.render:
             self.env.render()
 
         state = self.env.state

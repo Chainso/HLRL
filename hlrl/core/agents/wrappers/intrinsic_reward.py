@@ -32,7 +32,10 @@ class IntrinsicRewardAgent(MethodWrapper):
             reward (Any): The external reward to add to.
             next_state (Any): The new state of the environment.
         """
+        intrinsic_reward = self.algo.intrinsic_reward(
+            state, algo_step, reward, next_state
+        )
+        
         return self.om.transform_reward(
-            state, algo_step, reward + self.algo.intrinsic_reward(state),
-            next_state
+            state, algo_step, reward + intrinsic_reward, next_state
         )
