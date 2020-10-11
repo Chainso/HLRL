@@ -1,1 +1,1 @@
-from .compose import compose, compose2
+from .compose import compose
