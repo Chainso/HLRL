@@ -268,11 +268,11 @@ if(__name__ == "__main__"):
     )
 
     if args.recurrent:
-        agent_builder = compose([
+        agent_builder = compose(
             agent_builder, SequenceInputAgent, TorchRecurrentAgent
-        ])
+        )
     else:
-        agent_builder = compose([agent_builder, TorchRLAgent])
+        agent_builder = compose(agent_builder, TorchRLAgent)
 
     if args.play:
         algo.eval()
@@ -286,7 +286,7 @@ if(__name__ == "__main__"):
         agent.play(args.episodes)
     else:
         if args.exploration == "rnd":
-            agent_builder = compose([agent_builder, IntrinsicRewardAgent])
+            agent_builder = compose(agent_builder, IntrinsicRewardAgent)
 
         algo.create_optimizers()
 
@@ -300,14 +300,14 @@ if(__name__ == "__main__"):
                 args.er_beta_increment, args.er_epsilon, args.max_factor
             )
 
-            agent_builder = compose([
+            agent_builder = compose(
                 agent_builder,
                 partial(
                     ExperienceSequenceAgent,
                     sequence_length=args.burn_in_length + args.sequence_length,
                     keep_length=args.burn_in_length
                 )
-            ])
+            )
         else:
             experience_replay = TorchPER(
                 args.er_capacity, args.er_alpha, args.er_beta,
