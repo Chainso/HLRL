@@ -10,4 +10,4 @@ def compose(*functions: Callable):
     Args:
         functions (Callable): A variable number of functions to compose.
     """
-    return functools.reduce(lambda x, f: f(x), reversed(functions))
+    return functools.reduce(lambda x, f: f(x), functions)
