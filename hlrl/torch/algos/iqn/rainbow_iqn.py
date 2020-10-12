@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import math
 
-from torch.distributions import Categorical
 from copy import deepcopy
 from itertools import chain
 
