@@ -136,13 +136,14 @@ class RainbowIQN(TorchOffPolicyAlgo):
         probs = self.action(q_val)
 
         if self.logger is not None and observation.shape[0] == 1:
-            action_gap = torch.topk(probs, 2).values
-            action_gap = action_gap[:, 0] - action_gap[:, 1]
-            action_gap = action_gap.detach().item()
+            with torch.no_grad():
+                action_gap = torch.topk(probs, 2).values
+                action_gap = action_gap[:, 0] - action_gap[:, 1]
+                action_gap = action_gap.item()
 
-            self.logger["Training/Action-Gap"] = (
-                action_gap, self.env_steps
-            )
+                self.logger["Training/Action-Gap"] = (
+                    action_gap, self.env_steps
+                )
 
 
         if greedy:

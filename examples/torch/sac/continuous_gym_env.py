@@ -124,7 +124,7 @@ if(__name__ == "__main__"):
 		help="the number of episodes to play for if playing"
 	)
     parser.add_argument(
-        "--training_steps", type=int, default=100000,
+        "--training_steps", type=int, default=50000,
         help="the number of training steps to train for"
     )
 

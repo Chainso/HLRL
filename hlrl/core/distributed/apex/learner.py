@@ -1,4 +1,6 @@
 
+import queue
+
 from multiprocessing import Queue, Event
 from time import time
 
@@ -67,5 +69,15 @@ class ApexLearner():
             if(save_path is not None
                 and algo.training_steps % save_interval == 0):
                 algo.save(save_path)
+
+        # Clear queues
+        try:
+            while not sample_queue.empty():
+                sample_queue.get_nowait()
+        except queue.Empty:
+            pass
+
+        while not priority_queue.empty():
+            pass
 
         done_event.set()

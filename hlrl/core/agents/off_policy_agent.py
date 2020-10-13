@@ -161,6 +161,11 @@ class OffPolicyAgent(RLAgent):
                     self.algo.env_episodes, self.algo.env_steps, ep_reward
                 ))
 
+        # Not a true estimate but can guarantee that if it is 0 that no more
+        # tensors from this process are still in the queue
+        while not experience_queue.empty():
+            pass
+
     def train(self, num_episodes, decay, n_steps, experience_replay, algo,
         *algo_args, **algo_kwargs):
         """

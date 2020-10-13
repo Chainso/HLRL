@@ -133,11 +133,10 @@ class SAC(TorchOffPolicyAlgo):
         Returns:
             The action and Q-value of the action.
         """
-        action, q_val = self(observation)
+        with torch.no_grad():
+            return self(observation)
 
-        return action.detach(), q_val.detach()
-
-    def train_batch(self, rollouts, is_weights=None):
+    def train_batch(self, rollouts, is_weights=1):
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
@@ -158,7 +157,7 @@ class SAC(TorchOffPolicyAlgo):
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
 
-        q_loss_func = nn.MSELoss()
+        q_loss_func = nn.MSELoss(reduction='none')
 
         with torch.no_grad():
             next_actions, next_log_probs, _ = self.policy(next_states)
@@ -181,7 +180,7 @@ class SAC(TorchOffPolicyAlgo):
             p_q_pred = torch.min(p_q_pred1, p_q_pred2)
 
             q_pred2 = self.q_func2(states, actions)
-            q_loss2 = q_loss_func(q_pred2, q_next)
+            q_loss2 = torch.mean(q_loss_func(q_pred2, q_next) * is_weights)
 
             self.q_optim2.zero_grad()
             q_loss2.backward()
@@ -191,12 +190,13 @@ class SAC(TorchOffPolicyAlgo):
             p_q_pred = p_q_pred1
 
         q_pred1 = self.q_func1(states, actions)
-        q_loss1 = q_loss_func(q_pred1, q_next)
+        q_loss1 = torch.mean(q_loss_func(q_pred1, q_next) * is_weights)
 
         self.q_optim1.zero_grad()
         q_loss1.backward()
 
-        p_loss = torch.mean(self._temperature * pred_log_probs - p_q_pred)
+        p_loss = self._temperature * pred_log_probs - p_q_pred
+        p_loss = torch.mean(p_loss * is_weights)
 
         self.p_optim.zero_grad()
         p_loss.backward()

@@ -60,3 +60,19 @@ class ApexWorker():
                     sample_queue.put_nowait(sample)
                 except queue.Full:
                     pass
+
+        # Clear queues
+        try:
+            while not agent_queue.empty():
+                agent_queue.get_nowait()
+        except queue.Empty:
+            pass
+
+        try:
+            while not priority_queue.empty():
+                priority_queue.get_nowait()
+        except queue.Empty:
+            pass
+
+        while not sample_queue.empty():
+            pass

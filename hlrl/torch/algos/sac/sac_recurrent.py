@@ -76,17 +76,21 @@ class SACRecurrent(SAC):
         Returns:
             The action, Q-value of the action and hidden state if applicable
         """
-        action, q_val, new_hidden = self(observation, hidden_state)
+        with torch.no_grad():
+            action, q_val, new_hidden = self(observation, hidden_state)
 
-        return (action.detach(), q_val.detach(),
-                [tens.detach() for tens in new_hidden])
+        new_hidden = [nh for nh in new_hidden]
+
+        return action, q_val, new_hidden
 
     def reset_hidden_state(self):
         """
         Resets the hidden state for the network.
         """
-        return [tens.to(self.log_temp.device)
-                for tens in self.policy.reset_hidden_state()]
+        return [
+            tens.to(self.log_temp.device)
+            for tens in self.policy.reset_hidden_state()
+        ]
 
     def burn_in_hidden_states(self, rollouts):
         """
@@ -99,25 +103,34 @@ class SACRecurrent(SAC):
         terminals = rollouts["terminal"]
         hidden_states = rollouts["hidden_state"]
 
-        burn_in_states = states[:, :self.burn_in_length].contiguous()
-        burn_in_next_states = states[:, 1:self.burn_in_length + 1].contiguous()
+        burn_in_states = states
+        burn_in_next_states = next_states
+        new_hiddens = hidden_states
 
-        _, _, _, new_hiddens = self.policy(
-            burn_in_states, hidden_states
-        )
+        if self.burn_in_length > 0:    
+            with torch.no_grad():
+                burn_in_states = states[:, :self.burn_in_length].contiguous()
 
-        _, _, _, next_hiddens = self.policy(
-            burn_in_next_states, new_hiddens
-        )
+                _, _, _, new_hiddens = self.policy(
+                    burn_in_states, hidden_states
+                )
 
-        new_hiddens = [nh.detach() for nh in new_hiddens]
-        next_hiddens = [nh.detach() for nh in next_hiddens]
+        new_hiddens = [nh for nh in new_hiddens]
 
         states = states[:, self.burn_in_length:].contiguous()
         actions = actions[:, self.burn_in_length:].contiguous()
         rewards = rewards[:, self.burn_in_length:].contiguous()
         next_states = next_states[:, self.burn_in_length:].contiguous()
         terminals = terminals[:, self.burn_in_length:].contiguous()
+
+        with torch.no_grad():
+            first_burned_in = states[:, :1]
+            _, _, _, next_hiddens = self.policy(
+                first_burned_in, new_hiddens
+            )
+
+
+        next_hiddens = [nh for nh in next_hiddens]
 
         return (states, actions, rewards, next_states, terminals, new_hiddens,
                 next_hiddens)
@@ -156,7 +169,7 @@ class SACRecurrent(SAC):
 
         return new_qs, new_q_targ
 
-    def train_batch(self, rollouts, is_weights):
+    def train_batch(self, rollouts, is_weights=1):
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
@@ -183,7 +196,7 @@ class SACRecurrent(SAC):
         full_next_states = rollouts["next_state"]
         full_hidden_states = rollouts["hidden_state"]
 
-        q_loss_func = nn.MSELoss(reduce=False)
+        q_loss_func = nn.MSELoss(reduction='none')
 
         with torch.no_grad():
             (next_actions, next_log_probs, _, _) = self.policy(
