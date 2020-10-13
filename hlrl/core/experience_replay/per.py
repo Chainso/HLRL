@@ -58,7 +58,7 @@ class PER(ExperienceReplay):
         the given error added to the epsilon value.
 
         Args:
-            experience (tuple) : The experience dictionary to add to the buffer
+            experience (Dict) : The experience dictionary to add to the buffer
         """
         q_val = experience.pop("q_val")
         target_q_val = experience.pop("target_q_val")

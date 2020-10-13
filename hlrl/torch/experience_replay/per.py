@@ -55,12 +55,14 @@ class TorchPER(PER):
         indices = np.random.choice(len(priorities), size, p = priorities)
 
         batch = {}
+        device = "cpu"
         for key in self.experiences:
             value = torch.cat(self.experiences[key][indices].tolist())
 
             # Cloning before sending prevents FD for CPU, not necessary for CUDA
             # since CUDA memory is inherently shared
-            if str(value.device) == "cpu":
+            device = value.device
+            if str(device) == "cpu":
                 value = value.clone()
 
             batch[key] = value
@@ -70,11 +72,7 @@ class TorchPER(PER):
         is_weights = np.power(len(self.priorities) * probabilities,
                               -self.beta)
         is_weights /= is_weights.max()
-
-        # Find a random key to get the device
-        for key in batch:
-            is_weights = torch.from_numpy(is_weights).to(batch[key].device)
-            break
+        is_weights = torch.from_numpy(is_weights).to(device)
 
         self.beta = np.min([1.0, self.beta + self.beta_increment])
 
