@@ -157,7 +157,7 @@ if(__name__ == "__main__"):
         "--er_beta", type=float, default=0.4, help="the alpha value for PER"
     )
     parser.add_argument(
-        "--er_beta_increment", type=float, default=1e-4,
+        "--er_beta_increment", type=float, default=1e-3,
 		help="the increment of the beta value on each sample for PER"
     )
     parser.add_argument(
