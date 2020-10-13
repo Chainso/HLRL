@@ -45,15 +45,16 @@ class TorchPSER(TorchPER):
 
             self.priorities.set(updated_prio, decay_idx)
 
-    def update_priority(self, index, error):
-        """
-        Updates the priority of the experience at the given index, using the
-        maximum of error given and the scaled priority.
 
-        index : The index of the experience
-        error : The new error of the experience
+    def get_priority(self, error):
         """
-        priority = self._get_priority(error)
+        Computes the priority for the given error
+
+        error : The error to get the priority for
+        """
+        priority = super().get_priority(error)
         current_priority = self.priorities.get_leaf(index)
+
         priority = np.max([priority, self.p_scale * current_priority])
-        self.priorities.set(priority, index)
+
+        return priority

@@ -37,7 +37,7 @@ class TorchPER(PER):
 
             self.experiences[key][current_index] = experience[key].clone()
 
-        priority = self._get_priority(error)
+        priority = self.get_priority(error)
 
         self.priorities.add(priority)
 

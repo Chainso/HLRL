@@ -69,17 +69,21 @@ class ExperienceSequenceAgent(MethodWrapper):
         if self.num_experiences == self.sequence_length:
             # Concatenate experiences first
             experiences_to_send = {}
+            print("Experiences to send")
             for key in self.ready_experiences:
-                if key == "hidden_state":
-                    # Only need the first hidden state
-                    experiences_to_send[key] = (
-                        self.ready_experiences[key][0].permute(2, 0, 1, 3)
-                    )
-                else:
-                    # Concatenate to sequence dimension
-                    experiences_to_send[key] = torch.cat(
-                        self.ready_experiences[key], dim=1
-                    )
+                if key == "hidden_state" or not key.endswith("hidden_state"):
+                    if key == "hidden_state":
+                        # Only need the first hidden state
+                        experiences_to_send[key] = (
+                            self.ready_experiences[key][0].permute(2, 0, 1, 3)
+                        )
+                    else:
+                        # Concatenate to sequence dimension
+                        experiences_to_send[key] = torch.cat(
+                            self.ready_experiences[key], dim=1
+                        )
+                
+                print(key, experiences_to_send[key][0], experiences_to_send[key][0].shape)
             try:
                 experience_queue.put_nowait(experiences_to_send)
             except queue.Full:

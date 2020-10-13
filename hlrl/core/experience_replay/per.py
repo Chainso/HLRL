@@ -37,7 +37,7 @@ class PER(ExperienceReplay):
         """
         return len(self.priorities)
 
-    def _get_priority(self, error):
+    def get_priority(self, error):
         """
         Computes the priority for the given error
 
@@ -74,7 +74,7 @@ class PER(ExperienceReplay):
 
             self.experiences[key][current_index] = experience[key]
 
-        priority = self._get_priority(error)
+        priority = self.get_priority(error)
 
         self.priorities.add(priority)
 
@@ -114,7 +114,7 @@ class PER(ExperienceReplay):
         index : The index of the experience
         error : The new error of the experience
         """
-        priority = self._get_priority(error)
+        priority = self.get_priority(error)
         self.priorities.set(priority, index)
 
     def update_priorities(self, indices, q_vals, q_targets):

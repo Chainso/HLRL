@@ -129,7 +129,6 @@ class SACRecurrent(SAC):
                 first_burned_in, new_hiddens
             )
 
-
         next_hiddens = [nh for nh in next_hiddens]
 
         return (states, actions, rewards, next_states, terminals, new_hiddens,
