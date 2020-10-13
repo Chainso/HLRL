@@ -40,7 +40,9 @@ class RND(IntrinsicRewardAlgo):
         Returns the loss of the RND network on the given states.
         """
         rnd_pred = self.rnd(states)
-        rnd_target = self.rnd_target(states)
+
+        with torch.no_grad():
+            rnd_target = self.rnd_target(states)
 
         rnd_loss = self.rnd_loss_func(rnd_pred, rnd_target)
 
