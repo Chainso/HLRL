@@ -185,7 +185,7 @@ class RLAgent():
                 self.logger["Play/Episode Reward"] = ep_reward, episode
 
             if not self.silent:
-                print("Episode {0} Reward: {1}".format(episode, ep_reward))
+                print("Episode {0} | Reward: {1}".format(episode, ep_reward))
 
             avg_reward += ep_reward / num_episodes
 

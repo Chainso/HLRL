@@ -1,9 +1,9 @@
 import torch
 
 from torch import nn
+from typing import Any
 
 from hlrl.core.algos import IntrinsicRewardAlgo
-
 
 class RND(IntrinsicRewardAlgo):
     """
@@ -25,11 +25,12 @@ class RND(IntrinsicRewardAlgo):
         self.rnd = rnd_network
         self.rnd_target = rnd_target
 
+        self.rnd_optim_func = rnd_optim
         self.rnd_loss_func = nn.MSELoss()
 
     def create_optimizers(self):
         self.om.create_optimizers()
-        self.rnd_optim = rnd_optim(self.rnd.parameters())
+        self.rnd_optim = self.rnd_optim_func(self.rnd.parameters())
 
     def _get_loss(self, states):
         """
@@ -64,12 +65,19 @@ class RND(IntrinsicRewardAlgo):
 
         return self.om.train_batch(rollouts, *training_args)
 
-    def intrinsic_reward(self, states):
+    def intrinsic_reward(self, state: Any, algo_step: Any, reward: Any,
+        next_state: Any):
         """
-        Computes the intrinsic reward of the states.
+        Computes the RND loss of the next states
+
+        Args:
+            state (Any): The state of the environment.
+            action (Any): The last action taken in the environment.
+            reward (Any): The external reward to add to.
+            next_state (Any): The new state of the environment.
         """
         with torch.no_grad():
-            return self._get_loss(states).item()
+            return self._get_loss(next_state).item()
 
     def save_dict(self):
         """

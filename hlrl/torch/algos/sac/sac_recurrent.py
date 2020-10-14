@@ -182,7 +182,7 @@ class SACRecurrent(SAC):
         }
 
         # Switch from (batch size, 2, num layers, hidden size) to
-        # (2, batch size, num layers, hidden size)
+        # (2, num layers, batch size, hidden size)
         rollouts["hidden_state"] = (
             rollouts["hidden_state"].permute(1, 2, 0, 3).contiguous()
         )
@@ -218,10 +218,10 @@ class SACRecurrent(SAC):
                     next_states, next_actions, next_hiddens
                 )
 
-            q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
-                      - self._temperature * next_log_probs)
+                q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
+                        - self._temperature * next_log_probs)
 
-            q_next = rewards + (1 - terminals) * self._discount * q_targ
+                q_next = rewards + (1 - terminals) * self._discount * q_targ
 
             p_q_pred2, _ = self.q_func2(states, pred_actions, hidden_states)
             p_q_pred = torch.min(p_q_pred1, p_q_pred2)
@@ -234,8 +234,9 @@ class SACRecurrent(SAC):
             self.q_optim2.zero_grad()
             q_loss2.backward()
         else:
-            q_targ = q_targ_pred1 - self._temperature * next_log_probs
-            q_next = rewards + (1 - terminals) * self._discount * q_targ
+            with torch.no_grad():
+                q_targ = q_targ_pred1 - self._temperature * next_log_probs
+                q_next = rewards + (1 - terminals) * self._discount * q_targ
 
             p_q_pred = p_q_pred1
 

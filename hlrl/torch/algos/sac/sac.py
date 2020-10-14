@@ -172,9 +172,10 @@ class SAC(TorchOffPolicyAlgo):
             with torch.no_grad():
                 q_targ_pred2 = self.q_func_targ2(next_states, next_actions)
 
-            q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
-                      - self._temperature * next_log_probs)
-            q_next = rewards + (1 - terminals) * self._discount * q_targ
+                q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
+                        - self._temperature * next_log_probs)
+
+                q_next = rewards + (1 - terminals) * self._discount * q_targ
 
             p_q_pred2 = self.q_func2(states, pred_actions)
             p_q_pred = torch.min(p_q_pred1, p_q_pred2)
@@ -185,8 +186,10 @@ class SAC(TorchOffPolicyAlgo):
             self.q_optim2.zero_grad()
             q_loss2.backward()
         else:
-            q_targ = q_targ_pred1 - self._temperature * next_log_probs
-            q_next = rewards + (1 - terminals) * self._discount * q_targ
+            with torch.no_grad():
+                q_targ = q_targ_pred1 - self._temperature * next_log_probs
+                q_next = rewards + (1 - terminals) * self._discount * q_targ
+
             p_q_pred = p_q_pred1
 
         q_pred1 = self.q_func1(states, actions)
