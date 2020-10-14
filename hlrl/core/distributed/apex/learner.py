@@ -37,7 +37,7 @@ class ApexLearner():
             save_interval (int): The number of training steps in-between
                 model saves.
         """
-        for step in range(training_steps):
+        for _ in range(training_steps):
             if algo.logger is not None:
                 sample_start = time()
 

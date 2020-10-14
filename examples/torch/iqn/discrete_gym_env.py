@@ -316,9 +316,10 @@ if __name__ == "__main__":
 
         done_event = mp.Event()
 
-        agent_queue = mp.Queue()
-        sample_queue = mp.Queue()
-        priority_queue = mp.Queue()
+        max_queue_size = 64
+        agent_queue = mp.Queue(maxsize=max_queue_size)
+        sample_queue = mp.Queue(maxsize=max_queue_size)
+        priority_queue = mp.Queue(maxsize=max_queue_size)
 
         learner_args = (
             algo, done_event, args.training_steps, sample_queue,priority_queue,
