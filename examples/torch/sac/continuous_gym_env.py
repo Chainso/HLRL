@@ -305,7 +305,7 @@ if(__name__ == "__main__"):
                 partial(
                     ExperienceSequenceAgent,
                     sequence_length=args.burn_in_length + args.sequence_length,
-                    keep_length=args.burn_in_length
+                    overlap=args.burn_in_length
                 )
             )
         else:
