@@ -52,6 +52,15 @@ class ExperienceSequenceAgent(MethodWrapper):
         self.ready_experiences = {}
         self.num_experiences = 0
 
+    def reset(self):
+        """
+        Clears the ready experience buffer in addition to the regular reset.
+        """
+        self.ready_experiences = {}
+        self.num_experiences = 0
+
+        self.om.reset()
+
     def add_to_buffer(self, experience_queue, experiences, decay):
         """
         Adds the experience to the replay buffer.

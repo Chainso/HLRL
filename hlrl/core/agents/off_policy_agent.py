@@ -142,7 +142,6 @@ class OffPolicyAgent(RLAgent):
             while len(experiences) > 0:
                 self.add_to_buffer(experience_queue, experiences, decay)
 
-
             if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (
                     ep_reward, self.algo.env_episodes

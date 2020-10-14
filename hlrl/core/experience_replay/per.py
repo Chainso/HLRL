@@ -77,7 +77,7 @@ class PER(ExperienceReplay):
         priority = self.get_priority(error)
 
         self.priorities.add(priority)
-
+ 
     def sample(self, size):
         """
         Samples "size" number of experiences from the buffer
