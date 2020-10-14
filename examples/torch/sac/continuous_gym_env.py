@@ -147,7 +147,7 @@ if(__name__ == "__main__"):
 
     # Experience Replay args
     parser.add_argument(
-        "--er_capacity", type=float, default=50000,
+        "--er_capacity", type=int, default=50000,
         help="the alpha value for PER"
     )
     parser.add_argument(
