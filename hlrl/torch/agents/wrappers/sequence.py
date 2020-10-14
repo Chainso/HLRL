@@ -35,18 +35,18 @@ class ExperienceSequenceAgent(MethodWrapper):
     An agent that inputs a sequence of experiences to the replay buffer instead
     of one at a time.
     """
-    def __init__(self, agent, sequence_length, keep_length=0):
+    def __init__(self, agent, sequence_length, overlap=0):
         """
         Args:
             agent (TorchRLAgent): The agent to wrap.
             sequence_length (int): The length of the sequences.
-            keep_length (int): Keeps the last n experiences from the previous
-                               batch.
+            overlap (int): Keeps the last n experiences from the previous
+                batch.
         """
         super().__init__(agent)
 
         self.sequence_length = sequence_length
-        self.keep_length = keep_length
+        self.overlap = overlap
 
         # Store it in list format
         self.ready_experiences = {}
@@ -69,7 +69,6 @@ class ExperienceSequenceAgent(MethodWrapper):
         if self.num_experiences == self.sequence_length:
             # Concatenate experiences first
             experiences_to_send = {}
-            print("Experiences to send")
             for key in self.ready_experiences:
                 if key == "hidden_state" or not key.endswith("hidden_state"):
                     if key == "hidden_state":
@@ -82,15 +81,14 @@ class ExperienceSequenceAgent(MethodWrapper):
                         experiences_to_send[key] = torch.cat(
                             self.ready_experiences[key], dim=1
                         )
-                
-                print(key, experiences_to_send[key][0], experiences_to_send[key][0].shape)
+
             try:
                 experience_queue.put_nowait(experiences_to_send)
             except queue.Full:
                 pass
 
-            keep_start = len(self.ready_experiences) - self.keep_length
-            self.num_experiences = self.keep_length
+            keep_start = len(self.ready_experiences) - self.overlap
+            self.num_experiences = self.overlap
 
             for key in self.ready_experiences:
                 self.ready_experiences[key] = (
