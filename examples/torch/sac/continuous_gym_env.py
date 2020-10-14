@@ -208,17 +208,18 @@ if(__name__ == "__main__"):
     # Setup networks
     if args.recurrent:
         num_lin_before = 1 if args.num_layers > 2 else 0
+        num_lin_after = max(args.num_layers - 2, 1)
 
         qfunc = LSTMSAPolicy(
             env.state_space[0], env.action_space[0], 1, args.hidden_size,
-            num_lin_before, args.hidden_size, 1,
-            args.hidden_size, max(args.num_layers - 2, 1), activation_fn
+            num_lin_before, args.hidden_size, 1, args.hidden_size,
+            num_lin_after, activation_fn
         )
 
         policy = LSTMGaussianPolicy(
             env.state_space[0], env.action_space[0], args.hidden_size,
-            num_lin_before, args.hidden_size, max(args.num_layers - 2, 1),
-            args.hidden_size, max(args.num_layers - 2, 1), activation_fn
+            num_lin_before, args.hidden_size, 1, args.hidden_size,
+            num_lin_after, activation_fn
         )
 
         algo = SACRecurrent(
