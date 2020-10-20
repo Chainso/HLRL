@@ -191,10 +191,6 @@ class SACRecurrent(SAC):
         (states, actions, rewards, next_states, terminals,
          hidden_states, next_hiddens) = self.burn_in_hidden_states(rollouts)
 
-        full_states = rollouts["state"]
-        full_next_states = rollouts["next_state"]
-        full_hidden_states = rollouts["hidden_state"]
-
         q_loss_func = nn.MSELoss(reduction='none')
 
         with torch.no_grad():
@@ -265,6 +261,8 @@ class SACRecurrent(SAC):
 
         self._temperature = torch.exp(self.log_temp).item()
 
+        self.training_steps += 1
+
         # Log the losses if a logger was given
         if(self.logger is not None):
             self.logger["Train/Q1 Loss"] = (
@@ -276,8 +274,9 @@ class SACRecurrent(SAC):
             self.logger["Train/Temperature"] = (
                 self._temperature, self.training_steps
             )
-            self.logger["Train/Batch-Mean Log Probabilities"] = (
-                torch.mean(pred_log_probs.detach()).item(), self.training_steps
+            self.logger["Train/Batch-Mean Probabilities"] = (
+                torch.exp(torch.mean(pred_log_probs.detach())).item(),
+                self.training_steps
             )
 
             # Only log the Q2
@@ -286,10 +285,6 @@ class SACRecurrent(SAC):
                     q_loss2.detach().item(), self.training_steps
             )
 
-        new_qs, new_q_targ = self._step_optimizers(
-            full_states, full_next_states, full_hidden_states
+        return self._step_optimizers(
+            states, next_states, hidden_states
         )
-
-        self.training_steps += 1
-
-        return new_qs, new_q_targ

@@ -211,6 +211,8 @@ class SAC(TorchOffPolicyAlgo):
         self.temp_optim.zero_grad()
         temp_loss.backward()
 
+        self.training_steps += 1
+
         # Log the losses if a logger was given
         if(self.logger is not None):
             self.logger["Train/Q1 Loss"] = (
@@ -222,8 +224,9 @@ class SAC(TorchOffPolicyAlgo):
             self.logger["Train/Temperature"] = (
                 self._temperature, self.training_steps
             )
-            self.logger["Train/Batch-Mean Log Probabilities"] = (
-                torch.mean(pred_log_probs.detach()).item(), self.training_steps
+            self.logger["Train/Batch-Mean Probabilities"] = (
+                torch.exp(torch.mean(pred_log_probs.detach())).item(),
+                self.training_steps
             )
 
             # Only log the Q2 if twin
@@ -233,7 +236,6 @@ class SAC(TorchOffPolicyAlgo):
                 )
 
         new_qs, new_q_targ = self._step_optimizers(states)
-        self.training_steps += 1
 
         return new_qs, new_q_targ
 
