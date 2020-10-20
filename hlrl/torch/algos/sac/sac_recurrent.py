@@ -275,7 +275,7 @@ class SACRecurrent(SAC):
                 self._temperature, self.training_steps
             )
             self.logger["Train/Batch-Mean Probabilities"] = (
-                torch.exp(torch.mean(pred_log_probs.detach())).item(),
+                torch.mean(torch.exp(pred_log_probs.detach())).item(),
                 self.training_steps
             )
 

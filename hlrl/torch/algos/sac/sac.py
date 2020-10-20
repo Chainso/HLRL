@@ -104,6 +104,7 @@ class SAC(TorchOffPolicyAlgo):
             if (self.twin):
                 polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
 
+        
         return new_qs, new_q_targ
 
     def forward(self, observation):
@@ -225,7 +226,7 @@ class SAC(TorchOffPolicyAlgo):
                 self._temperature, self.training_steps
             )
             self.logger["Train/Batch-Mean Probabilities"] = (
-                torch.exp(torch.mean(pred_log_probs.detach())).item(),
+                torch.mean(torch.exp(pred_log_probs.detach())).item(),
                 self.training_steps
             )
 
