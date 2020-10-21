@@ -18,4 +18,4 @@ def initialize_weights(init_func: Callable[[torch.Tensor], None]):
         if hasattr(module, "weight"):
             init_func(module.weight.data)
 
-    return initialize_weights
+    return applied_func
