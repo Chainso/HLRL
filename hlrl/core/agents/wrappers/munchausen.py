@@ -1,6 +1,8 @@
-from hlrl.core.common.wrappers import MethodWrapper
+from typing import Any
 
-class MunchausenAgent(MethodWrapper):
+from .intrinsic_reward import IntrinsicRewardAgent
+
+class MunchausenAgent(IntrinsicRewardAgent):
     """
     An agent using Munchausen-RL from:
     https://arxiv.org/pdf/2007.14430.pdf
@@ -23,20 +25,19 @@ class MunchausenAgent(MethodWrapper):
 
         return self.om.transform_algo_step(algo_step[:-1])
 
-    def transform_reward(self, state, algo_step, reward, next_state):
+    def get_intrinsic_reward(self, state: Any, algo_step: Any, reward: Any,
+        next_state: Any):
         """
-        Adds the Munchausen reward to the reward
+        Returns the Munchausen reward on an experience tuple.
+
+        Args:
+            state (Any): The state of the environment.
+            action (Any): The last action taken in the environment.
+            reward (Any): The external reward to add to.
+            next_state (Any): The new state of the environment.
         """
-        return self.om.transform_reward(
-            state, algo_step,
-            reward + self.alpha * self.algo.temperature * self.log_probs,
-            next_state
+        self.intrinsic_reward = (
+            self.alpha * self.algo.temperature * self.log_probs
         )
 
-    def reward_to_float(self, reward):
-        """
-        Subtracts back the munchausen reward for logging purposes.
-        """
-        return self.om.reward_to_float(
-            reward - self.alpha * self.algo.temperature * self.log_probs
-        )
+        return self.intrinsic_reward

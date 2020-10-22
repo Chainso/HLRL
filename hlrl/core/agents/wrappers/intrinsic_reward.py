@@ -21,6 +21,25 @@ class IntrinsicRewardAgent(MethodWrapper):
         """
         super().__init__(agent)
 
+        self.intrinsic_reward = 0
+
+    def get_intrinsic_reward(self, state: Any, algo_step: Any, reward: Any,
+        next_state: Any):
+        """
+        Returns the intrinsic reward on an experience tuple.
+
+        Args:
+            state (Any): The state of the environment.
+            action (Any): The last action taken in the environment.
+            reward (Any): The external reward to add to.
+            next_state (Any): The new state of the environment.
+        """
+        self.intrinsic_reward = self.algo.intrinsic_reward(
+            state, algo_step, reward, next_state
+        )
+
+        return self.intrinsic_reward
+
     def transform_reward(self, state: Any, algo_step: Any, reward: Any,
         next_state: Any):
         """
@@ -32,10 +51,14 @@ class IntrinsicRewardAgent(MethodWrapper):
             reward (Any): The external reward to add to.
             next_state (Any): The new state of the environment.
         """
-        intrinsic_reward = self.algo.intrinsic_reward(
-            state, algo_step, reward, next_state
-        )
-        
+        self.get_intrinsic_reward(state, algo_step, reward, next_state)
+
         return self.om.transform_reward(
-            state, algo_step, reward + intrinsic_reward, next_state
+            state, algo_step, reward + self.intrinsic_reward, next_state
         )
+
+    def reward_to_float(self, reward):
+        """
+        Subtracts back the intrinsic reward
+        """
+        return self.om.reward_to_float(reward - self.intrinsic_reward)
