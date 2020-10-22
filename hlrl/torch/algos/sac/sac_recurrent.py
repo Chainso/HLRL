@@ -146,7 +146,7 @@ class SACRecurrent(SAC):
         self.p_optim.step()
         self.temp_optim.step()
 
-        self._temperature = torch.exp(self.log_temp).item()
+        self.temperature = torch.exp(self.log_temp).item()
 
         # Get the new q value to update the experience replay
         with torch.no_grad():
@@ -157,7 +157,7 @@ class SACRecurrent(SAC):
             new_qs, _ = self.q_func1(
                 states, updated_actions, hidden_states
             )
-            new_q_targ = new_qs - self._temperature * new_log_pis
+            new_q_targ = new_qs - self.temperature * new_log_pis
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
@@ -215,7 +215,7 @@ class SACRecurrent(SAC):
                 )
 
                 q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
-                        - self._temperature * next_log_probs)
+                        - self.temperature * next_log_probs)
 
                 q_next = rewards + (1 - terminals) * self._discount * q_targ
 
@@ -231,7 +231,7 @@ class SACRecurrent(SAC):
             q_loss2.backward()
         else:
             with torch.no_grad():
-                q_targ = q_targ_pred1 - self._temperature * next_log_probs
+                q_targ = q_targ_pred1 - self.temperature * next_log_probs
                 q_next = rewards + (1 - terminals) * self._discount * q_targ
 
             p_q_pred = p_q_pred1
@@ -244,7 +244,7 @@ class SACRecurrent(SAC):
         self.q_optim1.zero_grad()
         q_loss1.backward()
 
-        p_loss = self._temperature * pred_log_probs - p_q_pred
+        p_loss = self.temperature * pred_log_probs - p_q_pred
         p_loss = torch.mean(p_loss * is_weights)
 
         self.p_optim.zero_grad()
@@ -259,7 +259,7 @@ class SACRecurrent(SAC):
         self.temp_optim.zero_grad()
         temp_loss.backward()
 
-        self._temperature = torch.exp(self.log_temp).item()
+        self.temperature = torch.exp(self.log_temp).item()
 
         self.training_steps += 1
 
@@ -272,7 +272,7 @@ class SACRecurrent(SAC):
                 p_loss.detach().item(), self.training_steps
             )
             self.logger["Train/Temperature"] = (
-                self._temperature, self.training_steps
+                self.temperature, self.training_steps
             )
             self.logger["Train/Batch-Mean Probabilities"] = (
                 torch.mean(torch.exp(pred_log_probs.detach())).item(),

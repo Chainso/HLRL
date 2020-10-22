@@ -1,21 +1,18 @@
-import torch
-
 from hlrl.core.common.wrappers import MethodWrapper
-
 
 class MunchausenAgent(MethodWrapper):
     """
     An agent using Munchausen-RL from:
     https://arxiv.org/pdf/2007.14430.pdf
     """
-    def __init__(self, agent, alpha, temperature):
+    def __init__(self, agent, alpha):
         """
-        Turns the agent into a Munchausen agent.
+        Turns the agent into a Munchausen agent, assuming the underlying
+        algorithm already has a temperature for their update
         """
         super().__init__(agent)
 
         self.alpha = alpha
-        self.temperature = temperature
         self.log_probs = 0
 
     def transform_algo_step(self, algo_step):
@@ -31,6 +28,7 @@ class MunchausenAgent(MethodWrapper):
         Adds the Munchausen reward to the reward
         """
         return self.om.transform_reward(
-            state, algo_step, reward + self.temperature * self.log_probs,
+            state, algo_step,
+            reward + self.alpha * self.algo.temperature * self.log_probs,
             next_state
         )

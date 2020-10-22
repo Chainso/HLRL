@@ -15,7 +15,9 @@ if(__name__ == "__main__"):
     from hlrl.core.common.functional import compose
     from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import OffPolicyAgent, IntrinsicRewardAgent
+    from hlrl.core.agents import (
+        OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent
+    )
     from hlrl.torch.algos import SAC, SACRecurrent, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
@@ -75,8 +77,8 @@ if(__name__ == "__main__"):
         help="make the network recurrent (using LSTM)"
     )
     parser.add_argument(
-        "--exploration", choices=["rnd"],
-        help="The type of exploration to use [rnd]"
+        "--exploration", choices=["rnd", "munchausen"],
+        help="The type of exploration to use"
     )
     parser.add_argument(
         "--discount", type=float, default=0.99,
@@ -287,6 +289,10 @@ if(__name__ == "__main__"):
     else:
         if args.exploration == "rnd":
             agent_builder = compose(agent_builder, IntrinsicRewardAgent)
+        elif args.exploration == "munchausen":
+            agent_builder = compose(
+                agent_builder, partial(MunchausenAgent, alpha=0.9)
+            )
 
         algo.create_optimizers()
 

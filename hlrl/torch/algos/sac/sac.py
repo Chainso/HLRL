@@ -63,7 +63,7 @@ class SAC(TorchOffPolicyAlgo):
         self.policy = policy
 
         # Entropy tuning, starting at 1 due to auto-tuning
-        self._temperature = 1
+        self.temperature = 1
         self.target_entropy = -torch.prod(torch.Tensor(action_space)).item()
         self.log_temp = nn.Parameter(torch.zeros(1), requires_grad=True)
 
@@ -89,13 +89,13 @@ class SAC(TorchOffPolicyAlgo):
         self.p_optim.step()
         self.temp_optim.step()
 
-        self._temperature = torch.exp(self.log_temp).item()
+        self.temperature = torch.exp(self.log_temp).item()
 
         # Get the new q value to update the experience replay
         with torch.no_grad():
             updated_actions, new_log_pis, _ = self.policy(states)
             new_qs = self.q_func1(states, updated_actions)
-            new_q_targ = new_qs - self._temperature * new_log_pis
+            new_q_targ = new_qs - self.temperature * new_log_pis
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
@@ -174,7 +174,7 @@ class SAC(TorchOffPolicyAlgo):
                 q_targ_pred2 = self.q_func_targ2(next_states, next_actions)
 
                 q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
-                        - self._temperature * next_log_probs)
+                        - self.temperature * next_log_probs)
 
                 q_next = rewards + (1 - terminals) * self._discount * q_targ
 
@@ -188,7 +188,7 @@ class SAC(TorchOffPolicyAlgo):
             q_loss2.backward()
         else:
             with torch.no_grad():
-                q_targ = q_targ_pred1 - self._temperature * next_log_probs
+                q_targ = q_targ_pred1 - self.temperature * next_log_probs
                 q_next = rewards + (1 - terminals) * self._discount * q_targ
 
             p_q_pred = p_q_pred1
@@ -199,7 +199,7 @@ class SAC(TorchOffPolicyAlgo):
         self.q_optim1.zero_grad()
         q_loss1.backward()
 
-        p_loss = self._temperature * pred_log_probs - p_q_pred
+        p_loss = self.temperature * pred_log_probs - p_q_pred
         p_loss = torch.mean(p_loss * is_weights)
 
         self.p_optim.zero_grad()
@@ -223,7 +223,7 @@ class SAC(TorchOffPolicyAlgo):
                 p_loss.detach().item(), self.training_steps
             )
             self.logger["Train/Temperature"] = (
-                self._temperature, self.training_steps
+                self.temperature, self.training_steps
             )
             self.logger["Train/Batch-Mean Probabilities"] = (
                 torch.mean(torch.exp(pred_log_probs.detach())).item(),
@@ -243,7 +243,7 @@ class SAC(TorchOffPolicyAlgo):
     def save_dict(self):
         # Save all the dicts
         state_dict = super().save_dict()
-        state_dict["temperature"] = self._temperature
+        state_dict["temperature"] = self.temperature
 
         return state_dict
 
@@ -253,4 +253,4 @@ class SAC(TorchOffPolicyAlgo):
 
         # Load all the dicts
         super().load(load_path, load_dict)
-        self._temperature = load_dict["temperature"]
+        self.temperature = load_dict["temperature"]
