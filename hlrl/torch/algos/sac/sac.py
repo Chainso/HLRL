@@ -121,7 +121,7 @@ class SAC(TorchOffPolicyAlgo):
         action, log_prob, mean = self.policy(observation)
         q_val = self.q_func1(observation, action)
 
-        return action, q_val, log_prob
+        return action, q_val
 
     def step(self, observation):
         """
