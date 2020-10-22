@@ -111,7 +111,7 @@ events.out.tfevents.*
 
 # Pytorch models
 *.pt
-*.torch
+*.zip
 
 # Testing files
 *.csv

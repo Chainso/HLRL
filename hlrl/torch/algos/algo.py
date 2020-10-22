@@ -42,7 +42,7 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         return state
 
     def save(self, save_path):
-        model_name = "/model-" + str(self.training_steps) + ".pt"
+        model_name = "/model-" + str(self.training_steps) + ".zip"
         torch.save(self.save_dict(), save_path + model_name)
 
     def load_dict(self, load_path):
