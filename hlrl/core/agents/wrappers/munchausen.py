@@ -32,3 +32,11 @@ class MunchausenAgent(MethodWrapper):
             reward + self.alpha * self.algo.temperature * self.log_probs,
             next_state
         )
+
+    def reward_to_float(self, reward):
+        """
+        Subtracts back the munchausen reward for logging purposes.
+        """
+        return self.om.reward_to_float(
+            reward - self.alpha * self.algo.temperature * self.log_probs
+        )
