@@ -3,6 +3,7 @@ import os
 
 from abc import abstractmethod
 from collections import OrderedDict
+from typing import Any, Dict, Tuple
 
 class RLAgent():
     """
@@ -110,6 +111,44 @@ class RLAgent():
         """
         # The simplest agent doesn't require anything to reset
         pass
+
+    def n_step_decay(self,
+                     experiences: Tuple[Dict[str, Any], ...],
+                     decay: float) -> Any:
+        """
+        Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples
+
+        Args:
+            experiences: The experiences containing rewards.
+            decay: The decay constant.
+
+        Returns:
+            The decayed reward.
+        """
+        reward = experiences[-1]["reward"]
+        for experience in list(experiences)[:-1:-1]:
+            reward = experience["reward"] + decay * reward
+
+        return reward
+
+    def get_buffer_experience(self,
+                              experiences: Tuple[Dict[str, Any], ...],
+                              decay: float) -> Any:
+        """
+        Perpares the experience to add to the buffer.
+
+        Args:
+            experiences: The experiences containing rewards.
+            decay: The decay constant.
+
+        Returns:
+            The oldest stored experience.
+        """
+        decayed_reward = self.n_step_decay(experiences, decay)
+        experience = experiences.pop()
+        experience["reward"] = decayed_reward
+
+        return experience
 
     def step(self, with_next_step: bool = False):
         """

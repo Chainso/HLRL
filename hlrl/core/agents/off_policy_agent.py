@@ -2,6 +2,7 @@ import queue
 
 from collections import deque
 from time import time
+from typing import Any, Dict, Tuple
 
 from hlrl.core.agents import RLAgent
 
@@ -10,24 +11,20 @@ class OffPolicyAgent(RLAgent):
     An agent that collects (state, action, reward, next state) tuple
     observations
     """
-    def _n_step_decay(self, experiences, decay):
-        """
-        Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples
-        """
-        if len(experiences) > 0:
-            reward = experiences[-1]["reward"]
-            for experience in list(experiences)[:-1:-1]:
-                reward = experience["reward"] + decay * reward
-
-        return reward
-
-    def get_buffer_experience(self, experiences, decay):
+    def get_buffer_experience(self,
+                              experiences: Tuple[Dict[str, Any], ...],
+                              decay: float) -> Any:
         """
         Perpares the experience to add to the buffer.
+
+        Args:
+            experiences: The experiences containing rewards.
+            decay: The decay constant.
+
+        Returns:
+            The oldest stored experience.
         """
-        decayed_reward = self._n_step_decay(experiences, decay)
-        experience = experiences.pop()
-        experience["reward"] = decayed_reward
+        experience = super().get_buffer_experience(experiences, decay)
 
         next_q_val = experience.pop("next_q_val")
         target_q_val = experience["reward"] + decay * next_q_val
@@ -49,7 +46,7 @@ class OffPolicyAgent(RLAgent):
 
         return transed_algo_step
 
-    def add_to_buffer(self, experience_queue, experiences, decay):
+    def add_to_replay_buffer(self, experience_queue, experiences, decay):
         """
         Adds the experience to the replay buffer.
 
@@ -60,8 +57,6 @@ class OffPolicyAgent(RLAgent):
             decay (float): The decay value for n_step decay.
         """
         experience = self.get_buffer_experience(experiences, decay)
-
-        #experience = {key: value.cpu() for key, value in experience.items()}
 
         try:
             experience_queue.put_nowait(experience)
@@ -129,7 +124,7 @@ class OffPolicyAgent(RLAgent):
 
                 if (len(experiences) == n_steps):
                     # Do n-step decay and add to the buffer
-                    self.add_to_buffer(experience_queue, experiences, decay)
+                    self.add_to_replay_buffer(experience_queue, experiences, decay)
 
                 if self.logger is not None:
                     self.logger["Train/Agent Steps per Second"] = (
@@ -140,7 +135,7 @@ class OffPolicyAgent(RLAgent):
 
             # Add the rest to the buffer
             while len(experiences) > 0:
-                self.add_to_buffer(experience_queue, experiences, decay)
+                self.add_to_replay_buffer(experience_queue, experiences, decay)
 
             if self.logger is not None:
                 self.logger["Train/Episode Reward"] = (

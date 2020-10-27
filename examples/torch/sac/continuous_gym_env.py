@@ -1,5 +1,3 @@
-
-
 if(__name__ == "__main__"):
     import torch
     import torch.nn as nn
@@ -221,7 +219,7 @@ if(__name__ == "__main__"):
         policy = LSTMGaussianPolicy(
             env.state_space[0], env.action_space[0], args.hidden_size,
             num_lin_before, args.hidden_size, 1, args.hidden_size,
-            num_lin_after, activation_fn
+            num_lin_after, activation_fn, squished=True
         )
 
         algo = SACRecurrent(
