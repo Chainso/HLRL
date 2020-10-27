@@ -63,6 +63,19 @@ class OffPolicyAgent(RLAgent):
         except queue.Full:
             pass
 
+    def train_experiences(
+        self,
+        ready_experiences: List[Dict[str, Any], ...],
+        trainer: Any) -> NoReturn:
+        """
+        Trains on the ready experiences if the batch size is met.
+
+        Args:
+            ready_experiences: The buffer of experiences that can be trained on.
+            trainer: Any object responsible for the training of the algorithm.
+        """
+        raise NotImplementedError
+
     def train_algo(self, experiences, decay, experience_replay, algo,
         *algo_args, **algo_kwargs):
         """

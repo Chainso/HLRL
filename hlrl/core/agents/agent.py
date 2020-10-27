@@ -2,8 +2,9 @@ import torch.multiprocessing as mp
 import os
 
 from abc import abstractmethod
-from collections import OrderedDict
-from typing import Any, Dict, Tuple
+from collections import OrderedDict, deque
+from typing import Any, Dict, List, NoReturn, Tuple
+from time import time
 
 class RLAgent():
     """
@@ -150,15 +151,43 @@ class RLAgent():
 
         return experience
 
-    def step(self, with_next_step: bool = False):
+    def add_to_buffer(self,
+                      ready_experiences: List[Dict[str, Any], ...],
+                      experiences: Tuple[Dict[str, Any], ...],
+                      decay: float) -> None:
+        """
+        Prepares the oldest experiences from experiences and transfers it to
+        ready experiences.
+
+        Args:
+            ready_experiences: The buffer of experiences that can be trained on.
+            experiences: The experiences containing rewards.
+            decay: The decay constant.
+        """
+        ready_experiences.append(self.get_buffer_experience(experiences, decay))
+
+    def train_experiences(
+        self,
+        ready_experiences: List[Dict[str, Any], ...],
+        trainer: Any) -> NoReturn:
+        """
+        Trains on the ready experiences if the batch size is met.
+
+        Args:
+            ready_experiences: The buffer of experiences that can be trained on.
+            trainer: Any object responsible for the training of the algorithm.
+        """
+        raise NotImplementedError
+
+    def step(self, with_next_step: bool = False) -> None:
         """
         Takes 1 step in the agent's environment. Returns the experience
         dictionary. Resets the environment if the current state is a
         terminal.
 
         Args:
-            with_next_step (boolean): If true, runs the next state through the
-                model as well.
+            with_next_step: If true, runs the next state through the model as
+                well.
         """
         if self.env.terminal:
             self.env.reset()
@@ -238,15 +267,88 @@ class RLAgent():
         return avg_reward
 
     @abstractmethod
-    def train(self, num_episodes):
+    def train(self,
+              num_episodes: int,
+              batch_size: int,
+              decay: float,
+              n_steps: int,
+              trainer: Any) -> None:
         """
         Trains the algorithm for the number of episodes specified on the
         environment.
 
         Args:
-            num_episodes (int): The number of episodes to train for.
+            num_episodes: The number of episodes to train for.
+            batch_size: The number of ready experiences to train on at a time.
+            decay: The decay of the next.
+            n_steps: The number of steps.
+            trainer: Any object responsible for the training of the algorithm.
         """
-        pass
+        if self.logger is not None:
+            agent_train_start_time = time()
+
+        ready_experiences = []
+
+        for _ in range(1, num_episodes + 1):
+            if self.logger is not None:
+                episode_time = time()
+
+            self.reset()
+            self.env.reset()
+
+            ep_reward = 0
+            experiences = deque(maxlen=n_steps)
+
+            while(not self.env.terminal):
+                if self.logger is not None:
+                    step_time = time()
+
+                experience = self.step(True)
+
+                ep_reward += self.reward_to_float(experience["reward"])
+
+                experiences.append(experience)
+
+                self.algo.env_steps += 1
+
+                if len(experiences) == n_steps:
+                    # Do n-step decay and add to the buffer
+                    self.add_to_buffer(ready_experiences, experiences, decay)
+
+                if len(ready_experiences) == batch_size:
+                    self.train_experiences(ready_experiences, trainer)
+
+                if self.logger is not None:
+                    self.logger["Train/Agent Steps per Second"] = (
+                        1 / (time() - step_time), self.algo.env_steps
+                    )
+
+            # Add the rest to the buffer
+            while len(experiences) > 0:
+                self.add_to_buffer(ready_experiences, experiences, decay)
+
+                if len(ready_experiences) == batch_size:
+                    self.train_experiences(ready_experiences, trainer)
+
+            self.algo.env_episodes += 1
+
+            if self.logger is not None:
+                self.logger["Train/Episode Reward"] = (
+                    ep_reward, self.algo.env_episodes
+                )
+
+                self.logger["Train/Episode Reward over Wall Time (s)"] = (
+                    ep_reward, time() - agent_train_start_time
+                )
+
+                self.logger["Train/Agent Episodes per Second"] = (
+                    1 / (time() - episode_time), self.algo.env_episodes
+                )
+
+            if not self.silent:
+                print("Episode {0} | Step {1} | Reward: {2}".format(
+                    self.algo.env_episodes, self.algo.env_steps, ep_reward
+                ))
 
 class AgentPool():
     """

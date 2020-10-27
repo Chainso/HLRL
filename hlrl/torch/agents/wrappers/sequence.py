@@ -2,6 +2,7 @@ import torch
 import queue
 
 from collections import deque
+from typing import Any, Dict, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
 from .agent import TorchRLAgent
@@ -10,19 +11,22 @@ class SequenceInputAgent(TorchRLAgent):
     """
     An agent that provides sequences of input to the model (of length 1).
     """
-    def make_tensor(self, data):
+    def make_tensor(self, data: Any):
         """
         Creates a float tensor of the data of batch size 1, and sequence length
         of 1.
 
         Args:
-            data (Any): The data to transform into a tensor.
+            data: The data to transform into a tensor.
         """
         return super().make_tensor([data])
 
-    def transform_action(self, action):
+    def transform_action(self, action: torch.Tensor):
         """
         Remove the sequence axis for the environment.
+
+        Args:
+            action: The action to take in the environment.
         """
         transed_action = super().transform_action(action)
         transed_action = transed_action.squeeze(0)
@@ -61,7 +65,30 @@ class ExperienceSequenceAgent(MethodWrapper):
 
         self.om.reset()
 
-    def add_to_buffer(self, experience_queue, experiences, decay):
+    def get_buffer_experience(self,
+                              experiences: Tuple[Dict[str, Any], ...],
+                              decay: float) -> Any:
+        """
+        Perpares the experience to add to the buffer.
+
+        Args:
+            experiences: The experiences containing rewards.
+            decay: The decay constant.
+
+        Returns:
+            The oldest stored experience.
+        """
+        experience = super().get_buffer_experience(experiences, decay)
+
+        next_q_val = experience.pop("next_q_val")
+        target_q_val = experience["reward"] + decay * next_q_val
+
+        # Update experience with target q value
+        experience["target_q_val"] = target_q_val
+
+        return experience
+
+    def add_to_replay_buffer(self, experience_queue, experiences, decay):
         """
         Adds the experience to the replay buffer.
         """

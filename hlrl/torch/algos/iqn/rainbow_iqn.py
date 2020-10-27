@@ -172,7 +172,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         return action, q_val
 
-    def train_batch(self, rollouts, is_weights=None):
+    def train_batch(self, rollouts, is_weights=1):
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
