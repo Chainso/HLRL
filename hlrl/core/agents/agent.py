@@ -82,8 +82,9 @@ class RLAgent():
 
         return transed_ns
 
-    def transform_algo_step(self,
-                            algo_step: Tuple[Any]) -> OrderedDict[str, Any]:
+    def transform_algo_step(
+        self,
+        algo_step: Tuple[Any, ...]) -> OrderedDict[str, Any]:
         """
         Transforms the algorithm step on the observation to a dictionary.
         
@@ -99,7 +100,7 @@ class RLAgent():
 
     def transform_next_algo_step(
         self,
-        next_algo_step: Tuple[Any]) -> OrderedDict[str, Any]:
+        next_algo_step: Tuple[Any, ...]) -> OrderedDict[str, Any]:
         """
         Transforms the next algorithm step on the observation to a dictionary.
         

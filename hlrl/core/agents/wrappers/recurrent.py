@@ -32,8 +32,9 @@ class RecurrentAgent(MethodWrapper):
 
         return transed_state
 
-    def transform_algo_step(self,
-                            algo_step: Tuple[Any]) -> OrderedDict[str, Any]:
+    def transform_algo_step(
+        self,
+        algo_step: Tuple[Any, ...]) -> OrderedDict[str, Any]:
         """
         Updates the hidden state to the last output of the algorithm.
         

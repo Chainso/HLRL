@@ -12,8 +12,9 @@ class OffPolicyAgent(RLAgent):
     An agent that collects (state, action, reward, next state) tuple
     observations
     """
-    def transform_algo_step(self,
-                            algo_step: Tuple[Any]) -> OrderedDict[str, Any]:
+    def transform_algo_step(
+        self,
+        algo_step: Tuple[Any, ...]) -> OrderedDict[str, Any]:
         """
         Transforms the algorithm step on the observation to a dictionary.
         
