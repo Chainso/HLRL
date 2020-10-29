@@ -30,6 +30,28 @@ class OffPolicyAgent(RLAgent):
         
         return transed_algo_step
 
+    def create_batch(
+            self,
+            ready_experiences: Dict[str, List[Any]],
+        ) -> Tuple[Dict[str, Any]]:
+        """
+        Creates a batch of experiences to be trained on from the ready
+        experiences.
+
+        Args:
+            ready_experiences: The experiences to be trained on.
+        
+        Returns:
+            A dictionary of each field necessary for training.
+        """
+        # Convert to list of dicts to send to replay buffer 1 by 1
+        ready_experiences = tuple(
+            dict(zip(ready_experiences, experience))
+            for experience in zip(*ready_experiences.values())
+        )
+
+        return ready_experiences
+
     def get_buffer_experience(self,
                               experiences: Tuple[Dict[str, Any], ...],
                               decay: float) -> Any:

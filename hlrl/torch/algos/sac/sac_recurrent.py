@@ -177,10 +177,6 @@ class SACRecurrent(SAC):
             rollouts (tuple) : The (s, a, r, s', t, la, h, nh) of training data
                                for the network.
         """
-        rollouts = {
-            key: value.to(self.device) for key, value in rollouts.items()
-        }
-
         # Switch from (batch size, 2, num layers, hidden size) to
         # (2, num layers, batch size, hidden size)
         rollouts["hidden_state"] = (

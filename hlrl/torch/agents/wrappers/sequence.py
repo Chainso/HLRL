@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 from hlrl.core.common.wrappers import MethodWrapper
 from .agent import TorchRLAgent
 
-class SequenceInputAgent(TorchRLAgent):
+class SequenceInputAgent(MethodWrapper):
     """
     An agent that provides sequences of input to the model (of length 1).
     """
@@ -19,7 +19,7 @@ class SequenceInputAgent(TorchRLAgent):
         Args:
             data: The data to transform into a tensor.
         """
-        return super().make_tensor([data])
+        return self.om.make_tensor([data])
 
     def transform_action(self, action: torch.Tensor):
         """
@@ -28,8 +28,8 @@ class SequenceInputAgent(TorchRLAgent):
         Args:
             action: The action to take in the environment.
         """
-        transed_action = super().transform_action(action)
-        transed_action = transed_action.squeeze(0)
+        transed_action = action.squeeze(1)
+        transed_action = self.om.transform_action(transed_action)
 
         return transed_action
 
@@ -76,7 +76,7 @@ class ExperienceSequenceAgent(MethodWrapper):
         self.om.reset()
 
     def add_to_buffer(self,
-                      ready_experiences: List[Dict[str, Any]],
+                      ready_experiences: Dict[str, List[Any]],
                       experiences: Tuple[Dict[str, Any], ...],
                       decay: float) -> None:
         """
@@ -100,25 +100,25 @@ class ExperienceSequenceAgent(MethodWrapper):
 
         if self.num_experiences == self.sequence_length:
             # Concatenate experiences first
-            experiences_to_send = {}
             for key in self.sequence_experiences:
                 if key == "hidden_state" or not key.endswith("hidden_state"):
+                    if key not in ready_experiences:
+                        ready_experiences[key] = []
+
                     if key == "hidden_state":
                         # Only need the first hidden state
-                        experiences_to_send[key] = (
+                        ready_experiences[key].append(
                             self.sequence_experiences[key][0].permute(
                                 2, 0, 1, 3
                             )
                         )
                     else:
                         # Concatenate to sequence dimension
-                        experiences_to_send[key] = torch.cat(
+                        ready_experiences[key].append(torch.cat(
                             self.sequence_experiences[key], dim=1
-                        )
+                        ))
 
-            ready_experiences.append(experiences_to_send)
-
-            keep_start = len(self.sequence_experiences) - self.overlap
+            keep_start = self.sequence_length - self.overlap
             self.num_experiences = self.overlap
 
             for key in self.sequence_experiences:

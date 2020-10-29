@@ -19,7 +19,7 @@ if(__name__ == "__main__"):
     from hlrl.torch.algos import SAC, SACRecurrent, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
-        TorchRecurrentAgent
+        TorchRecurrentAgent, TorchOffPolicyAgent
     )
     from hlrl.torch.policies import (
         LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy,
@@ -165,11 +165,11 @@ if(__name__ == "__main__"):
         help="the epsilon value for PER"
     )
     parser.add_argument(
-        "--burn_in_length", type=int, default=5,
+        "--burn_in_length", type=int, default=40,
         help="if recurrent, the number of burn in samples for R2D2"
     )
     parser.add_argument(
-        "--sequence_length", type=int, default=5,
+        "--sequence_length", type=int, default=40,
         help="if recurrent, the length of the sequence to train on"
     )
     parser.add_argument(
@@ -266,15 +266,15 @@ if(__name__ == "__main__"):
     agent_builder = partial(
         OffPolicyAgent, env, algo, render=args.render, silent=args.silent
     )
-    agent_builder = compose(agent_builder, QueueAgent)
 
+    agent_builder = compose(agent_builder, QueueAgent)
+    agent_builder = compose(agent_builder, TorchRLAgent)
+    agent_builder = compose(agent_builder, TorchOffPolicyAgent)
+    
     if args.recurrent:
         agent_builder = compose(
             agent_builder, SequenceInputAgent, TorchRecurrentAgent
         )
-    else:
-        agent_builder = compose(agent_builder, TorchRLAgent)
-
     if args.play:
         algo.eval()
 
@@ -358,6 +358,8 @@ if(__name__ == "__main__"):
             agent_train_kwargs.append({
                 "exit_condition": done_event.is_set
             })
+
+        agent = agents[0]
 
         runner = ApexRunner(done_event)
         runner.start(

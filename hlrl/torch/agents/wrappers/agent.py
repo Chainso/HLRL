@@ -1,6 +1,6 @@
 import torch
 
-from typing import Any, OrderedDict, Tuple
+from typing import Any, Dict, List, OrderedDict, Tuple
 
 from hlrl.core.agents import RLAgent
 from hlrl.core.common.wrappers import MethodWrapper
@@ -90,3 +90,24 @@ class TorchRLAgent(MethodWrapper):
             The float value of the reward tensor.
         """
         return reward.detach().item()
+
+    def create_batch(
+            self,
+            ready_experiences: Dict[str, List[Any]],
+        ) -> Dict[str, torch.FloatTensor]:
+        """
+        Creates a batch of experiences to be trained on from the ready
+        experiences.
+
+        Args:
+            ready_experiences: The experiences to be trained on.
+        
+        Returns:
+            A dictionary of each field necessary for training.
+        """
+        for key in ready_experiences:
+            ready_experiences[key] = torch.cat(ready_experiences[key])
+
+        ready_experiences = self.om.create_batch(ready_experiences)
+
+        return ready_experiences

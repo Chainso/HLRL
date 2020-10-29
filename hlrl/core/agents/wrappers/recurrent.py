@@ -15,12 +15,14 @@ class RecurrentAgent(MethodWrapper):
         """
         super().__init__(agent)
 
+        self.last_hidden_state = None
         self.hidden_state = None
 
     def set_hidden_state(self, hidden_state):
         """
         Sets the hidden state to the given one.
         """
+        self.last_hidden_state = self.hidden_state
         self.hidden_state = hidden_state
 
     def transform_state(self, state):
@@ -45,8 +47,10 @@ class RecurrentAgent(MethodWrapper):
             An ordered dictionary of the algorithm outputs with
             "next_hidden_state" mapping to the returned hidden state.
         """
-        transed_algo_step = super().transform_algo_step(algo_step[:-1])
-        transed_algo_step["next_hidden_state"]: algo_step[-1]
+        transed_algo_step = self.om.transform_algo_step(algo_step[:-1])
+        transed_algo_step["next_hidden_state"] = algo_step[-1]
+
+        self.set_hidden_state(transed_algo_step["next_hidden_state"])
 
         return transed_algo_step
 
@@ -56,6 +60,10 @@ class RecurrentAgent(MethodWrapper):
         """
         transed_nas = self.om.transform_next_algo_step(next_algo_step)
         transed_nas.pop("next_next_hidden_state")
+
+        # Just overwrote the hidden state with the one for the next frame,
+        # make sure to roll back one step
+        self.hidden_state = self.last_hidden_state
 
         return transed_nas
 

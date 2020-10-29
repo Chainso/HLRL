@@ -185,6 +185,23 @@ class RLAgent():
         # The simplest agent doesn't require anything to reset
         pass
 
+    def create_batch(
+            self,
+            ready_experiences: Dict[str, List[Any]],
+        ) -> Dict[str, List[Any]]:
+        """
+        Creates a batch of experiences to be trained on from the ready
+        experiences.
+
+        Args:
+            ready_experiences: The experiences to be trained on.
+        
+        Returns:
+            A dictionary of each field necessary for training.
+        """
+        # The simplest agent doesn't need to do anything
+        return ready_experiences
+
     def n_step_decay(self,
                      experiences: Tuple[Dict[str, Any], ...],
                      decay: float) -> Any:
@@ -205,7 +222,7 @@ class RLAgent():
         return reward
 
     def get_buffer_experience(self,
-                              experiences: Tuple[Dict[str, Any], ...],
+                              experiences: List[Dict[str, Any]],
                               decay: float) -> Any:
         """
         Perpares the experience to add to the buffer.
@@ -218,14 +235,15 @@ class RLAgent():
             The oldest stored experience.
         """
         decayed_reward = self.n_step_decay(experiences, decay)
+
         experience = experiences.pop()
         experience["reward"] = decayed_reward
 
         return experience
 
     def add_to_buffer(self,
-                      ready_experiences: List[Dict[str, Any]],
-                      experiences: Tuple[Dict[str, Any], ...],
+                      ready_experiences: Dict[str, List[Any]],
+                      experiences: List[Dict[str, Any]],
                       decay: float) -> None:
         """
         Prepares the oldest experiences from experiences and transfers it to
@@ -236,10 +254,16 @@ class RLAgent():
             experiences: The experiences containing rewards.
             decay: The decay constant.
         """
-        ready_experiences.append(self.get_buffer_experience(experiences, decay))
+        experience = self.get_buffer_experience(experiences, decay)
+
+        for key in experience:
+            if key not in ready_experiences:
+                ready_experiences[key] = []
+
+            ready_experiences[key].append(experience[key])
 
     def train_step(self,
-                   ready_experiences: List[Dict[str, Any]],
+                   ready_experiences: Dict[str, List[Any]],
                    learner: Any,
                    *learner_args: Any,
                    **learner_kwargs: Any) -> None:
@@ -252,7 +276,8 @@ class RLAgent():
             *learner_args: Any positional arguments for the learner.
             **learner_kwargs: Any keyword arguments for the learner.
         """
-        learner.train_batch(ready_experiences, *learner_args, **learner_kwargs)
+        learn_batch = self.create_batch(ready_experiences)
+        learner.train_batch(learn_batch, *learner_args, **learner_kwargs)
 
     def step(self,
              with_next_step: bool = False) -> None:
@@ -391,7 +416,7 @@ class RLAgent():
         if self.logger is not None:
             agent_train_start_time = time()
 
-        ready_experiences = []
+        ready_experiences = {}
 
         episode = 0
 
@@ -423,9 +448,16 @@ class RLAgent():
                     # Do n-step decay and add to the buffer
                     self.add_to_buffer(ready_experiences, experiences, decay)
 
-                if len(ready_experiences) == batch_size:
-                    self.train_step(ready_experiences, learner)
-                    ready_experiences = []
+                # Get length of a random key
+                for key in ready_experiences:
+                    if len(ready_experiences[key]) == batch_size:
+                        self.train_step(
+                            ready_experiences, learner, *learner_args,
+                            **learner_kwargs
+                        )
+                        ready_experiences = {}
+
+                    break
 
                 if self.logger is not None:
                     self.logger["Train/Agent Steps per Second"] = (
@@ -438,12 +470,16 @@ class RLAgent():
             while len(experiences) > 0:
                 self.add_to_buffer(ready_experiences, experiences, decay)
 
-                if len(ready_experiences) == batch_size:
-                    self.train_step(
-                        ready_experiences, learner, *learner_args,
-                        **learner_kwargs
-                    )
-                    ready_experiences = []
+                # Get length of a random key
+                for key in ready_experiences:
+                    if len(ready_experiences[key]) == batch_size:
+                        self.train_step(
+                            ready_experiences, learner, *learner_args,
+                            **learner_kwargs
+                        )
+                        ready_experiences = {}
+
+                    break
 
             self.algo.env_episodes += 1
 

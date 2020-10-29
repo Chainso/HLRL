@@ -21,8 +21,10 @@ class QueueAgent(MethodWrapper):
             ready_experiences: The buffer of experiences that can be trained on.
             experience_queue: The queue to send experiences to.
         """
+        batch = self.create_batch(ready_experiences)
+
         try:
-            for experience in ready_experiences:
+            for experience in batch:
                 experience_queue.put_nowait(experience)
         except queue.Full:
             pass

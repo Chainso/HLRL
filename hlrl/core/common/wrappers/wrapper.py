@@ -36,7 +36,7 @@ class MethodWrapper():
             if (attr_name not in dir(MethodWrapper) and attr_name != "obj"
                 and attr_name != "om"):
                 attr = getattr(self, attr_name)
-                setattr(self.obj, attr_name, attr)
+                setattr(self, attr_name, attr)
 
     def __getattr__(self,
                     name: str) -> Any:
@@ -68,13 +68,10 @@ class MethodWrapper():
             name: The name of the attribute to set.
             value: The value to set the attribute to.
         """
-        if name == "obj" or name == "om":
+        if name == "obj" or name == "om" or name in dir(self):
             object.__setattr__(self, name, value)
-        else:
-            obj = self.obj
-            while isinstance(obj, MethodWrapper):
-                obj = obj.obj
-
+        
+        if name != "obj" and name != "om":
             setattr(self.obj, name, value)
 
     def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
