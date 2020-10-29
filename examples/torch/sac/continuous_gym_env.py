@@ -14,7 +14,7 @@ if(__name__ == "__main__"):
     from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import (
-        OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent
+        OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent
     )
     from hlrl.torch.algos import SAC, SACRecurrent, RND
     from hlrl.torch.agents import (
@@ -134,7 +134,7 @@ if(__name__ == "__main__"):
         help="the gamma decay for the target Q-values"
     )
     parser.add_argument(
-        "--n_steps", type=int, default=1, help="the number of decay steps"
+        "--n_steps", type=int, default=5, help="the number of decay steps"
     )
     parser.add_argument(
         "--num_agents", type=int, default=1,
@@ -266,6 +266,7 @@ if(__name__ == "__main__"):
     agent_builder = partial(
         OffPolicyAgent, env, algo, render=args.render, silent=args.silent
     )
+    agent_builder = compose(agent_builder, QueueAgent)
 
     if args.recurrent:
         agent_builder = compose(
@@ -337,6 +338,7 @@ if(__name__ == "__main__"):
 
         agents = []
         agent_train_args = []
+        agent_train_kwargs = []
 
         base_agents_logs_path = None
         if logs_path is not None:
@@ -349,9 +351,16 @@ if(__name__ == "__main__"):
                 agent_logger = TensorboardLogger(agent_logs_path)
 
             agents.append(agent_builder(logger=agent_logger))
+
             agent_train_args.append((
-                done_event, args.decay, args.n_steps, agent_queue
+                1, 1, args.decay, args.n_steps, agent_queue
             ))
+            agent_train_kwargs.append({
+                "exit_condition": done_event.is_set
+            })
 
         runner = ApexRunner(done_event)
-        runner.start(learner_args, worker_args, agents, agent_train_args)
+        runner.start(
+            learner_args, worker_args, agents, agent_train_args,
+            agent_train_kwargs
+        )

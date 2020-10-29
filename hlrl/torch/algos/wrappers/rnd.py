@@ -3,9 +3,10 @@ import torch
 from torch import nn
 from typing import Any
 
+from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.core.algos import IntrinsicRewardAlgo
 
-class RND(IntrinsicRewardAlgo):
+class RND(MethodWrapper, IntrinsicRewardAlgo):
     """
     The Random Network Distillation Algorithm
     https://arxiv.org/abs/1810.12894

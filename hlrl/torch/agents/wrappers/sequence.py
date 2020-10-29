@@ -2,7 +2,7 @@ import torch
 import queue
 
 from collections import deque
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
 from .agent import TorchRLAgent
@@ -53,81 +53,76 @@ class ExperienceSequenceAgent(MethodWrapper):
         self.overlap = overlap
 
         # Store it in list format
-        self.ready_experiences = {}
+        self.sequence_experiences = {}
         self.num_experiences = 0
+
+    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
+        """
+        Reduces the inputs used to serialize and recreate the experience
+        sequence agent.
+
+        Returns:
+            A tuple of the class and input arguments.
+        """
+        return (type(self), (self.obj, self.sequence_length, self.overlap))
 
     def reset(self):
         """
         Clears the ready experience buffer in addition to the regular reset.
         """
-        self.ready_experiences = {}
+        self.sequence_experiences = {}
         self.num_experiences = 0
 
         self.om.reset()
 
-    def get_buffer_experience(self,
-                              experiences: Tuple[Dict[str, Any], ...],
-                              decay: float) -> Any:
+    def add_to_buffer(self,
+                      ready_experiences: List[Dict[str, Any]],
+                      experiences: Tuple[Dict[str, Any], ...],
+                      decay: float) -> None:
         """
-        Perpares the experience to add to the buffer.
+        Prepares the oldest experiences from experiences and transfers it to
+        ready experiences.
 
         Args:
+            ready_experiences: The buffer of experiences that can be trained on.
             experiences: The experiences containing rewards.
             decay: The decay constant.
-
-        Returns:
-            The oldest stored experience.
-        """
-        experience = super().get_buffer_experience(experiences, decay)
-
-        next_q_val = experience.pop("next_q_val")
-        target_q_val = experience["reward"] + decay * next_q_val
-
-        # Update experience with target q value
-        experience["target_q_val"] = target_q_val
-
-        return experience
-
-    def add_to_replay_buffer(self, experience_queue, experiences, decay):
-        """
-        Adds the experience to the replay buffer.
         """
         experience = self.get_buffer_experience(experiences, decay)
         
         for key in experience:
-            if key not in self.ready_experiences:
-                self.ready_experiences[key] = []
+            if key not in self.sequence_experiences:
+                self.sequence_experiences[key] = []
 
-            self.ready_experiences[key].append(experience[key])
+            self.sequence_experiences[key].append(experience[key])
 
         self.num_experiences += 1
 
         if self.num_experiences == self.sequence_length:
             # Concatenate experiences first
             experiences_to_send = {}
-            for key in self.ready_experiences:
+            for key in self.sequence_experiences:
                 if key == "hidden_state" or not key.endswith("hidden_state"):
                     if key == "hidden_state":
                         # Only need the first hidden state
                         experiences_to_send[key] = (
-                            self.ready_experiences[key][0].permute(2, 0, 1, 3)
+                            self.sequence_experiences[key][0].permute(
+                                2, 0, 1, 3
+                            )
                         )
                     else:
                         # Concatenate to sequence dimension
                         experiences_to_send[key] = torch.cat(
-                            self.ready_experiences[key], dim=1
+                            self.sequence_experiences[key], dim=1
                         )
 
-            try:
-                experience_queue.put_nowait(experiences_to_send)
-            except queue.Full:
-                pass
+            ready_experiences.append(experiences_to_send)
 
-            keep_start = len(self.ready_experiences) - self.overlap
+            keep_start = len(self.sequence_experiences) - self.overlap
             self.num_experiences = self.overlap
 
-            for key in self.ready_experiences:
-                self.ready_experiences[key] = (
-                    self.ready_experiences[key][keep_start:]
+            for key in self.sequence_experiences:
+                self.sequence_experiences[key] = (
+                    self.sequence_experiences[key][keep_start:]
                 )
 

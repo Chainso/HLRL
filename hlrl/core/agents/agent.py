@@ -1,30 +1,33 @@
-import torch.multiprocessing as mp
-import os
-
 from abc import abstractmethod
-from collections import OrderedDict, deque
-from typing import Any, Dict, List, NoReturn, Tuple
+from collections import deque
+from typing import Any, Callable, Dict, List, Optional, Tuple, OrderedDict
 from time import time
+
+from hlrl.core.envs import Env
+from hlrl.core.algos import RLAlgo
 
 class RLAgent():
     """
     An agent that collects (state, action, reward, next state) tuple
     observations
     """
-    def __init__(self, env, algo, render=False, silent=False, logger=None):
+    def __init__(self,
+                 env: Env,
+                 algo: RLAlgo,
+                 render: bool = False,
+                 silent: bool = False,
+                 logger: Optional[str] = None):
         """
         Creates an agent that interacts with the given environment using the
         algorithm given.
 
         Args:
-            env (Env): The environment the agent will explore in.
-
-            algo (RLAlgo): The algorithm the agent will use the explore the
-                           environment.
-            render (bool): If the environment is to be rendered (if applicable)
-            silent (bool): If true, does not output to standard output.
-            logger (Logger, optional) : The logger to log results while
-                                        interacting with the environment.
+            env: The environment the agent will explore in.
+            algo: The algorithm the agent will use the explore the environment.
+            render: If the environment is to be rendered (if applicable)
+            silent: If true, does not output to standard output.
+            logger: The logger to log results while interacting with the
+                environment.
         """
         self.env = env
         self.algo = algo
@@ -32,77 +35,145 @@ class RLAgent():
         self.silent = silent
         self.logger = logger
 
-    def _add_prefix(self, map, prefix):
+    def _add_prefix(self,
+                    map: Dict[str, Any],
+                    prefix: str) -> OrderedDict[str, Any]:
         """
         Returns a copy of map with the keys having a prefix.
-        """
-        return {prefix + key : value for key, value in map.items()}
 
-    def transform_state(self, state):
-        """
-        Creates the dictionary of algorithm inputs from the env state
-        """
-        return OrderedDict({
-            "state": state
-        })
+        Args:
+            map: The map of key-value pairs.
+            prefix: The prefix to prepend to each key.
 
-    def transform_next_state(self, next_state):
+        Returns:
+            The new ordered dictionary with the prefix prepended to each key.
+        """
+        return OrderedDict((prefix + key, value) for key, value in map.items())
+
+    def transform_state(self,
+                        state: Any) -> OrderedDict[str, Any]:
+        """
+        Creates the dictionary of algorithm inputs from the env state.
+
+        Args:
+            state: The state to add to the dictionary.
+
+        Returns:
+            An ordered dictionary with a key "state" mapping to the state.
+        """
+        return OrderedDict((
+            ("state", state),
+        ))
+
+    def transform_next_state(self,
+                             next_state: Any) -> OrderedDict[str, Any]:
         """
         Transforms the next observation of an environment to a dictionary.
+        
+        Args:
+            next_state: The next state to add to the dictionary.
+
+        Returns:
+            An ordered dictionary with a key "next_state" mapping to the next
+            state.
         """
         transed_ns = self.transform_state(next_state)
         transed_ns = self._add_prefix(transed_ns, "next_")
 
         return transed_ns
 
-    def transform_algo_step(self, algo_step):
+    def transform_algo_step(self,
+                            algo_step: Tuple[Any]) -> OrderedDict[str, Any]:
         """
         Transforms the algorithm step on the observation to a dictionary.
-        """
-        return OrderedDict({
-            "action": algo_step[0]
-        })
+        
+        Args:
+            algo_step: The outputs of the algorithm on the input state.
 
-    def transform_next_algo_step(self, next_algo_step):
+        Returns:
+            An ordered dictionary of the algorithm "action" -> action.
+        """
+        return OrderedDict((
+            ("action", algo_step[0]),
+        ))
+
+    def transform_next_algo_step(
+        self,
+        next_algo_step: Tuple[Any]) -> OrderedDict[str, Any]:
         """
         Transforms the next algorithm step on the observation to a dictionary.
+        
+        Args:
+            next_algo_step: The outputs of the algorithm on the next input
+                state.
+
+        Returns:
+            An ordered dictionary of the next algorithm outputs, prefixed with
+            "next_"
         """
         transed_nas = self.transform_algo_step(next_algo_step)
         transed_nas = self._add_prefix(transed_nas, "next_")
 
         return transed_nas
 
-    def transform_reward(self, state, algo_step, reward, next_state):
+    def transform_reward(self,
+                         state: Any,
+                         algo_step: OrderedDict[str, Any],
+                         reward: Any,
+                         terminal: Any,
+                         next_state: Any) -> Any:
         """
         Transforms the reward of an environment step.
 
         Args:
-            state (Any): The state of the environment.
-            action (Any): The last action taken in the environment.
-            reward (Any): The reward from the environment.
-            next_state (Any): The new state of the environment.
+            state: The state of the environment.
+            algo_step: The transformed algorithm step of the state.
+            reward: The reward from the environment.
+            terminal: If the next state is a terminal state.
+            next_state: The new state of the environment.
+
+        Returns:
+            The transformed reward.
         """
         return reward
 
-    def transform_terminal(self, terminal):
+    def transform_terminal(self,
+                           terminal: Any) -> Any:
         """
         Transforms the terminal of an environment step.
+
+        Args:
+            terminal: The terminal value to transform.
+
+        Returns:
+            The transformed terminal.
         """
         return terminal
 
-    def transform_action(self, action):
+    def transform_action(self,
+                         action: Any) -> Any:
         """
         Transforms the action of the algorithm output to be usable with the
         environment.
+
+        Args:
+            action: The action to transform to environment-usable
+
+        Returns:
+            The action to be taken in the environment.
         """
         return action
 
-    def reward_to_float(self, reward):
+    def reward_to_float(self,
+                        reward: float) -> float:
         """
         Converts the reward to a single float value.
 
         Args:
-            reward (Any): The reward to turn into a float.
+            reward: The reward to turn into a float.
+
+        Returns:
+            The float value of the reward.
         """
         return reward
 
@@ -152,7 +223,7 @@ class RLAgent():
         return experience
 
     def add_to_buffer(self,
-                      ready_experiences: List[Dict[str, Any], ...],
+                      ready_experiences: List[Dict[str, Any]],
                       experiences: Tuple[Dict[str, Any], ...],
                       decay: float) -> None:
         """
@@ -166,20 +237,24 @@ class RLAgent():
         """
         ready_experiences.append(self.get_buffer_experience(experiences, decay))
 
-    def train_experiences(
-        self,
-        ready_experiences: List[Dict[str, Any], ...],
-        trainer: Any) -> NoReturn:
+    def train_step(self,
+                   ready_experiences: List[Dict[str, Any]],
+                   learner: Any,
+                   *learner_args: Any,
+                   **learner_kwargs: Any) -> None:
         """
-        Trains on the ready experiences if the batch size is met.
+        Trains on the ready experiences.
 
         Args:
             ready_experiences: The buffer of experiences that can be trained on.
-            trainer: Any object responsible for the training of the algorithm.
+            learner: Any object responsible for the training of the algorithm.
+            *learner_args: Any positional arguments for the learner.
+            **learner_kwargs: Any keyword arguments for the learner.
         """
-        raise NotImplementedError
+        learner.train_batch(ready_experiences, *learner_args, **learner_kwargs)
 
-    def step(self, with_next_step: bool = False) -> None:
+    def step(self,
+             with_next_step: bool = False) -> None:
         """
         Takes 1 step in the agent's environment. Returns the experience
         dictionary. Resets the environment if the current state is a
@@ -207,7 +282,9 @@ class RLAgent():
 
         next_algo_inp = self.transform_next_state(next_state)
         next_state = next_algo_inp.pop("next_state")
-        reward = self.transform_reward(state, algo_step, reward, next_state)
+        reward = self.transform_reward(
+            state, algo_step, reward, terminal, next_state
+        )
         terminal = self.transform_terminal(terminal)
     
         experience = OrderedDict({
@@ -228,51 +305,73 @@ class RLAgent():
 
         return experience
 
-    def play(self, num_episodes):
+    def play(self,
+             num_episodes: int = 0,
+             num_steps: int = 0) -> None:
         """
         Resets and plays the environment with the algorithm. Returns the average
-        reward per episode.
+        reward per episode. Will prioritize the inputted number of episodes to
+        the number of steps if both are given.
 
         Args:
-            num_episodes (int): The numbers of episodes to play for.
+            num_episodes: The number of episodes to play for.
+            num_steps: The number of steps to play for.
         """
-        avg_reward = 0
+        if num_episodes <= 0 and num_steps <= 0:
+            raise ValueError(
+                "One of num_episodes and num_steps must be a positive integer"
+            )
+        elif num_episodes > 0:
+            using_episodes = True
+        else:
+            using_episodes = False
 
-        for episode in range(1, num_episodes + 1):
+        avg_reward = 0
+        episode = 0
+        step = 0
+
+        while ((using_episodes and episode < num_episodes)
+               or (not using_episodes and step < num_steps)):
             self.reset()
             self.env.reset()
             ep_reward = 0
             
-            while(not self.env.terminal):
+            while (not self.env.terminal
+                   and (using_episodes or step < num_steps)):
                 reward = self.step()["reward"]
                 reward = self.reward_to_float(reward)
 
                 ep_reward += reward
+                step += 1
+
+            episode += 1
 
             if self.logger is not None:
-                self.logger["Play/Episode Reward"] = ep_reward, episode
+                self.logger["Play/Episode Reward"] = (ep_reward, episode)
 
             if not self.silent:
                 print("Episode {0} | Reward: {1}".format(episode, ep_reward))
 
-            avg_reward += ep_reward / num_episodes
+            avg_reward += ep_reward
+
+        avg_reward /= episode
 
         if self.logger is not None:
             self.logger["Play/Average Reward"] = avg_reward
 
         if not self.silent:
-            print("-------------------")
+            print("--------------------------------")
             print("Average Reward:", avg_reward)
 
-        return avg_reward
-
-    @abstractmethod
     def train(self,
               num_episodes: int,
               batch_size: int,
               decay: float,
               n_steps: int,
-              trainer: Any) -> None:
+              learner: Any,
+              *learner_args: Any,
+              exit_condition: Optional[Callable[[], bool]] = None,
+              **learner_kwargs: Any) -> None:
         """
         Trains the algorithm for the number of episodes specified on the
         environment.
@@ -282,14 +381,21 @@ class RLAgent():
             batch_size: The number of ready experiences to train on at a time.
             decay: The decay of the next.
             n_steps: The number of steps.
-            trainer: Any object responsible for the training of the algorithm.
+            learner: Any object responsible for the training of the algorithm.
+            *learner_args: Any positional arguments for the learner.
+            exit_condition: An alternative exit condition to num episodes which
+                will be used if given.
+            **learner_kwargs: Any keyword arguments for the learner.
         """
         if self.logger is not None:
             agent_train_start_time = time()
 
         ready_experiences = []
 
-        for _ in range(1, num_episodes + 1):
+        episode = 0
+
+        while (episode < num_episodes
+               or (exit_condition is not None and not exit_condition())):
             if self.logger is not None:
                 episode_time = time()
 
@@ -299,7 +405,8 @@ class RLAgent():
             ep_reward = 0
             experiences = deque(maxlen=n_steps)
 
-            while(not self.env.terminal):
+            while (not self.env.terminal
+                   and (exit_condition is None or not exit_condition())):
                 if self.logger is not None:
                     step_time = time()
 
@@ -308,7 +415,7 @@ class RLAgent():
                 ep_reward += self.reward_to_float(experience["reward"])
 
                 experiences.append(experience)
-
+ 
                 self.algo.env_steps += 1
 
                 if len(experiences) == n_steps:
@@ -316,19 +423,26 @@ class RLAgent():
                     self.add_to_buffer(ready_experiences, experiences, decay)
 
                 if len(ready_experiences) == batch_size:
-                    self.train_experiences(ready_experiences, trainer)
+                    self.train_step(ready_experiences, learner)
+                    ready_experiences = []
 
                 if self.logger is not None:
                     self.logger["Train/Agent Steps per Second"] = (
                         1 / (time() - step_time), self.algo.env_steps
                     )
 
+            episode += 1
+
             # Add the rest to the buffer
             while len(experiences) > 0:
                 self.add_to_buffer(ready_experiences, experiences, decay)
 
                 if len(ready_experiences) == batch_size:
-                    self.train_experiences(ready_experiences, trainer)
+                    self.train_step(
+                        ready_experiences, learner, *learner_args,
+                        **learner_kwargs
+                    )
+                    ready_experiences = []
 
             self.algo.env_episodes += 1
 
@@ -349,29 +463,3 @@ class RLAgent():
                 print("Episode {0} | Step {1} | Reward: {2}".format(
                     self.algo.env_episodes, self.algo.env_steps, ep_reward
                 ))
-
-class AgentPool():
-    """
-    An asynchronous pool of agents.
-    """
-    def __init__(self, agents):
-        """
-        Properties:
-            agents ([RLAgent]): A list of agents in the pool.
-        """
-        self.agents = agents
-
-    def train_process(self, *agent_train_args):
-        """
-        Trains each agent using the arguments given.
-
-        Args:
-            agent_train_args (*[object]): The list of arguments for each agent.
-        """
-        procs = [mp.Process(target = agent.train_process, args=agent_train_args)
-                 for agent in self.agents]
-
-        for proc in procs:
-            proc.start()
-
-        return procs

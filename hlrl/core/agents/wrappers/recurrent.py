@@ -1,5 +1,7 @@
 import torch
 
+from typing import Any, Tuple, OrderedDict
+
 from hlrl.core.common.wrappers import MethodWrapper
 
 
@@ -30,14 +32,20 @@ class RecurrentAgent(MethodWrapper):
 
         return transed_state
 
-    def transform_algo_step(self, algo_step):
+    def transform_algo_step(self,
+                            algo_step: Tuple[Any]) -> OrderedDict[str, Any]:
         """
-        Updates the hidden state to the last output of the algorithm extras.
+        Updates the hidden state to the last output of the algorithm.
+        
+        Args:
+            algo_step: The outputs of the algorithm on the input state.
+
+        Returns:
+            An ordered dictionary of the algorithm outputs with
+            "next_hidden_state" mapping to the returned hidden state.
         """
-        transed_algo_step = {
-            **self.om.transform_algo_step(algo_step[:-1]),
-            "next_hidden_state": algo_step[-1]
-        }
+        transed_algo_step = super().transform_algo_step(algo_step[:-1])
+        transed_algo_step["next_hidden_state"]: algo_step[-1]
 
         return transed_algo_step
 

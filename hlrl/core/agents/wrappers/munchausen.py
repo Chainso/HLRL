@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Tuple
 
 from .intrinsic_reward import IntrinsicRewardAgent
 
@@ -16,6 +16,15 @@ class MunchausenAgent(IntrinsicRewardAgent):
 
         self.alpha = alpha
         self.log_probs = 0
+
+    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
+        """
+        Reduces the inputs used to serialize and recreate the munchausen agent.
+
+        Returns:
+            A tuple of the class and input arguments.
+        """
+        return (type(self), (self.obj, self.alpha))
 
     def transform_algo_step(self, algo_step):
         """
