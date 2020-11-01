@@ -13,12 +13,12 @@ if __name__ == "__main__":
     from hlrl.core.distributed import ApexRunner
     from hlrl.core.envs.gym import GymEnv
     from hlrl.core.agents import (
-        OffPolicyAgent, MunchausenAgent, IntrinsicRewardAgent
+        OffPolicyAgent, MunchausenAgent, IntrinsicRewardAgent, QueueAgent
     )
     from hlrl.torch.algos import RainbowIQN, RND
     from hlrl.torch.agents import (
         TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
-        TorchRecurrentAgent
+        TorchRecurrentAgent, TorchOffPolicyAgent
     )
     from hlrl.torch.experience_replay import TorchPER, TorchR2D2
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 		help="the number of episodes to play for if playing"
 	)
     parser.add_argument(
-        "--training_steps", type=int, default=100000,
+        "--training_steps", type=int, default=50000,
         help="the number of training steps to train for"
     )
 
@@ -269,12 +269,14 @@ if __name__ == "__main__":
         OffPolicyAgent, env, algo, render=args.render, silent=args.silent
     )
 
+    agent_builder = compose(agent_builder, QueueAgent)
+    agent_builder = compose(agent_builder, TorchRLAgent)
+    agent_builder = compose(agent_builder, TorchOffPolicyAgent)
+    
     if args.recurrent:
         agent_builder = compose(
             agent_builder, SequenceInputAgent, TorchRecurrentAgent
         )
-    else:
-        agent_builder = compose(agent_builder, TorchRLAgent)
 
     if args.play:
         algo.eval()
@@ -293,6 +295,7 @@ if __name__ == "__main__":
             agent_builder = compose(
                 agent_builder, partial(MunchausenAgent, alpha=0.9)
             )
+            algo.temperature = 0.6
 
         algo.create_optimizers()
 
@@ -339,6 +342,7 @@ if __name__ == "__main__":
 
         agents = []
         agent_train_args = []
+        agent_train_kwargs = []
 
         base_agents_logs_path = None
         if logs_path is not None:
@@ -351,9 +355,16 @@ if __name__ == "__main__":
                 agent_logger = TensorboardLogger(agent_logs_path)
 
             agents.append(agent_builder(logger=agent_logger))
+
             agent_train_args.append((
-                done_event, args.decay, args.n_steps, agent_queue
+                1, 1, args.decay, args.n_steps, agent_queue
             ))
+            agent_train_kwargs.append({
+                "exit_condition": done_event.is_set
+            })
 
         runner = ApexRunner(done_event)
-        runner.start(learner_args, worker_args, agents, agent_train_args)
+        runner.start(
+            learner_args, worker_args, agents, agent_train_args,
+            agent_train_kwargs
+        )

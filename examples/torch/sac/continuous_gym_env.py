@@ -275,6 +275,7 @@ if(__name__ == "__main__"):
         agent_builder = compose(
             agent_builder, SequenceInputAgent, TorchRecurrentAgent
         )
+
     if args.play:
         algo.eval()
 
@@ -358,8 +359,6 @@ if(__name__ == "__main__"):
             agent_train_kwargs.append({
                 "exit_condition": done_event.is_set
             })
-
-        agent = agents[0]
 
         runner = ApexRunner(done_event)
         runner.start(
