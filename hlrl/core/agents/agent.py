@@ -376,7 +376,9 @@ class RLAgent():
                 self.logger["Play/Episode Reward"] = (ep_reward, episode)
 
             if not self.silent:
-                print("Episode {0} | Reward: {1}".format(episode, ep_reward))
+                print("Episode {0}\t|\tStep {1}\t|\tReward: {2}".format(
+                    episode, step, ep_reward
+                ))
 
             avg_reward += ep_reward
 
@@ -497,6 +499,6 @@ class RLAgent():
                 )
 
             if not self.silent:
-                print("Episode {0} | Step {1} | Reward: {2}".format(
+                print("Episode {0}\t|\tStep {1}\t|\tReward: {2}".format(
                     self.algo.env_episodes, self.algo.env_steps, ep_reward
                 ))
