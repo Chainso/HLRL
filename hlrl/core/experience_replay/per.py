@@ -33,22 +33,22 @@ class PER(ExperienceReplay):
 
     def __len__(self):
         """
-        Returns the number of experiences added to the buffer
+        Returns the number of experiences added to the buffer.
         """
         return len(self.priorities)
 
     def get_priority(self, error):
         """
-        Computes the priority for the given error
+        Computes the priority for the given error.
 
-        error : The error to get the priority for
+        error : The error to get the priority for.
         """
         return (error + self.epsilon) ** self.alpha
 
     def get_error(self, q_val, q_target):
         """
         Computes the error (absolute difference) between the Q-value plus the
-        reward and the discounted Q-value of the next state
+        reward and the discounted Q-value of the next state.
         """
         return np.abs(q_val - q_target)
 
@@ -58,7 +58,7 @@ class PER(ExperienceReplay):
         the given error added to the epsilon value.
 
         Args:
-            experience (Dict) : The experience dictionary to add to the buffer
+            experience (Dict) : The experience dictionary to add to the buffer.
         """
         q_val = experience.pop("q_val")
         target_q_val = experience.pop("target_q_val")
@@ -106,26 +106,31 @@ class PER(ExperienceReplay):
 
         return batch, indices, is_weights
 
-    def update_priority(self, index, error):
+    def update_priority(self, index: int, error: float):
         """
         Updates the priority of the experience at the given index, using the
-        error given
+        error given.
 
-        index : The index of the experience
-        error : The new error of the experience
+        Args:
+            index: The index of the experience
+            error: The new error of the experience
         """
-        priority = self.get_priority(error)
-        self.priorities.set(priority, index)
+        if index < self.capacity:
+            priority = self.get_priority(error)
+            self.priorities.set(priority, index)
 
-    def update_priorities(self, indices, q_vals, q_targets):
+    def update_priorities(self,
+                          indices: Tuple[int, Tuple[int, ...]],
+                          q_vals: Tuple[Any, ...],
+                          q_targets: Tuple[Any, ...]) -> None:
         """
         Updates the priority of the experiences at the given indices, using the
         errors given.
 
         Args:
-            q_val ([float]): The Q-values of the actions taken
-
-            discounted_next_qs ([float]): The target Q-values
+            indices: The indices of the experiences to update.
+            q_vals: The updated Q-values of the actions taken.
+            q_targets: The new targets for the Q-values.
         """
         errors = self.get_error(q_vals, q_targets)
 
