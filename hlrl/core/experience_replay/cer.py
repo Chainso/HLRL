@@ -2,15 +2,15 @@ import numpy as np
 from typing import Dict, Tuple
 
 from .binary_sum_tree import BinarySumTree
-from .replay import ExperienceReplay
+from .per import PER
 
-class MER(ExperienceReplay):
+class CER(PER):
     """
-    Multiple Experience Replay, an experience replay buffer comprised of
+    Combined Experience Replay, an experience replay buffer comprised of
     multiple separate experience replay buffers.
     """
     def __init__(self,
-                 experience_replays: Tuple[ExperienceReplay, ...],
+                 experience_replays: Tuple[PER, ...],
                  priorities: Tuple[float, ...]):
         """
         Creates the experience replay manager for multiple separate experience
