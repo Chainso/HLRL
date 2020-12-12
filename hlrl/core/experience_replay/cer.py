@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 from .binary_sum_tree import BinarySumTree
 from .per import PER

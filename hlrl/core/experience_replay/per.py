@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple
+from typing import Any, Tuple
 
 from .binary_sum_tree import BinarySumTree
 from .replay import ExperienceReplay
