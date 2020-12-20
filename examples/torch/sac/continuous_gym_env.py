@@ -300,9 +300,10 @@ if(__name__ == "__main__"):
         algo.share_memory()
 
         # Experience replay
+        er_capacity = int(args.er_capacity)
         if args.recurrent:
-            experience_replay = TorchR2D2(
-                args.er_capacity, args.er_alpha, args.er_beta,
+            experience_replay_func = compose(
+                TorchR2D2, er_capacity, args.er_alpha, args.er_beta,
                 args.er_beta_increment, args.er_epsilon, args.max_factor
             )
 
@@ -315,10 +316,12 @@ if(__name__ == "__main__"):
                 )
             )
         else:
-            experience_replay = TorchPER(
-                args.er_capacity, args.er_alpha, args.er_beta,
+            experience_replay_func = partial(
+                TorchPER, er_capacity, args.er_alpha, args.er_beta,
                 args.er_beta_increment, args.er_epsilon
             )
+
+        experience_replay = experience_replay_func()
 
         done_event = mp.Event()
 
