@@ -1,7 +1,7 @@
 
 import queue
 
-from multiprocessing import Queue, Event
+from multiprocessing import Barrier, Queue, Event
 from time import time
 
 from hlrl.core.algos import RLAlgo
@@ -16,6 +16,7 @@ class ApexLearner():
     def train(self,
         algo: RLAlgo,
         done_event: Event,
+        queue_barrier: Barrier,
         training_steps: int,
         sample_queue: Queue,
         priority_queue: Queue,
@@ -25,19 +26,19 @@ class ApexLearner():
         Trains the algorithm until all agent processes have ended.
 
         Args:
-            algo (RLAlgo): The algorithm to train.
-            done_event (multiprocessing.Event): The event to set to allow the
-                other processes to exit.
-            training_steps (int): The number of steps to train for.
-            sample_queue (multiprocessing.Queue): The queue to receive
-                buffer samples from.
-            priority_queue (multiprocessing.Queue): The queue to send updated
-                values to.
-            save_path (str): The directory to save the model to.
-            save_interval (int): The number of training steps in-between
-                model saves.
+            algo: The algorithm to train.
+            done_event: The event to set to allow the other processes to exit.
+            queue_barrier: A barrier to use when all queue tasks are complete on
+                all processes.
+            training_steps: The number of steps to train for.
+            sample_queue: The queue to receive buffer samples from.
+            priority_queue: The queue to send updated values to.
+            save_path: The directory to save the model to.
+            save_interval: The number of training steps in-between model saves.
         """
-        for _ in range(training_steps):
+        training_step = 0
+
+        while training_step < training_steps and not done_event.is_set():
             if algo.logger is not None:
                 sample_start = time()
 
@@ -70,7 +71,13 @@ class ApexLearner():
                 and algo.training_steps % save_interval == 0):
                 algo.save(save_path)
 
+            training_step += 1
+
+        # Signal exit
         done_event.set()
+
+        # Wait for all processes to finish using queues
+        queue_barrier.wait()
 
         # Clear queues
         try:

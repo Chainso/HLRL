@@ -325,19 +325,22 @@ if __name__ == "__main__":
 
         done_event = mp.Event()
 
+        # Number of agents + worker + learner
+        queue_barrier = mp.Barrier(args.num_agents + 2)
+
         max_queue_size = 64
         agent_queue = mp.Queue(maxsize=max_queue_size)
         sample_queue = mp.Queue(maxsize=max_queue_size)
         priority_queue = mp.Queue(maxsize=max_queue_size)
 
         learner_args = (
-            algo, done_event, args.training_steps, sample_queue,priority_queue,
-            save_path, args.save_interval
+            algo, done_event, queue_barrier, args.training_steps, sample_queue,
+            priority_queue, save_path, args.save_interval
         )
 
         worker_args = (
-            experience_replay, done_event, agent_queue, sample_queue,
-            priority_queue, args.batch_size, args.start_size
+            experience_replay, done_event, queue_barrier, agent_queue,
+            sample_queue, priority_queue, args.batch_size, args.start_size
         )
 
         agents = []
@@ -357,7 +360,7 @@ if __name__ == "__main__":
             agents.append(agent_builder(logger=agent_logger))
 
             agent_train_args.append((
-                1, 1, args.decay, args.n_steps, agent_queue
+                1, 1, args.decay, args.n_steps, agent_queue, queue_barrier
             ))
             agent_train_kwargs.append({
                 "exit_condition": done_event.is_set

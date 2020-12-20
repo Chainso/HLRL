@@ -1,6 +1,6 @@
 import queue
 
-from multiprocessing import Queue
+from multiprocessing import Barrier, Queue
 from typing import Any, Callable, Dict, Iterable, Optional
 
 
@@ -35,6 +35,7 @@ class QueueAgent(MethodWrapper):
               decay: float,
               n_steps: int,
               experience_queue: Queue,
+              queue_barrier: Barrier,
               exit_condition: Optional[Callable[[], bool]] = None) -> None:
         """
         Trains the algorithm for the number of episodes specified on the
@@ -46,6 +47,8 @@ class QueueAgent(MethodWrapper):
             decay: The decay of the next.
             n_steps: The number of steps.
             experience_queue: The queue to send experiences to.
+            queue_barrier: A barrier to use when all queue tasks are complete on
+                all processes.
             exit_condition: An alternative exit condition to num episodes which
                 will be used if given.
         """
@@ -54,5 +57,8 @@ class QueueAgent(MethodWrapper):
             exit_condition=exit_condition
         )
         
+        # Wait for all processes to finish using queues
+        queue_barrier.wait()
+
         while not experience_queue.empty():
             pass

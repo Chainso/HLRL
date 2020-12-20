@@ -1,6 +1,6 @@
 import queue
 
-from multiprocessing import Queue, Event
+from multiprocessing import Barrier, Queue, Event
 
 from hlrl.core.experience_replay import ExperienceReplay
 
@@ -13,14 +13,16 @@ class ApexWorker():
     https://arxiv.org/pdf/1803.00933.pdf
     """
     def train(self, experience_replay: ExperienceReplay, done_event: Event,
-        agent_queue: Queue, sample_queue: Queue, priority_queue: Queue,
-        batch_size: int, start_size: int):
+        queue_barrier: Barrier, agent_queue: Queue, sample_queue: Queue,
+        priority_queue: Queue, batch_size: int, start_size: int):
         """
         Trains the algorithm until all agent processes have ended.
 
         Args:
             experience_replay: The replay buffer to add experiences into.
             done_event: The event to set to allow the agents to exit.
+            queue_barrier: A barrier to use when all queue tasks are complete on
+                all processes.
             agent_queue: The queue of experiences to receive from agents.
             sample_queue: The queue to send batches to the learner.
             priority_queue: The queue to receive updated values for priority
@@ -55,6 +57,9 @@ class ApexWorker():
                     sample_queue.put_nowait(sample)
                 except queue.Full:
                     pass
+
+        # Wait for all processes to finish using queues
+        queue_barrier.wait()
 
         # Clear queues
         try:
