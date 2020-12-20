@@ -19,19 +19,14 @@ class ApexWorker():
         Trains the algorithm until all agent processes have ended.
 
         Args:
-            experience_replay (ExperienceReplay): The replay buffer to add
-                experiences into.
-            done_event (multiprocessing.Event): The event to set to awaken
-                the agents to exit.
-            agent_queue (multiprocessing.Queue): The queue of experiences to
-                receive from agents.
-            sample_queue (multiprocessing.Queue): The queue to send batches
-                to the learner.
-            priority_queue (multiprocessing.Queue): The queue to receive updated
-                values for priority calculation from the learner.
-            batch_size (int): The size of the training batch.
-            start_size (int): The number of samples in the buffer to start
-                training.
+            experience_replay: The replay buffer to add experiences into.
+            done_event: The event to set to awaken the agents to exit.
+            agent_queue: The queue of experiences to receive from agents.
+            sample_queue: The queue to send batches to the learner.
+            priority_queue: The queue to receive updated values for priority
+                calculation from the learner.
+            batch_size: The size of the training batch.
+            start_size: The number of samples in the buffer to start training.
         """
         while not done_event.is_set():
             # Add all new experiences to the queue
