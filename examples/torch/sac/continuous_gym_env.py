@@ -165,11 +165,11 @@ if(__name__ == "__main__"):
         help="the epsilon value for PER"
     )
     parser.add_argument(
-        "--burn_in_length", type=int, default=40,
+        "--burn_in_length", type=int, default=5,
         help="if recurrent, the number of burn in samples for R2D2"
     )
     parser.add_argument(
-        "--sequence_length", type=int, default=40,
+        "--sequence_length", type=int, default=5,
         help="if recurrent, the length of the sequence to train on"
     )
     parser.add_argument(
@@ -302,7 +302,7 @@ if(__name__ == "__main__"):
         # Experience replay
         er_capacity = int(args.er_capacity)
         if args.recurrent:
-            experience_replay_func = compose(
+            experience_replay_func = partial(
                 TorchR2D2, er_capacity, args.er_alpha, args.er_beta,
                 args.er_beta_increment, args.er_epsilon, args.max_factor
             )
