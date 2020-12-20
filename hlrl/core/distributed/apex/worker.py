@@ -20,7 +20,7 @@ class ApexWorker():
 
         Args:
             experience_replay: The replay buffer to add experiences into.
-            done_event: The event to set to awaken the agents to exit.
+            done_event: The event to set to allow the agents to exit.
             agent_queue: The queue of experiences to receive from agents.
             sample_queue: The queue to send batches to the learner.
             priority_queue: The queue to receive updated values for priority
@@ -39,7 +39,7 @@ class ApexWorker():
 
             # Receive new Q-values and targets to update
             try:
-                for _ in range(sample_queue.qsize()):
+                for _ in range(priority_queue.qsize()):
                     idxs, new_qs, new_q_targs = priority_queue.get_nowait()
                     experience_replay.update_priorities(
                         idxs, new_qs, new_q_targs

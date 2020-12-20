@@ -70,6 +70,8 @@ class ApexLearner():
                 and algo.training_steps % save_interval == 0):
                 algo.save(save_path)
 
+        done_event.set()
+
         # Clear queues
         try:
             while not sample_queue.empty():
@@ -79,5 +81,3 @@ class ApexLearner():
 
         while not priority_queue.empty():
             pass
-
-        done_event.set()
