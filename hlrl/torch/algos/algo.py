@@ -28,7 +28,7 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         intialization so that the model can be moved to a different device first
         if needed.
         """
-        pass
+        raise NotImplementedError
 
     def save_dict(self):
         # Save all the dicts
