@@ -32,7 +32,7 @@ class UnityEnv(Env):
         self.spec = self.env.behavior_specs[self.behaviour_name]
 
         self.state_space = self.spec.observation_shapes[0]
-        self.action_space = self.spec.action_spec.continuous_size
+        self.action_space = (self.spec.action_spec.continuous_size,)
 
     def _update_env_state(
             self
