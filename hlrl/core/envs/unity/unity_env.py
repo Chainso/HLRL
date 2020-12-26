@@ -45,6 +45,7 @@ class UnityEnv(Env):
         """
         decision_steps, terminal_steps = self.env.get_steps(self.behaviour_name)
 
+        agent_ids = []
         self._state = []
         self.reward = []
         self.terminal = []
@@ -53,6 +54,7 @@ class UnityEnv(Env):
         for agent_id in decision_steps:
             decision_step = decision_steps[agent_id]
 
+            agent_ids.append(agent_id)
             self._state.append(decision_step.obs[0])
             self.reward.append([decision_step.reward])
             self.terminal.append([False])
@@ -61,15 +63,18 @@ class UnityEnv(Env):
         for agent_id in terminal_steps:
             terminal_step = terminal_steps[agent_id]
 
+            agent_ids.append(agent_id)
             self._state.append(terminal_step.obs[0])
             self.reward.append([terminal_step.reward])
             self.terminal.append([not terminal_step.interrupted])
             self.info.append([None])
 
-        self._state = np.array(self._state)
-        self.reward = np.array(self.reward)
-        self.terminal = np.array(self.terminal)
-        self.info = np.array(self.info)
+        sort_order = np.argsort(agent_ids)
+
+        self._state = np.array(self._state)[sort_order]
+        self.reward = np.array(self.reward)[sort_order]
+        self.terminal = np.array(self.terminal)[sort_order]
+        self.info = np.array(self.info)[sort_order]
 
         return self._state, self.reward, self.terminal, self.info
 
