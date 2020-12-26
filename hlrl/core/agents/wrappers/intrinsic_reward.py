@@ -67,7 +67,9 @@ class IntrinsicRewardAgent(MethodWrapper):
         Returns:
             The intrinsic reward added with the reward.
         """
-        self.get_intrinsic_reward(state, algo_step, reward, next_state)
+        self.get_intrinsic_reward(
+            state, algo_step, reward, terminal, next_state
+        )
 
         return self.om.transform_reward(
             state, algo_step, reward + self.intrinsic_reward, terminal,
