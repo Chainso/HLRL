@@ -1,83 +1,110 @@
 from argparse import Namespace
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
-from mlagents_envs.environment import UnityEnvironment
+from mlagents_envs.environment import (
+    UnityEnvironment, DecisionSteps, TerminalSteps, ActionTuple
+)
 from hlrl.core.envs.env import Env
 
 class UnityEnv(Env):
     """
     A environment from Unity
     """
-    def __init__(self, env: UnityEnvironment, flatten: bool = False):
+    def __init__(self,
+                 env: UnityEnvironment,
+                 behaviour_name: Optional[str] = None):
         """
-        Creates the given environment from Unity
+        Creates a vectorized environment of the given environment from Unity
 
         Args:
             env: The Unity environment to wrap.
-            flatten: If the batch dimension of the observations should be
-                flattened
+            behaviour_name: The behaviour name of the environment wrapper,
+                defaults to the first behaviour in the spec list.
         """
         Env.__init__(self)
 
         self.env = env
-        self.flatten = flatten
 
         self.env.reset()
 
-        behaviours = self.env.behavior_specs
+        self.behaviour_name = behaviour_name or list(self.env.behavior_specs)[0]
+        self.spec = self.env.behavior_specs[self.behaviour_name]
 
-        if flatten:
-            flatten_state_space = 0
-            flatten_action_space = 0
+        self.state_space = self.spec.observation_shapes[0]
+        self.action_space = self.spec.action_spec.continuous_size
 
-        for key in behaviours:
-            obs_shapes = behaviours[key].observation_shapes
-            action_spec = behaviours[key].action_spec
-
-            if flatten:
-                flatten_state_space += np.sum(obs_shapes)
-                flatten_action_space += (
-                    action_spec.continuous_size * len(obs_shapes)
-                )
-            else:
-                self.state_space = obs_shapes[0]
-                self.action_space = action_spec.continuous_size
-
-                break
-        
-        if flatten:
-            self.state_space = (flatten_state_space,)
-            self.action_space = flatten_action_space
-
-    def _update_env_state(self, env_state: Namespace):
+    def _update_env_state(
+            self
+        ) -> Tuple[List[Any], List[Any], List[Union[bool, int]], List[Any]]:
         """
-        Updates the wrapper propers from the environment state.
-        
+        Transforms a step batch into a standard (s', r, t, info) batch.
+
+        Returns:
+            A transition tuple for the batch of agents.
+        """
+        decision_steps, terminal_steps = self.env.get_steps(self.behaviour_name)
+
+        self._state = []
+        self.reward = []
+        self.terminal = []
+        self.info = []
+
+        for agent_id in decision_steps:
+            decision_step = decision_steps[agent_id]
+
+            self._state.append(decision_step.obs[0])
+            self.reward.append([decision_step.reward])
+            self.terminal.append([False])
+            self.info.append([None])
+
+        for agent_id in terminal_steps:
+            terminal_step = terminal_steps[agent_id]
+
+            self._state.append(terminal_step.obs[0])
+            self.reward.append([terminal_step.reward])
+            self.terminal.append([not terminal_step.interrupted])
+            self.info.append([None])
+
+        self._state = np.array(self._state)
+        self.reward = np.array(self.reward)
+        self.terminal = np.array(self.terminal)
+        self.info = np.array(self.info)
+
+        return self._state, self.reward, self.terminal, self.info
+
+    @property
+    def state(self):
+        """
+        Returns the latest state from the environment.
+        """
+        self._update_env_state()
+
+        return self._state
+
+    @state.setter
+    def state(self, state):
+        """
+        Sets the current state.
+
         Args:
-            env_state: The namespace containing the state variables.
+            state: The state to set.
         """
-        self.state = env_state.vector_observations
-        self.reward = env_state.rewards
-        self.terminal = env_state.local_done
+        self._state = state
 
-        if self.flatten:
-            self.state = np.reshape(
-                self.state.shape[0] * self.state.shape[1], self.state.shape[2:]
-            )
-
-            self.reward = np.mean(self.reward, dim=0)
-            self.terminal = np.prod(self.terminal, dim=0)
-
-    def step(self, action: object):
+    def step(self, action: List[Tuple[float, ...]]):
         """
         Takes 1 step into the environment using the given action.
 
         Args:
             action: The action to take in the environment.
         """
-        self._update_env_state(self.env.step(action))
+        action = ActionTuple(continuous=action)
+    
+        self.env.set_actions(self.behaviour_name, action)
+        self.env.step()
 
-        return self.state, self.reward, self.terminal, self.info
+        return self._update_env_state()
 
     def sample_action(self):
         return self.env.action_space.sample()
@@ -88,13 +115,14 @@ class UnityEnv(Env):
         """
         pass
 
-    def reset(self, train_mode=False):
+    def reset(self):
         """
         Resets the environment.
         """
-        self._update_env_state(self.env.reset(train_mode))
+        self.env.reset()
+        self._update_env_state()
 
-        return self.state
+        return self._state
 
     def close(self):
         """
