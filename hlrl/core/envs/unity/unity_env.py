@@ -27,11 +27,11 @@ class UnityEnv(Env):
                 brain.vector_observation_space_size for brain in self.env.brains
             )
             self.action_space = np.sum(
-                brain.vector_action_space_size for brain in self.envs.brains
+                brain.vector_action_space_size for brain in self.env.brains
             )
         else:
-            self.state_space = self.envs.brains[0].vector_observation_space_size
-            self.action_space = self.envs.brains[0].vector_action_space_size
+            self.state_space = self.env.brains[0].vector_observation_space_size
+            self.action_space = self.env.brains[0].vector_action_space_size
 
     def _update_env_state(self, env_state: Namespace):
         """
