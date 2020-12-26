@@ -1,4 +1,4 @@
-from typing import Namespace
+from argparse import Namespace
 
 import numpy as np
 from mlagents_envs.environment import UnityEnvironment
@@ -22,16 +22,32 @@ class UnityEnv(Env):
         self.env = env
         self.flatten = flatten
 
+        self.env.reset()
+
+        behaviours = self.env.behavior_specs
+
         if flatten:
-            self.state_space = np.sum(
-                brain.vector_observation_space_size for brain in self.env.brains
-            )
-            self.action_space = np.sum(
-                brain.vector_action_space_size for brain in self.env.brains
-            )
-        else:
-            self.state_space = self.env.brains[0].vector_observation_space_size
-            self.action_space = self.env.brains[0].vector_action_space_size
+            flatten_state_space = 0
+            flatten_action_space = 0
+
+        for key in behaviours:
+            obs_shapes = behaviours[key].observation_shapes
+            action_spec = behaviours[key].action_spec
+
+            if flatten:
+                flatten_state_space += np.sum(obs_shapes)
+                flatten_action_space += (
+                    action_spec.continuous_size * len(obs_shapes)
+                )
+            else:
+                self.state_space = obs_shapes[0]
+                self.action_space = action_spec.continuous_size
+
+                break
+        
+        if flatten:
+            self.state_space = (flatten_state_space,)
+            self.action_space = flatten_action_space
 
     def _update_env_state(self, env_state: Namespace):
         """
@@ -79,3 +95,9 @@ class UnityEnv(Env):
         self._update_env_state(self.env.reset(train_mode))
 
         return self.state
+
+    def close(self):
+        """
+        Closes the Unity environment.
+        """
+        self.env.close()
