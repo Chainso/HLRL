@@ -1,5 +1,6 @@
 from typing import Namespace
 
+import numpy as np
 from mlagents_envs.environment import UnityEnvironment
 from hlrl.core.envs.env import Env
 
@@ -7,23 +8,30 @@ class UnityEnv(Env):
     """
     A environment from Unity
     """
-    def __init__(self, env: UnityEnvironment):
+    def __init__(self, env: UnityEnvironment, flatten: bool = False):
         """
         Creates the given environment from Unity
 
         Args:
             env: The Unity environment to wrap.
+            flatten: If the batch dimension of the observations should be
+                flattened
         """
         Env.__init__(self)
-        self.env = env
-        self.state_space = self.env.observation_space.shape
 
-        #self.action_space = self.env.action_space
-        #self.action_space = (
-            #(self.env.action_space.n,)
-            #if isinstance(self.env.action_space, Discrete)
-            #else self.env.action_space.shape
-        #)
+        self.env = env
+        self.flatten = flatten
+
+        if flatten:
+            self.state_space = np.sum(
+                brain.vector_observation_space_size for brain in self.env.brains
+            )
+            self.action_space = np.sum(
+                brain.vector_action_space_size for brain in self.envs.brains
+            )
+        else:
+            self.state_space = self.envs.brains[0].vector_observation_space_size
+            self.action_space = self.envs.brains[0].vector_action_space_size
 
     def _update_env_state(self, env_state: Namespace):
         """
@@ -32,9 +40,17 @@ class UnityEnv(Env):
         Args:
             env_state: The namespace containing the state variables.
         """
-        self.state = env_state.observations
+        self.state = env_state.vector_observations
         self.reward = env_state.rewards
         self.terminal = env_state.local_done
+
+        if self.flatten:
+            self.state = np.reshape(
+                self.state.shape[0] * self.state.shape[1], self.state.shape[2:]
+            )
+
+            self.reward = np.mean(self.reward, dim=0)
+            self.terminal = np.prod(self.terminal, dim=0)
 
     def step(self, action: object):
         """
@@ -56,10 +72,10 @@ class UnityEnv(Env):
         """
         pass
 
-    def reset(self):
+    def reset(self, train_mode=False):
         """
         Resets the environment.
         """
-        self._update_env_state(self.env.reset())
+        self._update_env_state(self.env.reset(train_mode))
 
         return self.state
