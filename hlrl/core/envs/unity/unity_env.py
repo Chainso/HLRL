@@ -48,7 +48,7 @@ class UnityEnv(Env):
         agent_ids = []
         self._state = []
         self.reward = []
-        self.terminal = []
+        terminal = []
         self.info = []
 
         for agent_id in decision_steps:
@@ -57,7 +57,7 @@ class UnityEnv(Env):
             agent_ids.append(agent_id)
             self._state.append(decision_step.obs[0])
             self.reward.append([decision_step.reward])
-            self.terminal.append([False])
+            terminal.append([False])
             self.info.append([None])
 
         for agent_id in terminal_steps:
@@ -66,17 +66,18 @@ class UnityEnv(Env):
             agent_ids.append(agent_id)
             self._state.append(terminal_step.obs[0])
             self.reward.append([terminal_step.reward])
-            self.terminal.append([not terminal_step.interrupted])
+            terminal.append([not terminal_step.interrupted])
             self.info.append([None])
 
         sort_order = np.argsort(agent_ids)
 
         self._state = np.array(self._state)[sort_order]
         self.reward = np.array(self.reward)[sort_order]
-        self.terminal = np.array(self.terminal)[sort_order]
+        terminal = np.array(terminal)[sort_order]
+        self.terminal = np.prod(terminal)
         self.info = np.array(self.info)[sort_order]
 
-        return self._state, self.reward, self.terminal, self.info
+        return self._state, self.reward, terminal, self.info
 
     @property
     def state(self):
