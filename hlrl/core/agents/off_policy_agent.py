@@ -90,7 +90,9 @@ class OffPolicyAgent(RLAgent):
             *train_args: Any positional arguments for the algorithm training.
             **train_kwargs: Any keyword arguments for the algorithm training.
         """
-        for experience in ready_experiences:
+        experiences_to_add = self.create_batch(ready_experiences)
+
+        for experience in experiences_to_add:
             experience_replay.add(experience)
 
         self.algo.train_from_buffer(

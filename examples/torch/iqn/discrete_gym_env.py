@@ -269,7 +269,9 @@ if __name__ == "__main__":
         OffPolicyAgent, env, algo, render=args.render, silent=args.silent
     )
 
-    agent_builder = compose(agent_builder, QueueAgent)
+    if args.num_agents > 0:
+        agent_builder = compose(agent_builder, QueueAgent)
+
     agent_builder = compose(agent_builder, TorchRLAgent)
     agent_builder = compose(agent_builder, TorchOffPolicyAgent)
     
@@ -295,7 +297,6 @@ if __name__ == "__main__":
             agent_builder = compose(
                 agent_builder, partial(MunchausenAgent, alpha=0.9)
             )
-            algo.temperature = 0.6
 
         algo.create_optimizers()
 
@@ -303,9 +304,10 @@ if __name__ == "__main__":
         algo.share_memory()
 
         # Experience replay
+        er_capacity = int(args.er_capacity)
         if args.recurrent:
-            experience_replay = TorchR2D2(
-                args.er_capacity, args.er_alpha, args.er_beta,
+            experience_replay_func = partial(
+                TorchR2D2, er_capacity, args.er_alpha, args.er_beta,
                 args.er_beta_increment, args.er_epsilon, args.max_factor
             )
 
@@ -318,56 +320,73 @@ if __name__ == "__main__":
                 )
             )
         else:
-            experience_replay = TorchPER(
-                args.er_capacity, args.er_alpha, args.er_beta,
+            experience_replay_func = partial(
+                TorchPER, er_capacity, args.er_alpha, args.er_beta,
                 args.er_beta_increment, args.er_epsilon
             )
 
-        done_event = mp.Event()
+        experience_replay = experience_replay_func()
 
-        # Number of agents + worker + learner
-        queue_barrier = mp.Barrier(args.num_agents + 2)
-
-        max_queue_size = 64
-        agent_queue = mp.Queue(maxsize=max_queue_size)
-        sample_queue = mp.Queue(maxsize=max_queue_size)
-        priority_queue = mp.Queue(maxsize=max_queue_size)
-
-        learner_args = (
-            algo, done_event, queue_barrier, args.training_steps, sample_queue,
-            priority_queue, save_path, args.save_interval
-        )
-
-        worker_args = (
-            experience_replay, done_event, queue_barrier, agent_queue,
-            sample_queue, priority_queue, args.batch_size, args.start_size
-        )
-
-        agents = []
-        agent_train_args = []
-        agent_train_kwargs = []
-
-        base_agents_logs_path = None
+        base_agent_logs_path = None
         if logs_path is not None:
-            base_agents_logs_path = logs_path + "/train-agent-"
+            base_agent_logs_path = logs_path + "/train-agent"
 
-        for i in range(args.num_agents):
+        # Single process
+        if args.num_agents == 0:
             agent_logger = None
-            if base_agents_logs_path is not None:
-                agent_logs_path = base_agents_logs_path + str(i + 1)
-                agent_logger = TensorboardLogger(agent_logs_path)
+            if base_agent_logs_path is not None:
+                agent_logger = TensorboardLogger(base_agent_logs_path)
 
-            agents.append(agent_builder(logger=agent_logger))
+            agent = agent_builder(logger=agent_logger)
 
-            agent_train_args.append((
-                1, 1, args.decay, args.n_steps, agent_queue, queue_barrier
-            ))
-            agent_train_kwargs.append({
-                "exit_condition": done_event.is_set
-            })
+            agent.train(
+                args.episodes, 1, args.decay, args.n_steps, experience_replay,
+                args.batch_size, args.start_size, save_path, args.save_interval
+            )
 
-        runner = ApexRunner(done_event)
-        runner.start(
-            learner_args, worker_args, agents, agent_train_args,
-            agent_train_kwargs
-        )
+        # Multiple processes
+        else:
+            done_event = mp.Event()
+
+            # Number of agents + worker + learner
+            queue_barrier = mp.Barrier(args.num_agents + 2)
+
+            max_queue_size = 64
+            agent_queue = mp.Queue(maxsize=max_queue_size)
+            sample_queue = mp.Queue(maxsize=max_queue_size)
+            priority_queue = mp.Queue(maxsize=max_queue_size)
+
+            learner_args = (
+                algo, done_event, queue_barrier, args.training_steps,
+                sample_queue, priority_queue, save_path, args.save_interval
+            )
+
+            worker_args = (
+                experience_replay, done_event, queue_barrier, agent_queue,
+                sample_queue, priority_queue, args.batch_size, args.start_size
+            )
+
+            agents = []
+            agent_train_args = []
+            agent_train_kwargs = []
+
+            for i in range(args.num_agents):
+                agent_logger = None
+                if base_agent_logs_path is not None:
+                    agent_logs_path = base_agent_logs_path + "-" + str(i + 1)
+                    agent_logger = TensorboardLogger(agent_logs_path)
+
+                agents.append(agent_builder(logger=agent_logger))
+
+                agent_train_args.append((
+                    1, 1, args.decay, args.n_steps, agent_queue, queue_barrier
+                ))
+                agent_train_kwargs.append({
+                    "exit_condition": done_event.is_set
+                })
+
+            runner = ApexRunner(done_event)
+            runner.start(
+                learner_args, worker_args, agents, agent_train_args,
+                agent_train_kwargs
+            )

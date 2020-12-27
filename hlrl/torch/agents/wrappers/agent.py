@@ -37,14 +37,13 @@ class TorchRLAgent(MethodWrapper):
         """
         Creates a float tensor of the data of batch size 1.
         """
+        if self.batch_state:
+            data = [data]
+
         return torch.FloatTensor(data).to(self.algo.device)
 
     def transform_state(self, state):
         state_dict = self.om.transform_state(state)
-
-        if self.batch_state:
-            state_dict["state"] = [state_dict["state"]]
-
         state_dict["state"] = self.make_tensor(state_dict["state"])
 
         return state_dict
@@ -68,12 +67,12 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             The reward as a tensor.
         """
-        return self.make_tensor([[self.om.transform_reward(
+        return self.make_tensor([self.om.transform_reward(
             state, algo_step, reward, terminal, next_state
-        )]])
+        )])
 
     def transform_terminal(self, terminal):
-        return self.make_tensor([[self.om.transform_terminal(terminal)]])
+        return self.make_tensor([self.om.transform_terminal(terminal)])
 
     def transform_action(self, action):
         return self.om.transform_action(action).squeeze().cpu().numpy()
@@ -89,7 +88,12 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             The float value of the reward tensor.
         """
-        return reward.detach().item()
+        reward = reward.detach().cpu()[0]
+
+        if self.batch_state:
+            reward = reward.item()
+
+        return reward
 
     def create_batch(
             self,

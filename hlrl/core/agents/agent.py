@@ -451,15 +451,16 @@ class RLAgent():
                     self.add_to_buffer(ready_experiences, experiences, decay)
 
                 # Get length of a random key
-                for key in ready_experiences:
+                keys = list(ready_experiences)
+
+                if len(keys) > 0:
+                    key = keys[0]
                     if len(ready_experiences[key]) == batch_size:
                         self.train_step(
                             ready_experiences, learner, *learner_args,
                             **learner_kwargs
                         )
                         ready_experiences = {}
-
-                    break
 
                 if self.logger is not None:
                     self.logger["Train/Agent Steps per Second"] = (
