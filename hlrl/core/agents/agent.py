@@ -3,8 +3,6 @@ from collections import deque
 from typing import Any, Callable, Dict, List, Optional, Tuple, OrderedDict
 from time import time
 
-import numpy as np
-
 from hlrl.core.envs import Env
 from hlrl.core.algos import RLAlgo
 
@@ -217,13 +215,10 @@ class RLAgent():
         Returns:
             The decayed reward.
         """
-        return np.sum(
-            [
-                experience["reward"] * (decay ** i)
-                for i, experience in enumerate(experiences)
-            ],
-            axis=-1
-        )
+        return sum([
+            experience["reward"] * (decay ** i)
+            for i, experience in enumerate(experiences)
+        ])
 
     def get_buffer_experience(self,
                               experiences: List[Dict[str, Any]],
