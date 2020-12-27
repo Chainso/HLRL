@@ -184,10 +184,12 @@ if(__name__ == "__main__"):
         save_path = str(save_path)
 
     # Initialize the environment, and rescale for Tanh policy
-    gym_env = gym.make(args.env)
-    gym_env = RescaleAction(gym_env, -1, 1)
-    env = GymEnv(gym_env)
     args.vectorized = False
+    env_builder = partial(gym.make, args.env)
+    env_builder = compose(env_builder, partial(RescaleAction, a=-1, b=1))
+    env_builder = compose(env_builder, GymEnv)
+
+    env = env_builder()
 
     # The algorithm logger
     algo_logger = (
@@ -256,4 +258,4 @@ if(__name__ == "__main__"):
         algo.load(args.load_path)
 
     off_policy_trainer = OffPolicyTrainer()
-    off_policy_trainer.train(args, env, algo)
+    off_policy_trainer.train(args, env_builder, algo)

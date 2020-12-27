@@ -1,6 +1,7 @@
 from argparse import Namespace
 from functools import partial
 from pathlib import Path
+from typing import Callable
 
 import torch.multiprocessing as mp
 
@@ -22,7 +23,10 @@ class OffPolicyTrainer():
     """
     A trainer for off-policy algorithms.
     """
-    def train(self, args: Namespace, env: Env, algo: RLAlgo):
+    def train(self,
+              args: Namespace,
+              env_builder: Callable[[], Env],
+              algo: RLAlgo):
         """
         Trains the algorithm on the environment given using the argument
         namespace as parameters.
@@ -63,7 +67,7 @@ class OffPolicyTrainer():
 
         Args:
             args: The namespace of arguments for training.
-            env: The environment to train in.
+            env_builder: The nullary function to create the environment.
             algo: The algorithm to train.
         """
         logs_path = None
@@ -80,7 +84,7 @@ class OffPolicyTrainer():
 
         # Create agent class
         agent_builder = partial(
-            OffPolicyAgent, env, algo, render=args.render, silent=args.silent
+            OffPolicyAgent, algo=algo, render=args.render, silent=args.silent
         )
 
         if args.num_agents > 0:
@@ -105,7 +109,7 @@ class OffPolicyTrainer():
                 else TensorboardLogger(logs_path + "/play-agent")
             )
 
-            agent = agent_builder(logger=agent_logger)
+            agent = agent_builder(env=env_builder(), logger=agent_logger)
             agent.play(args.episodes)
         else:
             if args.exploration == "rnd":
@@ -156,7 +160,7 @@ class OffPolicyTrainer():
                 if base_agent_logs_path is not None:
                     agent_logger = TensorboardLogger(base_agent_logs_path)
 
-                agent = agent_builder(logger=agent_logger)
+                agent = agent_builder(env=env_builder(), logger=agent_logger)
 
                 agent.train(
                     args.episodes, 1, args.decay, args.n_steps,
