@@ -217,10 +217,13 @@ class RLAgent():
         Returns:
             The decayed reward.
         """
-        return np.sum([
-            experience["reward"] * (decay ** i)
-            for i, experience in enumerate(experiences)
-        ])
+        return np.sum(
+            [
+                experience["reward"] * (decay ** i)
+                for i, experience in enumerate(experiences)
+            ],
+            axis=-1
+        )
 
     def get_buffer_experience(self,
                               experiences: List[Dict[str, Any]],
