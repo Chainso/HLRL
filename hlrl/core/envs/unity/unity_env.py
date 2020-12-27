@@ -63,11 +63,17 @@ class UnityEnv(Env):
         for agent_id in terminal_steps:
             terminal_step = terminal_steps[agent_id]
 
-            agent_ids.append(agent_id)
-            self._state.append(terminal_step.obs[0])
-            self.reward.append([terminal_step.reward])
-            terminal.append([not terminal_step.interrupted])
-            self.info.append([None])
+            if agent_id in agent_ids:
+                self._state[agent_id] = terminal_step.obs[0]
+                self.reward[agent_id] = [terminal_step.reward]
+                terminal[agent_id] = [not terminal_step.interrupted]
+                self.info[agent_id] = [None]
+            else:
+                agent_ids.append(agent_id)
+                self._state.append(terminal_step.obs[0])
+                self.reward.append([terminal_step.reward])
+                terminal.append([not terminal_step.interrupted])
+                self.info.append([None])
 
         sort_order = np.argsort(agent_ids)
 
