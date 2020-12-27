@@ -111,6 +111,9 @@ class UnityEnv(Env):
         Args:
             action: The action to take in the environment.
         """
+        if len(action.shape) == 1:
+            action = np.expand_dims(action, axis=0)
+
         action = ActionTuple(continuous=action)
     
         self.env.set_actions(self.behaviour_name, action)
