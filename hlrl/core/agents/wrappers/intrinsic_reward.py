@@ -43,7 +43,7 @@ class IntrinsicRewardAgent(MethodWrapper):
             The intrinsic reward of the experience.
         """
         self.intrinsic_reward = self.algo.intrinsic_reward(
-            state, algo_step, reward, next_state
+            state, algo_step, reward, terminal, next_state
         )
 
         return self.intrinsic_reward

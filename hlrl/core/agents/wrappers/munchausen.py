@@ -34,16 +34,21 @@ class MunchausenAgent(IntrinsicRewardAgent):
 
         return self.om.transform_algo_step(algo_step[:-1])
 
-    def get_intrinsic_reward(self, state: Any, algo_step: Any, reward: Any,
-        next_state: Any):
+    def get_intrinsic_reward(self,
+                             state: Any,
+                             algo_step: Any,
+                             reward: Any,
+                             terminal: Any,
+                             next_state: Any) -> None:
         """
         Returns the Munchausen reward on an experience tuple.
 
         Args:
-            state (Any): The state of the environment.
-            action (Any): The last action taken in the environment.
-            reward (Any): The external reward to add to.
-            next_state (Any): The new state of the environment.
+            state: The state of the environment.
+            action: The last action taken in the environment.
+            reward: The external reward to add to.
+            terminal: If this is the last step of the episode.
+            next_state: The new state of the environment.
         """
         self.intrinsic_reward = (
             self.alpha * self.algo.temperature * self.log_probs
