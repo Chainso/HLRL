@@ -98,10 +98,8 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             The float value of the reward tensor.
         """
-        reward = reward.detach().cpu()
-
-        if self.batch_state:
-            reward = reward.item()
+        reward = torch.mean(reward.detach().cpu())
+        reward = reward.item()
 
         return reward
 
