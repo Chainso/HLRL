@@ -216,7 +216,7 @@ class RLAgent():
             The decayed reward.
         """
         reward = experiences[-1]["reward"]
-        for experience in list(experiences)[:-1:-1]:
+        for experience in list(experiences)[-2::-1]:
             reward = experience["reward"] + decay * reward
 
         return reward
@@ -439,7 +439,6 @@ class RLAgent():
                     step_time = time()
 
                 experience = self.step(True)
-
                 ep_reward += self.reward_to_float(experience["reward"])
 
                 experiences.append(experience)

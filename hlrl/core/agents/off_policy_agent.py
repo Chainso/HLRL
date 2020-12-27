@@ -33,7 +33,7 @@ class OffPolicyAgent(RLAgent):
     def create_batch(
             self,
             ready_experiences: Dict[str, List[Any]],
-        ) -> Tuple[Dict[str, Any]]:
+        ) -> Tuple[Dict[str, Any], ...]:
         """
         Creates a batch of experiences to be trained on from the ready
         experiences.
@@ -76,7 +76,7 @@ class OffPolicyAgent(RLAgent):
         return experience
 
     def train_step(self,
-                   ready_experiences: List[Dict[str, Any]],
+                   ready_experiences: Dict[str, List[Any]],
                    experience_replay: ExperienceReplay,
                    *train_args: Any,
                    **train_kwargs: Any) -> None:

@@ -22,12 +22,11 @@ class GaussianPolicy(nn.Module):
         Creates the gaussian policy.
 
         Args:
-            inp_n (int): The number of input units to the network.
-            out_n (int): The number of output units from the network.
-            hidden_size (int): The number of units in each hidden layer.
-            num_layers (int): The number of layers before the gaussian layer.
-            activation_fn (nn.Module): The activation function in between each
-                layer.
+            inp_n: The number of input units to the network.
+            out_n: The number of output units from the network.
+            hidden_size: The number of units in each hidden layer.
+            num_layers: The number of layers before the gaussian layer.
+            activation_fn: The activation function in between each layer.
         """ 
         super().__init__()
 
@@ -70,9 +69,11 @@ class GaussianPolicy(nn.Module):
 
         normal = Normal(mean, std)
         action = normal.rsample()
-        log_prob = normal.log_prob(action)
 
-        return action, mean, log_prob
+        log_prob = normal.log_prob(action)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
+
+        return action, log_prob, mean
 
 class TanhGaussianPolicy(GaussianPolicy):
     """
@@ -96,10 +97,9 @@ class TanhGaussianPolicy(GaussianPolicy):
         sample, mean, log_prob = super().forward(inp)
         action = torch.tanh(sample)
 
-        log_prob = log_prob - torch.log(1 - action.pow(2) + epsilon)
-
-        # Not sure if need keep dim here
-        log_prob = log_prob.sum(1, keepdim=True)
+        log_prob -= torch.sum(
+            torch.log(1 - action.pow(2) + epsilon), dim=-1, keepdim=True
+        )
 
         mean = torch.tanh(mean)
 

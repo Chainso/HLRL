@@ -126,7 +126,7 @@ if(__name__ == "__main__"):
         help="the gamma decay for the target Q-values"
     )
     parser.add_argument(
-        "--n_steps", type=int, default=5, help="the number of decay steps"
+        "--n_steps", type=int, default=1, help="the number of decay steps"
     )
     parser.add_argument(
         "--num_agents", type=int, default=0,

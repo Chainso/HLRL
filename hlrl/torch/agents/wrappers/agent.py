@@ -67,12 +67,22 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             The reward as a tensor.
         """
-        return self.make_tensor([self.om.transform_reward(
+        reward = self.om.transform_reward(
             state, algo_step, reward, terminal, next_state
-        )])
+        )
+
+        if self.batch_state:
+            reward = [reward]
+
+        return self.make_tensor(reward)
 
     def transform_terminal(self, terminal):
-        return self.make_tensor([self.om.transform_terminal(terminal)])
+        terminal = self.om.transform_terminal(terminal)
+
+        if self.batch_state:
+            terminal = [terminal]
+
+        return self.make_tensor(terminal)
 
     def transform_action(self, action):
         return self.om.transform_action(action).squeeze().cpu().numpy()
@@ -88,7 +98,7 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             The float value of the reward tensor.
         """
-        reward = reward.detach().cpu()[0]
+        reward = reward.detach().cpu()
 
         if self.batch_state:
             reward = reward.item()
