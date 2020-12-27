@@ -77,16 +77,29 @@ class GaussianPolicy(nn.Module):
 
 class TanhGaussianPolicy(GaussianPolicy):
     """
-    A gaussian policy with an extra tanh layer (restricted to [-1, 1])
+    A gaussian policy with an extra tanh layer (restricted to (-1, 1))
     """
-    def compute_mean_and_std(self, inp):
+    def __init__(self,
+        inp_n: int,
+        out_n: int,
+        hidden_size: int,
+        num_layers: int,
+        activation_fn: nn.Module,
+        action_range: int = 1):
         """
-        Returns the mean and log std of the policy on the input.
-        """
-        mean, log_std = super().compute_mean_and_std(inp)
-        mean = torch.tanh(mean)
+        Creates the gaussian policy.
 
-        return mean, log_std
+        Args:
+            inp_n: The number of input units to the network.
+            out_n: The number of output units from the network.
+            hidden_size: The number of units in each hidden layer.
+            num_layers: The number of layers before the gaussian layer.
+            activation_fn: The activation function in between each layer.
+            action_range: The range of the output (-action_range, action_range)
+        """ 
+        super().__init__(inp_n, out_n, hidden_size, num_layers, activation_fn)
+
+        self.action_range = action_range
 
     def forward(self, inp, epsilon=1e-4):
         """
@@ -94,13 +107,15 @@ class TanhGaussianPolicy(GaussianPolicy):
         probability of the sample
         """
         # Need to get mean before tanh
-        sample, mean, log_prob = super().forward(inp)
+        sample, log_prob, mean = super().forward(inp)
         action = torch.tanh(sample)
 
         log_prob -= torch.sum(
-            torch.log(1 - action.pow(2) + epsilon), dim=-1, keepdim=True
+            torch.log(self.action_range * (1 - action.pow(2)) + epsilon),
+            dim=-1, keepdim=True
         )
 
-        mean = torch.tanh(mean)
+        action = action * self.action_range
+        mean = torch.tanh(mean) * self.action_range
 
         return action, log_prob, mean
