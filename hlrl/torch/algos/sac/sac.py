@@ -81,6 +81,9 @@ class SAC(TorchOffPolicyAlgo):
         """
         Assumes the gradients have been computed and updates the parameters of
         the network with the optimizers.
+
+        Args:
+            states: The states to recompute losses on.
         """
         if self.twin:
             self.q_optim2.step()
