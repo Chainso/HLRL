@@ -199,11 +199,11 @@ if __name__ == "__main__":
             num_lin_before, args.hidden_size, 1, args.hidden_size,
             num_lin_after, activation_fn
         )
-        
+
         # TODO Create Recurrent DQN instance here
     else:
         qfunc = LinearPolicy(
-            args.hidden_size, env.action_space[0], args.hidden_size,
+            env.state_space[0], env.action_space[0], args.hidden_size,
             args.num_layers, activation_fn
         )
 

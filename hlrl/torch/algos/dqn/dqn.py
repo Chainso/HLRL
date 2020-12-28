@@ -45,6 +45,7 @@ class DQN(TorchOffPolicyAlgo):
 
         # The network
         self.q_func = q_func
+        self.q_func_targ = deepcopy(q_func)
 
     def create_optimizers(self) -> None:
         """
@@ -75,11 +76,12 @@ class DQN(TorchOffPolicyAlgo):
         q_vals = self.q_func(states)
         act_qs = q_vals.gather(1, actions)
 
-        next_qs = self.q_func(next_states)
-        next_q_max = next_qs.max(dim=-1).values
-        q_targ = rewards + (1 - terminals) * self.discount * next_q_max
+        with torch.no_grad():
+            next_qs = self.q_func_targ(next_states)
+            next_q_max = next_qs.max(dim=-1, keepdim=True).values
+            q_targ = rewards + (1 - terminals) * self._discount * next_q_max
 
-        return q_vals, q_targ
+        return act_qs, q_targ
 
     def _step_optimizers(self,
             states: torch.FloatTensor,
@@ -105,6 +107,9 @@ class DQN(TorchOffPolicyAlgo):
         self.q_optim.step()
 
         # Get the new q value to update the experience replay
+        if (self.training_steps % self._target_update_interval == 0):
+            polyak_average(self.q_func, self.q_func_targ, self._polyak)
+
         with torch.no_grad():
             return self._get_q_and_target(
                 states, actions, rewards, next_states, terminals
@@ -133,10 +138,12 @@ class DQN(TorchOffPolicyAlgo):
                     action_gap, self.env_steps
                 )
 
+        probs = nn.Softmax(dim=-1)(q_vals)
+
         if greedy:
-            action = torch.argmax(q_vals, dim=-1, keepdim=True)
+            action = torch.argmax(probs, dim=-1, keepdim=True)
         else:
-            action = torch.multinomial(q_vals, 1)
+            action = torch.multinomial(probs, 1)
 
         return action, q_vals
 
@@ -151,9 +158,9 @@ class DQN(TorchOffPolicyAlgo):
             The action and Q-value of the action.
         """
         with torch.no_grad():
-            action, q_val = self(observation)
+            action, q_vals = self(observation)
 
-        q_val = q_val.gather(1, action)
+        q_val = q_vals.gather(1, action)
 
         return action, q_val
 
@@ -187,7 +194,7 @@ class DQN(TorchOffPolicyAlgo):
 
         q_loss = q_loss_func(q_val, q_target)
         q_loss = torch.mean(q_loss * is_weights)
-        q_loss.backwards()
+        q_loss.backward()
 
         # Log the losses if a logger was given
         if(self.logger is not None):
