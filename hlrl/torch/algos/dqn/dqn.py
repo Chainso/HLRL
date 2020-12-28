@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Optional, Union
+from typing import Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -136,9 +136,9 @@ class DQN(TorchOffPolicyAlgo):
         if greedy:
             action = torch.argmax(q_vals, dim=-1, keepdim=True)
         else:
-            action = torch.multinomial(probs, 1)
+            action = torch.multinomial(q_vals, 1)
 
-        return action, q_val
+        return action, q_vals
 
     def step(self, observation):
         """

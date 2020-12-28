@@ -188,7 +188,6 @@ if(__name__ == "__main__"):
     env_builder = partial(gym.make, args.env)
     env_builder = compose(env_builder, partial(RescaleAction, a=-1, b=1))
     env_builder = compose(env_builder, GymEnv)
-
     env = env_builder()
 
     # The algorithm logger

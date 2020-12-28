@@ -10,17 +10,9 @@ if __name__ == "__main__":
 
     from hlrl.core.logger import TensorboardLogger
     from hlrl.core.common.functional import compose
-    from hlrl.core.distributed import ApexRunner
+    from hlrl.torch.trainers import OffPolicyTrainer
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.core.agents import (
-        OffPolicyAgent, MunchausenAgent, IntrinsicRewardAgent, QueueAgent
-    )
     from hlrl.torch.algos import RainbowIQN, RND
-    from hlrl.torch.agents import (
-        TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
-        TorchRecurrentAgent, TorchOffPolicyAgent
-    )
-    from hlrl.torch.experience_replay import TorchPER, TorchR2D2
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
     mp.set_start_method("spawn")
@@ -121,7 +113,7 @@ if __name__ == "__main__":
 		help="the number of batches in between saves"
 	)
     parser.add_argument(
-		"--episodes", type=int, default=100,
+		"--episodes", type=int, default=1000,
 		help="the number of episodes to play for if playing"
 	)
     parser.add_argument(
@@ -139,7 +131,7 @@ if __name__ == "__main__":
 		help="the number of decay steps"
 	)
     parser.add_argument(
-        "--num_agents", type=int, default=1,
+        "--num_agents", type=int, default=0,
         help="the number of agents to run concurrently"
     )
     parser.add_argument(
@@ -196,8 +188,10 @@ if __name__ == "__main__":
         save_path = str(save_path)
 
     # Initialize the environment
-    gym_env = gym.make(args.env)
-    env = GymEnv(gym_env)
+    args.vectorized = False
+    env_builder = partial(gym.make, args.env)
+    env_builder = compose(env_builder, GymEnv)
+    env = env_builder()
 
     # The algorithm logger
     algo_logger = (
@@ -264,129 +258,5 @@ if __name__ == "__main__":
     if args.load_path is not None:
         algo.load(args.load_path)
 
-    # Create agent class
-    agent_builder = partial(
-        OffPolicyAgent, env, algo, render=args.render, silent=args.silent
-    )
-
-    if args.num_agents > 0:
-        agent_builder = compose(agent_builder, QueueAgent)
-
-    agent_builder = compose(agent_builder, TorchRLAgent)
-    agent_builder = compose(agent_builder, TorchOffPolicyAgent)
-    
-    if args.recurrent:
-        agent_builder = compose(
-            agent_builder, SequenceInputAgent, TorchRecurrentAgent
-        )
-
-    if args.play:
-        algo.eval()
-
-        agent_logger = (
-            None if logs_path is None
-            else TensorboardLogger(logs_path + "/play-agent")
-        )
-
-        agent = agent_builder(logger=agent_logger)
-        agent.play(args.episodes)
-    else:
-        if args.exploration == "rnd":
-            agent_builder = compose(agent_builder, IntrinsicRewardAgent)
-        elif args.exploration == "munchausen":
-            agent_builder = compose(
-                agent_builder, partial(MunchausenAgent, alpha=0.9)
-            )
-
-        algo.create_optimizers()
-
-        algo.train()
-        algo.share_memory()
-
-        # Experience replay
-        er_capacity = int(args.er_capacity)
-        if args.recurrent:
-            experience_replay_func = partial(
-                TorchR2D2, er_capacity, args.er_alpha, args.er_beta,
-                args.er_beta_increment, args.er_epsilon, args.max_factor
-            )
-
-            agent_builder = compose(
-                agent_builder,
-                partial(
-                    ExperienceSequenceAgent,
-                    sequence_length=args.burn_in_length + args.sequence_length,
-                    overlap=args.burn_in_length
-                )
-            )
-        else:
-            experience_replay_func = partial(
-                TorchPER, er_capacity, args.er_alpha, args.er_beta,
-                args.er_beta_increment, args.er_epsilon
-            )
-
-        experience_replay = experience_replay_func()
-
-        base_agent_logs_path = None
-        if logs_path is not None:
-            base_agent_logs_path = logs_path + "/train-agent"
-
-        # Single process
-        if args.num_agents == 0:
-            agent_logger = None
-            if base_agent_logs_path is not None:
-                agent_logger = TensorboardLogger(base_agent_logs_path)
-
-            agent = agent_builder(logger=agent_logger)
-
-            agent.train(
-                args.episodes, 1, args.decay, args.n_steps, experience_replay,
-                args.batch_size, args.start_size, save_path, args.save_interval
-            )
-
-        # Multiple processes
-        else:
-            done_event = mp.Event()
-
-            # Number of agents + worker + learner
-            queue_barrier = mp.Barrier(args.num_agents + 2)
-
-            max_queue_size = 64
-            agent_queue = mp.Queue(maxsize=max_queue_size)
-            sample_queue = mp.Queue(maxsize=max_queue_size)
-            priority_queue = mp.Queue(maxsize=max_queue_size)
-
-            learner_args = (
-                algo, done_event, queue_barrier, args.training_steps,
-                sample_queue, priority_queue, save_path, args.save_interval
-            )
-
-            worker_args = (
-                experience_replay, done_event, queue_barrier, agent_queue,
-                sample_queue, priority_queue, args.batch_size, args.start_size
-            )
-
-            agents = []
-            agent_train_args = []
-            agent_train_kwargs = []
-
-            for i in range(args.num_agents):
-                agent_logger = None
-                if base_agent_logs_path is not None:
-                    agent_logs_path = base_agent_logs_path + "-" + str(i + 1)
-                    agent_logger = TensorboardLogger(agent_logs_path)
-
-                agents.append(agent_builder(logger=agent_logger))
-
-                agent_train_args.append((
-                    1, 1, args.decay, args.n_steps, agent_queue, queue_barrier
-                ))
-                agent_train_kwargs.append({
-                    "exit_condition": done_event.is_set
-                })
-
-            runner = ApexRunner(done_event)
-            runner.start(
-                learner_args, worker_args, agents, agent_train_args,
-                agent_train_kwargs
-            )
+    off_policy_trainer = OffPolicyTrainer()
+    off_policy_trainer.train(args, env_builder, algo)

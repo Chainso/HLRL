@@ -203,7 +203,9 @@ class OffPolicyTrainer():
                         )
                         agent_logger = TensorboardLogger(agent_logs_path)
 
-                    agents.append(agent_builder(logger=agent_logger))
+                    agents.append(
+                        agent_builder(env=env_builder(), logger=agent_logger)
+                    )
 
                     agent_train_args.append((
                         1, 1, args.decay, args.n_steps, agent_queue,
