@@ -101,7 +101,7 @@ if __name__ == "__main__":
 		help="the number of batches in between saves"
 	)
     parser.add_argument(
-		"--episodes", type=int, default=1000,
+		"--episodes", type=int, default=10000,
 		help="the number of episodes to play for if playing"
 	)
     parser.add_argument(
