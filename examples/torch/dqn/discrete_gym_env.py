@@ -12,7 +12,7 @@ if __name__ == "__main__":
     from hlrl.core.common.functional import compose
     from hlrl.torch.trainers import OffPolicyTrainer
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.torch.algos import DQN, RND
+    from hlrl.torch.algos import DQN, DQNRecurrent, RND, TorchRecurrentAlgo
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
     mp.set_start_method("spawn")
@@ -191,7 +191,8 @@ if __name__ == "__main__":
     optim = partial(torch.optim.Adam, lr=args.lr)
 
     if args.recurrent:
-        num_lin_before = 1 if args.num_layers > 2 else 0
+        args.num_layers += 1
+        num_lin_before = 1 if args.num_layers > 1 else 0
         num_lin_after = max(args.num_layers - 2, 1)
 
         qfunc = LSTMPolicy(
@@ -209,7 +210,7 @@ if __name__ == "__main__":
     else:
         qfunc = LinearPolicy(
             env.state_space[0], env.action_space[0], args.hidden_size,
-            args.num_layers, activation_fn
+            args.num_layers + 1, activation_fn
         )
 
         algo = DQN(

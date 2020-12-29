@@ -74,7 +74,7 @@ class DQN(TorchOffPolicyAlgo):
             A tuple of the computed Q-value, and its target.
         """
         q_vals = self.q_func(states)
-        act_qs = q_vals.gather(1, actions)
+        act_qs = q_vals.gather(-1, actions)
 
         with torch.no_grad():
             next_qs = self.q_func_targ(next_states)
@@ -160,7 +160,7 @@ class DQN(TorchOffPolicyAlgo):
         with torch.no_grad():
             action, q_vals = self(observation)
 
-        q_val = q_vals.gather(1, action)
+        q_val = q_vals.gather(-1, action)
 
         return action, q_val
 

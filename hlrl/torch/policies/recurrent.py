@@ -47,7 +47,7 @@ class LSTMPolicy(nn.Module):
             lin_before_hidden_size if lin_before_num_layers > 0 else inp_n
         )
 
-        lstm_out_n = (
+        self.lstm_out_n = (
             lin_after_hidden_size if lin_after_num_layers > 0 else out_n
         )
 
@@ -60,16 +60,13 @@ class LSTMPolicy(nn.Module):
             self.lin_before = nn.Sequential(self.lin_before, activation_fn())
 
         self.lstm = nn.LSTM(
-            lstm_in_n, lstm_out_n, lstm_num_layers, batch_first=True
+            lstm_in_n, self.lstm_out_n, lstm_num_layers, batch_first=True
         )
 
         self.lin_after = LinearPolicy(
             lstm_hidden_size, out_n, lin_after_hidden_size,
             lin_after_num_layers, activation_fn
         )
-
-        if lin_after_num_layers > 0:
-            self.lin_after = nn.Sequential(self.lin_after, activation_fn())
 
     def forward(self, states: torch.Tensor, hidden_states: torch.Tensor):
         """
@@ -111,7 +108,9 @@ class LSTMPolicy(nn.Module):
         """
         Returns a reset hidden state of the LSTM.
         """
-        zero_state = torch.zeros(batch_size, self.lstm_num_layers, self.out_n)
+        zero_state = torch.zeros(
+            batch_size, self.lstm_num_layers, self.lstm_out_n
+        )
         reset_hidden = (zero_state, zero_state.clone())
 
         return reset_hidden

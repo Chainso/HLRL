@@ -53,7 +53,7 @@ class SACRecurrent(SAC):
         Resets the hidden state for the network.
         """
         return [
-            tens.to(self.log_temp.device)
+            tens.to(self.device)
             for tens in self.policy.reset_hidden_state()
         ]
 

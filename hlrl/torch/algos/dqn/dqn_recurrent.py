@@ -40,14 +40,14 @@ class DQNRecurrent(DQN):
             states.
         """
         q_vals, next_hidden_states = self.q_func(states, hidden_states)
-        act_qs = q_vals.gather(1, actions)
+        act_qs = q_vals.gather(-1, actions)
 
         with torch.no_grad():
-            next_qs = self.q_func_targ(next_states, next_hidden_states)
+            next_qs, _ = self.q_func_targ(next_states, next_hidden_states)
             next_q_max = next_qs.max(dim=-1, keepdim=True).values
             q_targ = rewards + (1 - terminals) * self._discount * next_q_max
 
-        return act_qs, q_targ, next_hidden_states
+        return act_qs, q_targ
 
     def _step_optimizers(self,
             states: torch.FloatTensor,
@@ -83,6 +83,15 @@ class DQNRecurrent(DQN):
                 states, actions, rewards, next_states, terminals, hidden_states
             )
 
+    def reset_hidden_state(self):
+        """
+        Resets the hidden state for the network.
+        """
+        return [
+            tens.to(self.device)
+            for tens in self.q_func.reset_hidden_state()
+        ]
+
     def forward(self,
             observation: torch.FloatTensor,
             hidden_state: Tuple[torch.FloatTensor, torch.FloatTensor],
@@ -101,7 +110,10 @@ class DQNRecurrent(DQN):
         Returns:
             The action and Q-values of all actions with the next hidden state.
         """
+        batch_size, sequence_length = observation.shape[:2]
+
         q_vals, next_hidden_state = self.q_func(observation, hidden_state)
+        q_vals = q_vals.view(batch_size * sequence_length, *q_vals.shape[2:])
 
         if self.logger is not None and observation.shape[0] == 1:
             with torch.no_grad():
@@ -120,6 +132,9 @@ class DQNRecurrent(DQN):
         else:
             action = torch.multinomial(probs, 1)
 
+        action = action.view(batch_size, sequence_length, *action.shape[1:])
+        q_vals = q_vals.view(batch_size, sequence_length, *q_vals.shape[1:])
+
         return action, q_vals, next_hidden_state
 
     def step(self,
@@ -134,12 +149,12 @@ class DQNRecurrent(DQN):
             hidden_state: The hidden states of the batch.
 
         Returns:
-            The action and Q-value of the action.
+            The action and Q-values of all actions with the next hidden state.
         """
         with torch.no_grad():
-            action, q_vals, next_hidden_state = self(observation)
+            action, q_vals, next_hidden_state = self(observation, hidden_state)
 
-        q_val = q_vals.gather(1, action)
+        q_val = q_vals.gather(-1, action)
 
         return action, q_val, next_hidden_state
 
@@ -154,10 +169,6 @@ class DQNRecurrent(DQN):
             rollouts: The (s, a, r, s', t) of training data for the network.
             is_weights (numpy.array) : The importance sampling weights for PER.
         """
-        rollouts = {
-            key: value.to(self.device) for key, value in rollouts.items()
-        }
-
         # Get all the parameters from the rollouts
         states = rollouts["state"]
         actions = rollouts["action"]

@@ -12,7 +12,7 @@ if __name__ == "__main__":
     from hlrl.core.common.functional import compose
     from hlrl.torch.trainers import OffPolicyTrainer
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.torch.algos import RainbowIQN, RND
+    from hlrl.torch.algos import RainbowIQN, RND, TorchRecurrentAlgo
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
     mp.set_start_method("spawn")
@@ -216,7 +216,8 @@ if __name__ == "__main__":
     )
 
     if args.recurrent:
-        num_lin_before = 1 if args.num_layers > 2 else 0
+        num_layers += 1
+        num_lin_before = 1 if args.num_layers > 1 else 0
 
         autoencoder = LSTMPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,
