@@ -224,6 +224,8 @@ if __name__ == "__main__":
             activation_fn
         )
         # TODO CREATE RAINBOW IQN INSTANCE HERE ONCE IMPLEMENTED
+
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length)
     else:
         autoencoder = LinearPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,

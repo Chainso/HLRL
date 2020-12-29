@@ -13,7 +13,7 @@ if(__name__ == "__main__"):
     from hlrl.core.common.functional import compose
     from hlrl.torch.trainers import OffPolicyTrainer
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.torch.algos import SAC, SACRecurrent, RND
+    from hlrl.torch.algos import SAC, SACRecurrent, RND, TorchRecurrentAlgo
     from hlrl.torch.policies import (
         LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy,
         LSTMSAPolicy, LSTMGaussianPolicy
@@ -219,8 +219,10 @@ if(__name__ == "__main__"):
         algo = SACRecurrent(
             env.action_space, qfunc, policy, args.discount, args.polyak,
             args.target_update_interval, optim, optim, optim, args.twin,
-            args.burn_in_length, args.device, algo_logger
+            args.device, algo_logger
         )
+
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length)
     else:
         qfunc = LinearSAPolicy(
             env.state_space[0], env.action_space[0], 1, args.hidden_size,

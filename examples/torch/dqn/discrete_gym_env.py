@@ -200,7 +200,12 @@ if __name__ == "__main__":
             num_lin_after, activation_fn
         )
 
-        # TODO Create Recurrent DQN instance here
+        algo = DQNRecurrent(
+            qfunc, args.discount, args.polyak, args.target_update_interval,
+            optim, args.device, algo_logger
+        )
+
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length)
     else:
         qfunc = LinearPolicy(
             env.state_space[0], env.action_space[0], args.hidden_size,

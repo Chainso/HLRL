@@ -8,41 +8,6 @@ class SACRecurrent(SAC):
     """
     Soft-Actor-Critic with a recurrent network.
     """
-    def __init__(self, action_space, q_func, policy, discount, polyak,
-                 target_update_interval, q_optim, p_optim, temp_optim,
-                 twin=True, burn_in_length=0, device="cpu", logger=None):
-        """
-        Creates the soft actor-critic algorithm with the given parameters
-
-        Args:
-            action_space (tuple) : The dimensions of the action space of the
-                                   environment.
-            q_func (torch.nn.Module) : The Q-function that takes in the
-                                       observation and action.
-            policy (torch.nn.Module) : The action policy that takes in the
-                                       observation.
-            discount (float) : The coefficient for the discounted values
-                                (0 < x < 1).
-            polyak (float) : The coefficient for polyak averaging (0 < x < 1).
-            target_update_interval (int): The number of training steps in
-                                          between target updates.
-            q_optim (torch.nn.Module) : The optimizer for the Q-function.
-            p_optim (torch.nn.Module) : The optimizer for the action policy.
-            temp_optim (toch.nn.Module) : The optimizer for the temperature.
-            twin (bool, optional) : If the twin Q-function algorithm should be
-                                    used, default True.
-            burn_in_length (int): The number of samples to "burn in" the hidden
-                                  states.
-            device (str): The device of the tensors in the module.
-            logger (Logger, optional) : The logger to log results while training
-                                        and evaluating, default None.
-        """
-        super().__init__(action_space, q_func, policy, discount, polyak,
-                         target_update_interval, q_optim, p_optim, temp_optim,
-                         twin=twin, device=device, logger=logger)
-
-        self.burn_in_length = burn_in_length
-
     def forward(self, observation, hidden_state):
         """
         Get the model output for a batch of observations
@@ -92,48 +57,6 @@ class SACRecurrent(SAC):
             for tens in self.policy.reset_hidden_state()
         ]
 
-    def burn_in_hidden_states(self, rollouts):
-        """
-        Burns in the hidden state and returns the rest of the input.
-        """
-        states = rollouts["state"]
-        actions = rollouts["action"]
-        rewards = rollouts["reward"]
-        next_states = rollouts["next_state"]
-        terminals = rollouts["terminal"]
-        hidden_states = rollouts["hidden_state"]
-
-        burn_in_states = states
-        burn_in_next_states = next_states
-        new_hiddens = hidden_states
-
-        if self.burn_in_length > 0:    
-            with torch.no_grad():
-                burn_in_states = states[:, :self.burn_in_length].contiguous()
-
-                _, _, _, new_hiddens = self.policy(
-                    burn_in_states, hidden_states
-                )
-
-        new_hiddens = [nh for nh in new_hiddens]
-
-        states = states[:, self.burn_in_length:].contiguous()
-        actions = actions[:, self.burn_in_length:].contiguous()
-        rewards = rewards[:, self.burn_in_length:].contiguous()
-        next_states = next_states[:, self.burn_in_length:].contiguous()
-        terminals = terminals[:, self.burn_in_length:].contiguous()
-
-        with torch.no_grad():
-            first_burned_in = states[:, :1]
-            _, _, _, next_hiddens = self.policy(
-                first_burned_in, new_hiddens
-            )
-
-        next_hiddens = [nh for nh in next_hiddens]
-
-        return (states, actions, rewards, next_states, terminals, new_hiddens,
-                next_hiddens)
-
     def _step_optimizers(self, states, next_states, hidden_states):
         """
         Assumes the gradients have been computed and updates the parameters of
@@ -177,15 +100,13 @@ class SACRecurrent(SAC):
             rollouts (tuple) : The (s, a, r, s', t, la, h, nh) of training data
                                for the network.
         """
-        # Switch from (batch size, 2, num layers, hidden size) to
-        # (2, num layers, batch size, hidden size)
-        rollouts["hidden_state"] = (
-            rollouts["hidden_state"].permute(1, 2, 0, 3).contiguous()
-        )
-
-        # Get all the parameters from the rollouts
-        (states, actions, rewards, next_states, terminals,
-         hidden_states, next_hiddens) = self.burn_in_hidden_states(rollouts)
+        states = rollouts["state"]
+        actions = rollouts["action"]
+        rewards = rollouts["reward"]
+        next_states = rollouts["next_state"]
+        terminals = rollouts["terminal"]
+        hidden_states = rollouts["hidden_state"]
+        next_hiddens = rollouts["next_hidden_state"]
 
         q_loss_func = nn.MSELoss(reduction='none')
 

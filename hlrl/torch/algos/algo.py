@@ -93,6 +93,8 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
             rollouts, idxs, is_weights = sample
 
             new_q, new_q_targ = self.train_batch(rollouts, is_weights)
+            idxs = idxs[-len(new_q):]
+
             experience_replay.update_priorities(idxs, new_q, new_q_targ)
 
             if(save_path is not None

@@ -4,62 +4,26 @@ from typing import Dict, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 
+from .dqn import DQN
 from hlrl.core.logger import Logger
 from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.common import polyak_average
 from hlrl.torch.common.functional import initialize_weights
 
-class DQN(TorchOffPolicyAlgo):
+class DQNRecurrent(DQN):
     """
-    The DQN Algorithm https://arxiv.org/abs/1312.5602
+    A recurrent DQN Algorithm https://arxiv.org/abs/1312.5602
     """
-    def __init__(self,
-                 q_func: nn.Module,
-                 discount: float,
-                 polyak: float,
-                 target_update_interval: int,
-                 q_optim: torch.optim.Optimizer,
-                 device: str = "cpu",
-                 logger: Optional[Logger] = None):
-        """
-        Creates the deep Q-network algorithm with the given parameters
-
-        Args:
-            q_func: The Q-function that takes in the observation and action.
-            discount: The coefficient for the discounted values (0 < x < 1).
-            polyak: The coefficient for polyak averaging (0 < x < 1).
-            target_update_interval: The number of environment steps in between
-                target updates.
-            q_optim: The optimizer for the Q-function.
-            device: The device of the tensors in the module.
-            logger: The logger to log results while training and evaluating,
-                default None.
-        """
-        super().__init__(device, logger)
-
-        # All constants
-        self._discount = discount
-        self._polyak = polyak
-        self._target_update_interval = target_update_interval
-        self.q_optim_func = q_optim
-
-        # The network
-        self.q_func = q_func
-        self.q_func_targ = deepcopy(q_func)
-
-    def create_optimizers(self) -> None:
-        """
-        Creates the optimizers for the model.
-        """
-        self.q_optim = self.q_optim_func(self.q_func.parameters())
-
     def calculate_q_and_target(self,
             states: torch.FloatTensor,
             actions: torch.LongTensor,
             rewards: torch.FloatTensor,
             next_states: torch.FloatTensor,
-            terminals: torch.LongTensor
-        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+            terminals: torch.LongTensor,
+            hidden_states: Tuple[torch.FloatTensor, torch.FloatTensor]
+        ) -> Tuple[torch.FloatTensor,
+                   torch.FloatTensor,
+                   Tuple[torch.FloatTensor, torch.FloatTensor]]:
         """
         Computes the Q-val and target Q-value of the batch.
         
@@ -69,26 +33,29 @@ class DQN(TorchOffPolicyAlgo):
             rewards: The rewards of the batch.
             next_states: The next states of the batch.
             terminals: The terminal states of the batch.
+            hidden_states: The hidden states of the batch.
 
         Returns:
-            A tuple of the computed Q-value, and its target.
+            A tuple of the computed Q-value, its target and the next hidden
+            states.
         """
-        q_vals = self.q_func(states)
+        q_vals, next_hidden_states = self.q_func(states, hidden_states)
         act_qs = q_vals.gather(1, actions)
 
         with torch.no_grad():
-            next_qs = self.q_func_targ(next_states)
+            next_qs = self.q_func_targ(next_states, next_hidden_states)
             next_q_max = next_qs.max(dim=-1, keepdim=True).values
             q_targ = rewards + (1 - terminals) * self._discount * next_q_max
 
-        return act_qs, q_targ
+        return act_qs, q_targ, next_hidden_states
 
     def _step_optimizers(self,
             states: torch.FloatTensor,
             actions: torch.LongTensor,
             rewards: torch.FloatTensor,
             next_states: torch.FloatTensor,
-            terminals: torch.LongTensor
+            terminals: torch.LongTensor,
+            hidden_states: Tuple[torch.FloatTensor, torch.FloatTensor]
         ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Assumes the gradients have been computed and updates the parameters of
@@ -100,6 +67,7 @@ class DQN(TorchOffPolicyAlgo):
             rewards: The rewards of the batch.
             next_states: The next states of the batch.
             terminals: The terminal states of the batch.
+            hidden_states: The hidden states of the batch.
 
         Returns:
             A tuple of the newly computed Q-value, and its target.
@@ -112,21 +80,28 @@ class DQN(TorchOffPolicyAlgo):
 
         with torch.no_grad():
             return self.calculate_q_and_target(
-                states, actions, rewards, next_states, terminals
+                states, actions, rewards, next_states, terminals, hidden_states
             )
 
-    def forward(self, observation: torch.FloatTensor, greedy: bool = False):
+    def forward(self,
+            observation: torch.FloatTensor,
+            hidden_state: Tuple[torch.FloatTensor, torch.FloatTensor],
+            greedy: bool = False
+        ) -> Tuple[torch.FloatTensor,
+                   torch.FloatTensor,
+                   Tuple[torch.FloatTensor, torch.FloatTensor]]:
         """
         Get the model output for a batch of observations.
 
         Args:
             observation: A batch of observations from the environment.
+            hidden_state: The hidden states of the batch.
             greedy: If true, always returns the action with the highest Q-value.
 
         Returns:
-            The action and Q-values of all actions.
+            The action and Q-values of all actions with the next hidden state.
         """
-        q_vals = self.q_func(observation)
+        q_vals, next_hidden_state = self.q_func(observation, hidden_state)
 
         if self.logger is not None and observation.shape[0] == 1:
             with torch.no_grad():
@@ -145,24 +120,28 @@ class DQN(TorchOffPolicyAlgo):
         else:
             action = torch.multinomial(probs, 1)
 
-        return action, q_vals
+        return action, q_vals, next_hidden_state
 
-    def step(self, observation):
+    def step(self,
+             observation: torch.FloatTensor,
+             hidden_state: Tuple[torch.FloatTensor, torch.FloatTensor]
+        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Get the model action for a single observation of gameplay.
 
         Args:
             observation: A batch of observations from the environment.
+            hidden_state: The hidden states of the batch.
 
         Returns:
             The action and Q-value of the action.
         """
         with torch.no_grad():
-            action, q_vals = self(observation)
+            action, q_vals, next_hidden_state = self(observation)
 
         q_val = q_vals.gather(1, action)
 
-        return action, q_val
+        return action, q_val, next_hidden_state
 
     def train_batch(self,
                     rollouts: Dict[str, torch.Tensor],
@@ -185,11 +164,12 @@ class DQN(TorchOffPolicyAlgo):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
+        hidden_states = rollouts["hidden_state"]
 
         q_loss_func = nn.SmoothL1Loss(reduction='none')
 
         q_val, q_target = self.calculate_q_and_target(
-            states, actions, rewards, next_states, terminals
+            states, actions, rewards, next_states, terminals, hidden_states
         )
 
         q_loss = q_loss_func(q_val, q_target)
@@ -203,7 +183,7 @@ class DQN(TorchOffPolicyAlgo):
             )
 
         new_qs, new_q_targ = self._step_optimizers(
-            states, actions, rewards, next_states, terminals
+            states, actions, rewards, next_states, terminals, hidden_states
         )
 
         self.training_steps += 1
