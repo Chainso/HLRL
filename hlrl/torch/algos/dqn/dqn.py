@@ -128,17 +128,17 @@ class DQN(TorchOffPolicyAlgo):
         """
         q_vals = self.q_func(observation)
 
+        probs = nn.Softmax(dim=-1)(q_vals)
+
         if self.logger is not None and observation.shape[0] == 1:
             with torch.no_grad():
-                action_gap = torch.topk(q_vals, 2).values
+                action_gap = torch.topk(probs, 2).values
                 action_gap = action_gap[:, 0] - action_gap[:, 1]
                 action_gap = action_gap.item()
 
                 self.logger["Training/Action-Gap"] = (
                     action_gap, self.env_steps
                 )
-
-        probs = nn.Softmax(dim=-1)(q_vals)
 
         if greedy:
             action = torch.argmax(probs, dim=-1, keepdim=True)

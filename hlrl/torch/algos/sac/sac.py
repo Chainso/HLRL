@@ -228,7 +228,7 @@ class SAC(TorchOffPolicyAlgo):
             self.logger["Train/Temperature"] = (
                 self.temperature, self.training_steps
             )
-            self.logger["Train/Batch-Mean Probabilities"] = (
+            self.logger["Train/Action Probability"] = (
                 torch.mean(torch.exp(pred_log_probs.detach())).item(),
                 self.training_steps
             )
