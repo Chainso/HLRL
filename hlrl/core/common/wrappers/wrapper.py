@@ -25,7 +25,7 @@ class MethodWrapper():
 
         self.om = SimpleNamespace(**init_dict)
 
-        for attr_name in dir(self.obj):
+        for attr_name in object.__dir__(self.obj):
             if not attr_name.startswith("__"):
                 attr = getattr(self.obj, attr_name)
 
