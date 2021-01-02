@@ -263,20 +263,37 @@ class RLAgent():
 
     def train_step(self,
                    ready_experiences: Dict[str, List[Any]],
+                   batch_size: int,
                    learner: Any,
                    *learner_args: Any,
-                   **learner_kwargs: Any) -> None:
+                   **learner_kwargs: Any) -> bool:
         """
         Trains on the ready experiences.
 
         Args:
             ready_experiences: The buffer of experiences that can be trained on.
+            batch_size: The batch size for training.
             learner: Any object responsible for the training of the algorithm.
-            *learner_args: Any positional arguments for the learner.
-            **learner_kwargs: Any keyword arguments for the learner.
+            learner_args: Any positional arguments for the learner.
+            learner_kwargs: Any keyword arguments for the learner.
+
+        Returns:
+            True, if ready experiences were used, False if the batch was too
+            small.
         """
-        learn_batch = self.create_batch(ready_experiences)
-        learner.train_batch(learn_batch, *learner_args, **learner_kwargs)
+        # Get length of a random key
+        keys = list(ready_experiences)
+        if len(keys) > 0:
+            key = keys[0]
+            if len(ready_experiences[key]) == batch_size:
+                learn_batch = self.create_batch(ready_experiences)
+                learner.train_batch(
+                    learn_batch, *learner_args, **learner_kwargs
+                )
+
+                return True
+
+        return False
 
     def step(self,
              with_next_step: bool = False) -> None:
@@ -448,17 +465,13 @@ class RLAgent():
                     # Do n-step decay and add to the buffer
                     self.add_to_buffer(ready_experiences, experiences, decay)
 
-                # Get length of a random key
-                keys = list(ready_experiences)
+                trained = self.train_step(
+                    ready_experiences, batch_size, learner, *learner_args,
+                    **learner_kwargs
+                )
 
-                if len(keys) > 0:
-                    key = keys[0]
-                    if len(ready_experiences[key]) == batch_size:
-                        self.train_step(
-                            ready_experiences, learner, *learner_args,
-                            **learner_kwargs
-                        )
-                        ready_experiences = {}
+                if (trained):
+                    ready_experiences = {}
 
                 if self.logger is not None:
                     self.logger["Train/Agent Steps per Second"] = (
@@ -471,16 +484,20 @@ class RLAgent():
             while len(experiences) > 0:
                 self.add_to_buffer(ready_experiences, experiences, decay)
 
-                # Get length of a random key
-                for key in ready_experiences:
-                    if len(ready_experiences[key]) == batch_size:
-                        self.train_step(
-                            ready_experiences, learner, *learner_args,
-                            **learner_kwargs
-                        )
-                        ready_experiences = {}
+            # Get length of a random key
+            keys = list(ready_experiences)
+            if len(keys) > 0:
+                key = keys[0]
 
-                    break
+                # Since it is the last batch, the batch may be a bit smaller
+                # Pass in the current size to make sure not to miss this update
+                trained = self.train_step(
+                    ready_experiences, len(ready_experiences[key]), learner,
+                    *learner_args, **learner_kwargs
+                )
+
+            if (trained):
+                ready_experiences = {}
 
             self.algo.env_episodes += 1
 

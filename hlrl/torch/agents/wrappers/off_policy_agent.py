@@ -21,12 +21,12 @@ class TorchOffPolicyAgent(MethodWrapper):
         Returns:
             A dictionary of each field necessary for training.
         """
-        ready_experiences = self.om.create_batch(ready_experiences)
+        batch = self.om.create_batch(ready_experiences)
 
         # Unsqueeze the batch dimension which was lost in the translation from
         # the rollout dictionary to a list of individual rollouts
-        for experience in ready_experiences:
+        for experience in batch:
             for key in experience:
                 experience[key] = experience[key].unsqueeze(0)
 
-        return ready_experiences
+        return batch

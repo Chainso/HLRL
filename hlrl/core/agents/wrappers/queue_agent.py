@@ -12,22 +12,41 @@ class QueueAgent(MethodWrapper):
     training directly.
     """
     def train_step(self,
-                   ready_experiences: Iterable[Dict[str, Any]],
-                   experience_queue: Queue) -> None:
+                   ready_experiences: Dict[str, Iterable[Any]],
+                   batch_size: int,
+                   experience_queue: Queue) -> bool:
         """
         Trains on the ready experiences.
 
         Args:
             ready_experiences: The buffer of experiences that can be trained on.
+            batch_size: The batch size for training.
             experience_queue: The queue to send experiences to.
-        """
-        batch = self.create_batch(ready_experiences)
 
-        try:
-            for experience in batch:
-                experience_queue.put_nowait(experience)
-        except queue.Full:
-            pass
+        Returns:
+            True, if ready experiences were used, False if the batch was too
+            small.
+        """
+        added = False
+
+        # Get length of a random key
+        keys = list(ready_experiences)
+        if len(keys) > 0:
+            key = keys[0]
+            
+            # Going to use >= here because in the case the queue is full, the
+            # number of ready experiences may be greater than the batch size
+            if len(ready_experiences[key]) >= batch_size:
+                batch = self.create_batch(ready_experiences)
+
+                try:
+                    for experience in batch:
+                        experience_queue.put_nowait(experience)
+                        added = True
+                except queue.Full:
+                    pass
+
+        return added
 
     def train(self,
               num_episodes: int,

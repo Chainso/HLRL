@@ -45,12 +45,12 @@ class OffPolicyAgent(RLAgent):
             A dictionary of each field necessary for training.
         """
         # Convert to list of dicts to send to replay buffer 1 by 1
-        ready_experiences = tuple(
+        batch = tuple(
             dict(zip(ready_experiences, experience))
             for experience in zip(*ready_experiences.values())
         )
 
-        return ready_experiences
+        return batch
 
     def get_buffer_experience(self,
                               experiences: Tuple[Dict[str, Any], ...],
@@ -77,24 +77,41 @@ class OffPolicyAgent(RLAgent):
 
     def train_step(self,
                    ready_experiences: Dict[str, List[Any]],
+                   batch_size: int,
                    experience_replay: ExperienceReplay,
                    *train_args: Any,
-                   **train_kwargs: Any) -> None:
+                   **train_kwargs: Any) -> bool:
         """
         Trains on the ready experiences if the batch size is met.
 
         Args:
             ready_experiences: The buffer of experiences that can be trained on.
+            batch_size: The batch size for training.
             experience_replay: An experience replay buffer to add experiences
                 to.
-            *train_args: Any positional arguments for the algorithm training.
-            **train_kwargs: Any keyword arguments for the algorithm training.
-        """
-        experiences_to_add = self.create_batch(ready_experiences)
+            train_args: Any positional arguments for the algorithm training.
+            train_kwargs: Any keyword arguments for the algorithm training.
 
-        for experience in experiences_to_add:
-            experience_replay.add(experience)
+        Returns:
+            True, if ready experiences were used, False if the batch was too
+            small.
+        """
+        added = False
+
+        # Get length of a random key
+        keys = list(ready_experiences)
+        if len(keys) > 0:
+            key = keys[0]
+            if len(ready_experiences[key]) == batch_size:
+                experiences_to_add = self.create_batch(ready_experiences)
+
+                for experience in experiences_to_add:
+                    experience_replay.add(experience)
+
+                added = True
 
         self.algo.train_from_buffer(
             experience_replay, *train_args, **train_kwargs
         )
+
+        return added

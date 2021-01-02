@@ -117,9 +117,10 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             A dictionary of each field necessary for training.
         """
+        batch = {}
         for key in ready_experiences:
-            ready_experiences[key] = torch.cat(ready_experiences[key])
+            batch[key] = torch.cat(ready_experiences[key])
 
-        ready_experiences = self.om.create_batch(ready_experiences)
+        batch = self.om.create_batch(batch)
 
-        return ready_experiences
+        return batch
