@@ -25,7 +25,7 @@ def get_args():
     )
     parser.add_argument(
         "--num_layers", type=int, default=3,
-        help="the number of layers before the output layers"
+        help="the number of layers"
     )
 
     # Algo args
