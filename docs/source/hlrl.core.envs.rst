@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    hlrl.core.envs.gym
+   hlrl.core.envs.unity
 
 Submodules
 ----------
