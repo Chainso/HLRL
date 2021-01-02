@@ -75,7 +75,6 @@ class ApexRunner():
             agent_proc.start()
 
         # Wait for processes to end
-        # TODO MAKE SURE TO SET DONE_EVENT IN ONE OF THE PROCESS PROPERLY
         learner_proc.join()
         worker_proc.join()
 
