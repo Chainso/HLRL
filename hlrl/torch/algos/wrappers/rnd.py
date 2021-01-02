@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from typing import Any
+from typing import Any, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.core.algos import IntrinsicRewardAlgo
