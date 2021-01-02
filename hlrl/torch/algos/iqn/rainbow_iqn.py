@@ -133,6 +133,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Get the mean to find the q values
         q_val = torch.mean(quantile_values, dim=0)
+
         probs = self.action(q_val)
 
         if self.logger is not None and observation.shape[0] == 1:

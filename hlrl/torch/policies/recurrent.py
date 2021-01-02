@@ -1,3 +1,5 @@
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 
@@ -23,19 +25,17 @@ class LSTMPolicy(nn.Module):
         LSTM module is batch major.
 
         Args:
-            inp_n (int): The number of input units.
-            out_n (int): The number of output units.
-            lin_before_hidden_size (int): The number of hidden units in the
-                linear network before the LSTM.
-            lin_before_num_layers (int): The number of hidden layers before the
-                LSTM.
-            lstm_hidden_size (int): The number of hidden units in the LSTM.
-            lstm_num_layers (int): The number of hidden layers in the LSTM.
-            lin_after_hidden_size (int): The number of hidden units in the
-                linear network after the LSTM.
-            lin_after_num_layers (int): The number of hidden layers after the
-                LSTM.
-            activation_fn (nn.Module): The activation function for each layer.
+            inp_n: The number of input units.
+            out_n: The number of output units.
+            lin_before_hidden_size: The number of hidden units in the linear
+                network before the LSTM.
+            lin_before_num_layers: The number of hidden layers before the LSTM.
+            lstm_hidden_size: The number of hidden units in the LSTM.
+            lstm_num_layers: The number of hidden layers in the LSTM.
+            lin_after_hidden_size: The number of hidden units in the linear
+                network after the LSTM.
+            lin_after_num_layers: The number of hidden layers after the LSTM.
+            activation_fn: The activation function for each layer.
         """
         super().__init__()
 
@@ -68,15 +68,18 @@ class LSTMPolicy(nn.Module):
             lin_after_num_layers, activation_fn
         )
 
-    def forward(self, states: torch.Tensor, hidden_states: torch.Tensor):
+    def forward(
+            self,
+            states: torch.Tensor,
+            hidden_states: Tuple[torch.Tensor, torch.Tensor]
+        ) -> torch.Tensor:
         """
         Takes in the input with the batch dimension being first and returns the
         output along with the new hidden state.
 
         Args:
-            states (torch.Tensor): The states for the network input.
-            hidden_states (torch.Tensor): The hidden states
-                of the LSTM.
+            states: The states for the network input.
+            hidden_states: The hidden states of the LSTM.
         """
         # Input size is (batch size, sequence length, ...)
         # For hidden states its (batch size, ...) since going 1 step at a time
@@ -104,9 +107,15 @@ class LSTMPolicy(nn.Module):
     
         return lin_after, new_hiddens
 
-    def reset_hidden_state(self, batch_size=1):
+    def reset_hidden_state(
+            self,
+            batch_size: int = 1
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns a reset hidden state of the LSTM.
+
+        Args:
+            batch_size: The batch size of the reset hidden state.
         """
         zero_state = torch.zeros(
             batch_size, self.lstm_num_layers, self.lstm_out_n
@@ -136,20 +145,18 @@ class LSTMSAPolicy(LSTMPolicy):
         before and after it. The LSTM is batch major.
 
         Args:
-            inp_n (int): The number of input units.
-            act_n (int): The number of input nodes for the action.
-            out_n (int): The number of output units.
-            lin_before_hidden_size (int): The number of hidden units in the
-                linear network before the LSTM.
-            lin_before_num_layers (int): The number of hidden layers before the
-                LSTM.
-            lstm_hidden_size (int): The number of hidden units in the LSTM.
-            lstm_num_layers (int): The number of hidden layers in the LSTM.
-            lin_after_hidden_size (int): The number of hidden units in the
-                linear network after the LSTM.
-            lin_after_num_layers (int): The number of hidden layers after the
-                LSTM.
-            activation_fn (nn.Module): The activation function for each layer.
+            inp_n: The number of input units.
+            act_n: The number of input nodes for the action.
+            out_n: The number of output units.
+            lin_before_hidden_size: The number of hidden units in the linear
+                network before the LSTM.
+            lin_before_num_layers: The number of hidden layers before the LSTM.
+            lstm_hidden_size: The number of hidden units in the LSTM.
+            lstm_num_layers: The number of hidden layers in the LSTM.
+            lin_after_hidden_size: The number of hidden units in the linear
+                network after the LSTM.
+            lin_after_num_layers: The number of hidden layers after the LSTM.
+            activation_fn: The activation function for each layer.
         """
         super().__init__(
             inp_n + act_n, out_n, lin_before_hidden_size, lin_before_num_layers,
@@ -157,9 +164,19 @@ class LSTMSAPolicy(LSTMPolicy):
             lin_after_num_layers, activation_fn
         )
 
-    def forward(self, states, actions, hidden_states):
+    def forward(
+            self,
+            states: torch.Tensor,
+            actions: torch.Tensor,
+            hidden_states: Tuple[torch.Tensor, torch.Tensor]
+        ) -> torch.Tensor:
         """
         Returns the output along with the new hidden states.
+
+        Args:
+            states: The states for the network input.
+            actions: The actions for the network input.
+            hidden_states: The hidden states of the LSTM.
         """
         lin_in = torch.cat([states, actions], dim=-1)
         return super().forward(lin_in, hidden_states)
@@ -178,26 +195,24 @@ class LSTMGaussianPolicy(LSTMPolicy):
         lin_after_hidden_size: int,
         lin_after_num_layers: int,
         activation_fn: nn.Module,
-        squished: bool = True):
+        squished: Optional[bool] = True):
         """
         Creates the LSTM policy with a guassian head, with a linear policy
         before and after it. The LSTM is batch major.
 
         Args:
-            inp_n (int): The number of input units..
-            out_n (int): The number of output units.
-            lin_before_hidden_size (int): The number of hidden units in the
-                linear network before the LSTM.
-            lin_before_num_layers (int): The number of hidden layers before the
-                LSTM.
-            lstm_hidden_size (int): The number of hidden units in the LSTM.
-            lstm_num_layers (int): The number of hidden layers in the LSTM.
-            lin_after_hidden_size (int): The number of hidden units in the
-                linear network after the LSTM.
-            lin_after_num_layers (int): The number of hidden layers after the
-                LSTM.
-            activation_fn (nn.Module): The activation function for each layer.
-            squished (bool): If true, uses a tanh gaussian over the regular.
+            inp_n: The number of input units.
+            out_n: The number of output units.
+            lin_before_hidden_size: The number of hidden units in the linear
+                network before the LSTM.
+            lin_before_num_layers: The number of hidden layers before the LSTM.
+            lstm_hidden_size: The number of hidden units in the LSTM.
+            lstm_num_layers: The number of hidden layers in the LSTM.
+            lin_after_hidden_size: The number of hidden units in the linear
+                network after the LSTM.
+            lin_after_num_layers: The number of hidden layers after the LSTM.
+            activation_fn: The activation function for each layer.
+            squished: If true, uses a tanh gaussian over the regular.
         """
         super().__init__(
             inp_n, lin_after_hidden_size, lin_before_hidden_size,
@@ -225,9 +240,17 @@ class LSTMGaussianPolicy(LSTMPolicy):
         else:
             self.gaussian = GaussianPolicy(*gaussian_args)
 
-    def forward(self, states, hidden_states):
+    def forward(
+            self,
+            states: torch.Tensor,
+            hidden_states: Tuple[torch.Tensor, torch.Tensor]
+        ) -> torch.Tensor:
         """
         Returns the output along with the new hidden states.
+
+        Args:
+            states: The states for the network input.
+            hidden_states: The hidden states of the LSTM.
         """
         batch_size, sequence_length = states.shape[:2]
         gauss_in, new_hidden = super().forward(states, hidden_states)
