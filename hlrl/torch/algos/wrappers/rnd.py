@@ -29,6 +29,22 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
         self.rnd_optim_func = rnd_optim
         self.rnd_loss_func = nn.MSELoss()
 
+    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
+        """
+        Reduces the inputs used to serialize and recreate the experience
+        sequence agent.
+
+        Returns:
+            A tuple of the class and input arguments.
+        """
+        return (
+            type(self),
+            (
+                self.obj, self.rnd, self.rnd_target, self.rnd_optim_func,
+                self.rnd_loss_func
+            )
+        )
+
     def create_optimizers(self):
         self.om.create_optimizers()
         self.rnd_optim = self.rnd_optim_func(self.rnd.parameters())
