@@ -53,7 +53,7 @@ if __name__ == "__main__":
         help="the size of each hidden layer"
     )
     parser.add_argument(
-        "--num_layers", type=int, default=2,
+        "--num_layers", type=int, default=3,
         help="the number of layers before the output layers"
     )
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         help="the number of training steps in-between target network updates"
     )
     parser.add_argument(
-		"--lr", type=float, default=1e-3,
+		"--lr", type=float, default=3e-4,
 		help="the learning rate"
 	)
 
@@ -216,7 +216,6 @@ if __name__ == "__main__":
     )
 
     if args.recurrent:
-        num_layers += 1
         num_lin_before = 1 if args.num_layers > 1 else 0
 
         autoencoder = LSTMPolicy(

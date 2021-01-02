@@ -53,7 +53,7 @@ if __name__ == "__main__":
         help="the size of each hidden layer"
     )
     parser.add_argument(
-        "--num_layers", type=int, default=2,
+        "--num_layers", type=int, default=3,
         help="the number of layers before the output layers"
     )
 
@@ -191,7 +191,6 @@ if __name__ == "__main__":
     optim = partial(torch.optim.Adam, lr=args.lr)
 
     if args.recurrent:
-        args.num_layers += 1
         num_lin_before = 1 if args.num_layers > 1 else 0
         num_lin_after = max(args.num_layers - 2, 1)
 
