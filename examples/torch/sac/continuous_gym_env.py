@@ -49,7 +49,8 @@ if(__name__ == "__main__"):
 
     # Model args
     parser.add_argument(
-		"--device", type=torch.device, default="cpu",
+		"--device", type=torch.device, 
+        default="cuda" if torch.cuda.is_available() else "cpu",
 		help="the device (cpu/gpu) to train and play on"
 	)
     parser.add_argument(

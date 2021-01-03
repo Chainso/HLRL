@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 
+import torch
+
 def get_args():
     # The hyperparameters as command line arguments
     parser = ArgumentParser(
@@ -30,7 +32,8 @@ def get_args():
 
     # Algo args
     parser.add_argument(
-		"--device", type=str, default="cpu",
+		"--device", type=torch.device, 
+        default="cuda" if torch.cuda.is_available() else "cpu",
 		help="the device (cpu/gpu) to train and play on"
 	)
     parser.add_argument(
