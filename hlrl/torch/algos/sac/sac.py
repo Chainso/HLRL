@@ -67,7 +67,10 @@ class SAC(TorchOffPolicyAlgo):
         self.target_entropy = -torch.prod(torch.Tensor(action_space)).item()
         self.log_temp = nn.Parameter(torch.zeros(1), requires_grad=True)
 
-    def create_optimizers(self):
+    def create_optimizers(self) -> None:
+        """
+        Creates the optimizers for the model.
+        """
         self.q_optim1 = self.q_optim_func(self.q_func1.parameters())
 
         if self.twin:

@@ -1,3 +1,5 @@
+from typing import Dict, Union
+
 import torch
 import torch.nn as nn
 
@@ -91,14 +93,22 @@ class SACRecurrent(SAC):
 
         return new_qs, new_q_targ
 
-    def train_batch(self, rollouts, is_weights=1):
+    def train_batch(
+            self,
+            rollouts: Dict[str, torch.Tensor],
+            is_weights: Union[int, torch.Tensor] = 1
+        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Trains the network for a batch of (state, action, reward, next_state,
-        terminals) rollouts.
+        terminals, hidden state, next hidden state) rollouts.
 
         Args:
-            rollouts (tuple) : The (s, a, r, s', t, la, h, nh) of training data
-                               for the network.
+            rollouts: The dict of (s, a, r, s', t, h, nh) training data for the
+                network.
+            is_weights: The importance sampling weights for PER.
+
+        Returns:
+            The updated Q-value and target Q-value.
         """
         states = rollouts["state"]
         actions = rollouts["action"]

@@ -1,45 +1,54 @@
-import torch
-import torch.nn as nn
 import math
-
 from copy import deepcopy
 from itertools import chain
+from typing import Dict, Optional, Tuple, Union
+
+import torch
+import torch.nn as nn
 
 from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.common import polyak_average
-
-from hlrl.core.logger import TensorboardLogger
+from hlrl.core.logger import Logger
 
 class RainbowIQN(TorchOffPolicyAlgo):
     """
     Implicit Quantile Networks with the rainbow of improvements used for DQN.
     https://arxiv.org/pdf/1908.04683.pdf (IQN)
     """
-    def __init__(self, enc_dim, autoencoder, q_func, discount, polyak,
-        n_quantiles, embedding_dim, huber_threshold, target_update_interval,
-        enc_optim, q_optim, device="cpu", logger=None):
+    def __init__(self,
+                 enc_dim: int,
+                 autoencoder: nn.Module,
+                 q_func: nn.Module,
+                 discount: float,
+                 polyak: float,
+                 n_quantiles: int,
+                 embedding_dim: int,
+                 huber_threshold: float,
+                 target_update_interval: int,
+                 enc_optim: torch.optim.Optimizer,
+                 q_optim: torch.optim.Optimizer,
+                 device: Union[torch.device, str] = "cpu",
+                 logger: Optional[Logger] = None):
         """
         Creates the Rainbow-IQN network.
 
         Args:
-            enc_dim (int) : The dimension of the encoded state tensor.
-            autoencoder (torch.nn.Module) : The state autoencoder before fed
-                                            into the quantile network.
-            q_func (torch.nn.Module) : The Q-function that takes in the
-                                       observation and action.
-            discount (float) : The coefficient for the discounted values
-                                (0 < x < 1).
-            polyak (float) : The coefficient for polyak averaging (0 < x < 1).
-            n_quantiles (int) : The number of quantiles to sample.
-            embedding_dim (int) : The dimension of the embedding tensor.
-            huber_threshold (float) : The huber loss threshold constant (kappa).
-            target_update_interval (int): The number of training steps in
-                                          between target updates.
-            enc_optim (torch.nn.Module) : The optimizer for the autoencoder.
-            q_optim (torch.nn.Module) : The optimizer for the Q-function.
-            device (str): The device of the tensors in the module.
-            logger (Logger, optional) : The logger to log results while training
-                                        and evaluating, default None.
+            enc_dim: The dimension of the encoded state tensor.
+            autoencoder: The state autoencoder before fed into the quantile
+                network.
+            q_func: The Q-function that takes in the observation and action.
+            discount: The coefficient for the discounted values (0 < x < 1).
+            polyak: The coefficient for polyak averaging (0 < x < 1).
+            n_quantiles: The number of quantiles to sample.
+            embedding_dim: The dimension of the embedding tensor.
+            huber_threshold: The huber loss threshold constant (kappa).
+            target_update_interval: The number of training steps in between
+                target updates.
+            enc_optim: The optimizer for the autoencoder.
+            q_optim: The optimizer for the Q-function.
+            device: The device of the tensors in the module.
+            logger: The logger to log results while training and evaluating,
+                default None.
         """
         super().__init__(device, logger)
 
@@ -66,22 +75,32 @@ class RainbowIQN(TorchOffPolicyAlgo):
         self.relu = nn.ReLU()
 
         self.action = nn.Softmax(-1)
+        self.huber_loss = nn.SmoothL1Loss(beta=self.huber_threshhold)
 
-    def create_optimizers(self):
+    def create_optimizers(self) -> None:
+        """
+        Creates the optimizers for the model.
+        """
         self.q_optim = self.q_optim_func(self.q_func.parameters())
 
         self.enc_optim = self.enc_optim_func(
             chain(self.autoencoder.parameters(), self.quantiles.parameters())
         )
 
-    def _calculate_quantile_values(self, observation, q_func):
+    def _calculate_quantile_values(
+            self,
+            observation: torch.Tensor,
+            q_func: nn.Module
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Calculates the quantile distribtion for the observations.
 
         Args:
-            observation (torch.FloatTensor) : A batch of observations from the
-                                              environment.
-            q_func (torch.nn.Module) : The Q-function to use for the quantiles.
+            observation: A batch of observations from the environment.
+            q_func: The Q-function to use to calculte the quantiles.
+
+        Returns:
+            A tuple of sampled quantiles and the quantile distribution.
         """
         latent = self.autoencoder(observation)
 
@@ -105,20 +124,22 @@ class RainbowIQN(TorchOffPolicyAlgo):
         quantile_values = self.relu(self.quantiles(torch.cos(quantile_values)))
 
         # Multiple with input feature dim
-        quantile_values = latent_tiled * quantiles
+        quantile_values = latent_tiled * quantile_values
         quantile_values = q_func(quantile_values)
   
         return quantile_values, quantiles
 
-    def forward(self, observation, greedy=False):
+    def forward(
+            self,
+            observation: torch.FloatTensor,
+            greedy: bool = False
+        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Get the model output for a batch of observations
 
         Args:
-            observation (torch.FloatTensor) : A batch of observations from the
-                                              environment.
-            greedy (boolean) : If true, always returns the action with the
-                               highest Q-value.
+            observation: A batch of observations from the environment.
+            greedy: If true, always returns the action with the highest Q-value.
 
         Returns:
             The action and Q-value.
@@ -154,13 +175,15 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         return action, q_val, probs
 
-    def step(self, observation):
+    def step(
+            self,
+            observation: torch.FloatTensor
+        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Get the model action for a single observation of gameplay.
 
         Args:
-            observation (torch.FloatTensor): A single observation from the
-                                             environment.
+            observation: A single observation from the environment.
 
         Returns:
             The action and Q-value of the action.
@@ -168,20 +191,26 @@ class RainbowIQN(TorchOffPolicyAlgo):
         with torch.no_grad():
             action, q_val, probs  = self(observation)
 
-        q_val = q_val.gather(1, action)
-        #log_probs = torch.clamp(torch.log(probs.gather(1, action)), -1, 0)
+        q_val = q_val.gather(-1, action)
+        #log_probs = torch.clamp(torch.log(probs.gather(-1, action)), -1, 0)
 
         return action, q_val
 
-    def train_batch(self, rollouts, is_weights=1):
+    def train_batch(
+            self,
+            rollouts: Dict[str, torch.Tensor],
+            is_weights: Union[int, torch.Tensor] = 1
+        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
 
         Args:
-            rollouts (tuple) : The (s, a, r, s', t) of training data for the
-                               network.
-            is_weights (numpy.array) : The importance sampling weights for PER.
+            rollouts: The dict of (s, a, r, s', t) training data for the network.
+            is_weights: The importance sampling weights for PER.
+
+        Returns:
+            The updated Q-value and target Q-value.
         """
         # Get all the parameters from the rollouts
         states = rollouts["state"]
@@ -205,7 +234,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         quantile_values, quantiles = self._calculate_quantile_values(
             states, self.q_func
         )
-        quantile_values = quantile_values.gather(1, actions)
+        quantile_values = quantile_values.gather(-1, actions)
         quantile_values = quantile_values.view(
             self.n_quantiles, states.shape[0], 1
         )
@@ -214,21 +243,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         bellman_error = target_quantile_values - quantile_values
         abs_bellman_error = torch.abs(bellman_error)
 
-        # Huber loss has two cases abs(bellman_error) <= huber_threshold (kappa)
-        # and abs(bellman_error) > huber_threshold
-        # Case 1 (MSE)
-        huber_loss1 = (
-            (abs_bellman_error <= self.huber_threshold) * 0.5
-            * (torch.pow(bellman_error, 2))
-        )
-
-        # Case 2 (kappa * (abs(bellman_error) - (kappa/2)))
-        huber_loss2 = (
-            (abs_bellman_error > self.huber_threshold) * self.huber_threshold
-            * (abs_bellman_error - 0.5 * self.huber_threshold)
-        )
-
-        huber_loss = huber_loss1 + huber_loss2
+        huber_loss = self.huber_loss(quantile_values, target_quantile_values)
 
         quantiles = quantiles.view(self.n_quantiles, states.shape[0], 1)
         quantiles = quantiles.transpose(0, 1)
@@ -283,16 +298,23 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         return new_q_val, new_q_target
 
-    def _calculate_q_target(self, rewards, next_states, terminal_mask):
+    def _calculate_q_target(
+            self,
+            rewards: torch.FloatTensor,
+            next_states: torch.FloatTensor,
+            terminal_mask: torch.Tensor
+        ) -> torch.FloatTensor:
         """
         Calculates the target Q-value, assumes tensors have been tiled for the
         quantiles already.
 
         Args:
-            rewards (torch.Tensor) : The rewards of the batch.
-            next_states (torch.Tensor) : The next states of the batch.
-            terminal_mask (torch.Tensor) : A mask to remove terminal Q-value
-                                           predictions.
+            rewards: The rewards of the batch.
+            next_states: The next states of the batch.
+            terminal_mask: A mask to remove terminal Q-value predictions.
+
+        Returns:
+            The target Q-value.
         """
         # Get the online actions of the next states
         next_actions, _, _ = self(next_states, True)
@@ -304,7 +326,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         )
 
         # Use the greedy action to get target quantiles
-        next_quantile_values = next_quantile_values.gather(1, next_actions)
+        next_quantile_values = next_quantile_values.gather(-1, next_actions)
 
         target_quantile_values = (
             rewards + terminal_mask * self.discount * next_quantile_values

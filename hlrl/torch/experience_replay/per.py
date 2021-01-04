@@ -56,10 +56,11 @@ class TorchPER(PER):
                 for old_key in self.experiences:
                     last_exp = self.experiences[old_key][current_index - 1]
      
-                    if experience[key].equal(last_exp):
-                        store_exp = last_exp
-                        reuse = True
-                        break
+                    #if (experience[key].dtype == last_exp.dtype
+                        #and experience[key].equal(last_exp)):
+                        #store_exp = last_exp
+                        #reuse = True
+                        #break
 
             if not reuse:
                 store_exp = experience[key].clone()
