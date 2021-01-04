@@ -12,9 +12,15 @@ class ApexWorker():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def train(self, experience_replay: ExperienceReplay, done_event: Event,
-        queue_barrier: Barrier, agent_queue: Queue, sample_queue: Queue,
-        priority_queue: Queue, batch_size: int, start_size: int):
+    def train(self,
+              experience_replay: ExperienceReplay,
+              done_event: Event,
+              queue_barrier: Barrier,
+              agent_queue: Queue,
+              sample_queue: Queue,
+              priority_queue: Queue,
+              batch_size: int,
+              start_size: int) -> None:
         """
         Trains the algorithm until all agent processes have ended.
 
