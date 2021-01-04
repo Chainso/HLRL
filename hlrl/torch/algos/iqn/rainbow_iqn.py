@@ -75,7 +75,6 @@ class RainbowIQN(TorchOffPolicyAlgo):
         self.relu = nn.ReLU()
 
         self.action = nn.Softmax(-1)
-        self.huber_loss = nn.SmoothL1Loss(beta=self.huber_threshhold)
 
     def create_optimizers(self) -> None:
         """
@@ -243,7 +242,21 @@ class RainbowIQN(TorchOffPolicyAlgo):
         bellman_error = target_quantile_values - quantile_values
         abs_bellman_error = torch.abs(bellman_error)
 
-        huber_loss = self.huber_loss(quantile_values, target_quantile_values)
+        # Huber loss has two cases abs(bellman_error) <= huber_threshold (kappa)
+        # and abs(bellman_error) > huber_threshold
+        # Case 1 (MSE)
+        huber_loss1 = (
+            (abs_bellman_error <= self.huber_threshold) * 0.5
+            * (torch.pow(bellman_error, 2))
+        )
+
+        # Case 2 (kappa * (abs(bellman_error) - (kappa/2)))
+        huber_loss2 = (
+            (abs_bellman_error > self.huber_threshold) * self.huber_threshold
+            * (abs_bellman_error - 0.5 * self.huber_threshold)
+        )
+
+        huber_loss = huber_loss1 + huber_loss2
 
         quantiles = quantiles.view(self.n_quantiles, states.shape[0], 1)
         quantiles = quantiles.transpose(0, 1)
