@@ -57,18 +57,15 @@ class BinarySumTree():
     def add(self, value):
         """
         Pushes the given value onto the sum tree. When the tree is at capacity,
-        the values will be replaced starting with the first one
+        the values will be replaced starting with the first one.
 
-        value : The value of the item
+        value: The value of the item
         """
         self.set(value, self.current_index)
-        self.current_index += 1
+        self.current_index = (self.current_index + 1) % self.num_leaves
 
         if(self.size < self.num_leaves):
             self.size += 1
-
-        if(self.current_index == self.num_leaves):
-            self.current_index = 0
 
     def set(self, value, index):
         """

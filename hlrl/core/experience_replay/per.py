@@ -9,19 +9,23 @@ class PER(ExperienceReplay):
     A Prioritized Experience Replay implementation.
     https://arxiv.org/abs/1511.05952
     """
-    def __init__(self, capacity: int, alpha: float, beta: float,
-                 beta_increment: float, epsilon: float):
+    def __init__(self,
+                 capacity: int,
+                 alpha: float,
+                 beta: float,
+                 beta_increment: float,
+                 epsilon: float):
         """
         Creates a new PER buffer with the given parameters.
 
         Args:
-            capacity (int): The capacity of the replay buffer.
-            alpha (float): The alpha value for the prioritization,
-                           between 0 and 1 inclusive.
-            beta (float): The beta value for the importance sampling,
-                          between 0 and 1 inclusive.
-            beta_increment (float): The value to increment the beta by.
-            epsilon (float): The value of epsilon to add to the priority.
+            capacity: The capacity of the replay buffer.
+            alpha: The alpha value for the prioritization, between 0 and 1
+                inclusive.
+            beta: The beta value for the importance sampling, between 0 and 1
+                inclusive.
+            beta_increment: The value to increment the beta by.
+            epsilon : The value of epsilon to add to the priority.
         """
         super().__init__(capacity)
         self.alpha = alpha

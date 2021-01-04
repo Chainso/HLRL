@@ -1,3 +1,5 @@
+from typing import Dict
+
 import torch
 import numpy as np
 
@@ -8,20 +10,29 @@ class TorchPER(PER):
     A Prioritized Experience Replay implementation using torch tensors
     https://arxiv.org/abs/1511.05952
     """
-    def get_error(self, q_val, q_target):
+    def get_error(self,
+                  q_val: torch.Tensor,
+                  q_target: torch.Tensor) -> torch.Tensor:
         """
         Computes the error (absolute difference) between the Q-value and the
-        target Q-value
+        target Q-value.
+
+        Args:
+            q_val: The Q-value of the experience.
+            q_target: The target Q-value.
+
+        Returns:
+            The absolute difference between the Q-value and its target.
         """
         return torch.abs(q_val - q_target)
 
-    def add(self, experience):
+    def add(self, experience: Dict[str, torch.Tensor]) -> None:
         """
         Adds the given experience to the replay buffer with the priority being
         the given error added to the epsilon value.
 
         Args:
-            experience (tuple) : The experience dictionary to add to the buffer
+            experience: The experience dictionary to add to the buffer.
         """
         q_val = experience.pop("q_val")
         target_q_val = experience.pop("target_q_val")
@@ -32,10 +43,31 @@ class TorchPER(PER):
     
         # Store individually for faster "zipping"
         for key in experience:
+            # Reuse tensors if possible to save storage space
+            # ex. state for this experience may be the next_state of the last
+            # experience
+            # Otherwise need to clone so sender can remove their reference
+            # Only possible to reuse since experiences are not modified after
+            # insertion
+            store_exp = None
+            reuse = False
+            
+            if len(self) > 0:
+                for old_key in self.experiences:
+                    last_exp = self.experiences[old_key][current_index - 1]
+     
+                    if experience[key].equal(last_exp):
+                        store_exp = last_exp
+                        reuse = True
+                        break
+
+            if not reuse:
+                store_exp = experience[key].clone()
+
             if key not in self.experiences:
                 self.experiences[key] = np.zeros(self.capacity, dtype=object)
 
-            self.experiences[key][current_index] = experience[key].clone()
+            self.experiences[key][current_index] = store_exp
 
         priority = self.get_priority(error)
 
