@@ -118,11 +118,11 @@ class ExperienceSequenceAgent(MethodWrapper):
                             self.sequence_experiences[key], dim=1
                         ))
 
-            keep_start = self.sequence_length - self.overlap
-            self.num_experiences = self.overlap
+            # Remove the first sequence and keep the rest
+            self.num_experiences -= 1
 
             for key in self.sequence_experiences:
                 self.sequence_experiences[key] = (
-                    self.sequence_experiences[key][keep_start:]
+                    self.sequence_experiences[key][1:]
                 )
 
