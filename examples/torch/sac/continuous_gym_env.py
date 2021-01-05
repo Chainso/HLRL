@@ -130,7 +130,7 @@ if(__name__ == "__main__"):
         "--n_steps", type=int, default=5, help="the number of decay steps"
     )
     parser.add_argument(
-        "--num_agents", type=int, default=0,
+        "--num_agents", type=int, default=1,
         help="the number of agents to run concurrently, 0 is single process"
     )
     parser.add_argument(
