@@ -11,6 +11,7 @@ HLRL is High Level Reinforcement Learning, a library that implements many state 
     - [Algorithms](#algorithms)
     - [Experience Replay](#experience-replay)
     - [Environments](#environments)
+    - [Loggers](#loggers)
     - [Policies](#policies)
 - [Concepts](#concepts)
     - [Wrappers](#wrappers)
