@@ -7,7 +7,7 @@ import torch.nn as nn
 from hlrl.torch.common import polyak_average
 from hlrl.core.logger import Logger
 
-from .iqn import RainbowIQN
+from .rainbow_iqn import RainbowIQN
 
 class RainbowIQNRecurrent(RainbowIQN):
     """
@@ -15,6 +15,15 @@ class RainbowIQNRecurrent(RainbowIQN):
     using recurrent networks.
     https://arxiv.org/pdf/1908.04683.pdf (IQN)
     """
+    def reset_hidden_state(self) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+        """
+        Resets the hidden state for the network.
+        """
+        return [
+            tens.to(self.device)
+            for tens in self.autoencoder.reset_hidden_state()
+        ]
+
     def _calculate_quantile_values(
             self,
             observation: torch.Tensor,

@@ -12,7 +12,9 @@ if __name__ == "__main__":
     from hlrl.core.common.functional import compose
     from hlrl.torch.trainers import OffPolicyTrainer
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.torch.algos import RainbowIQN, RND, TorchRecurrentAlgo
+    from hlrl.torch.algos import (
+        RainbowIQN, RainbowIQNRecurrent, RND, TorchRecurrentAlgo
+    )
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
     mp.set_start_method("spawn")
@@ -224,7 +226,13 @@ if __name__ == "__main__":
             num_lin_before, args.hidden_size, max(args.num_layers - 2, 1), 0, 0,
             activation_fn
         )
-        # TODO CREATE RAINBOW IQN INSTANCE HERE ONCE IMPLEMENTED
+
+        algo = RainbowIQNRecurrent(
+            args.hidden_size, autoencoder, qfunc, args.discount,
+            args.polyak, args.n_quantiles, args.embedding_dim,
+            args.huber_threshold, args.target_update_interval, optim,
+            optim, args.device, algo_logger
+        )
 
         algo = TorchRecurrentAlgo(algo, args.burn_in_length)
     else:

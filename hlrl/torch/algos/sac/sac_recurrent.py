@@ -50,7 +50,7 @@ class SACRecurrent(SAC):
 
         return action, q_val, new_hidden
 
-    def reset_hidden_state(self):
+    def reset_hidden_state(self) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Resets the hidden state for the network.
         """
