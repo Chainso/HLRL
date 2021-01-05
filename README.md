@@ -38,19 +38,23 @@ python setup.py install
 
 ### Agents
 
-[`hlrl.core.agents`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/agents) packages contain agents that interact with the environment and train models.
+[`hlrl.*.agents`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/agents) packages contain agents that interact with the environment and train models.
 
 ### Algorithms
 
-[`hlrl.core.algos`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/algos) contain the logic for the inference and training of reinforcement learning algorithms.
+[`hlrl.*.algos`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/algos) contain the logic for the inference and training of reinforcement learning algorithms.
 
 ### Experience Replay
 
-[`hlrl.core.experience_replay`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/experience_replay) are the storage components for off-policy algorithms.
+[`hlrl.*.experience_replay`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/experience_replay) are the storage components for off-policy algorithms.
 
 ### Environments
 
 [`hlrl.core.envs`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/envs) contains the base environment and wrappers for common environment types.
+
+### Loggers
+
+[`hlrl.core.logger`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/logger) contains loggers for algorithms and agents.
 
 ### Policies
 

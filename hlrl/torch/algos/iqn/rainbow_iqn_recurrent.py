@@ -104,7 +104,7 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         if self.logger is not None and max(observation.shape[:2]) == 1:
             with torch.no_grad():
-                action_gap = torch.topk(probs[0], 2).values
+                action_gap = torch.topk(probs, 2).values
                 action_gap = action_gap[:, 0] - action_gap[:, 1]
                 action_gap = action_gap.item()
 
