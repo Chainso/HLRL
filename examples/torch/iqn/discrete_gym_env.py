@@ -54,7 +54,7 @@ if __name__ == "__main__":
         help="the size of each hidden layer"
     )
     parser.add_argument(
-        "--num_layers", type=int, default=3,
+        "--num_layers", type=int, default=2,
         help="the number of layers"
     )
 
@@ -102,11 +102,11 @@ if __name__ == "__main__":
         help="runs the environment using the model instead of training"
     )
     parser.add_argument(
-		"--batch_size", type=int, default=256,
+		"--batch_size", type=int, default=128,
 		help="the batch size of the training set"
 	)
     parser.add_argument(
-		"--start_size", type=int, default=512,
+		"--start_size", type=int, default=256,
 		help="the size of the replay buffer before training"
 	)
     parser.add_argument(
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     )
 
     if args.recurrent:
-        num_lin_before = 1 if args.num_layers > 1 else 0
+        num_lin_before = 1 if args.num_layers > 2 else 0
 
         autoencoder = LSTMPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,
