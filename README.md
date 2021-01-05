@@ -18,60 +18,43 @@ HLRL is High Level Reinforcement Learning, a library that implements many state 
 - [Examples](#examples)
 
 <br />
-<br />
 
 ## Code Structure
 
-`hlrl.core` contains common modules that are agnostic to any particular framework. `hlrl.torch` is for modules that are implemented using the [PyTorch](https://github.com/pytorch/pytorch) backend.
-
-<br />
+[`hlrl.core`](https://github.com/Chainso/HLRL/tree/master/hlrl/core) contains common modules that are agnostic to any particular framework. `hlrl.torch` is for modules that are implemented using the [PyTorch](https://github.com/pytorch/pytorch) backend.
 
 ### Agents
 
 `hlrl.*.agents` packages contain agents that interact with the environment and train models.
 
-<br />
-
 ### Algorithms
 
 `hlrl.*.algos` contain the logic for the inference and training of reinforcement learning algorithms.
-
-<br />
 
 ### Experience Replay
 
 `hlrl.*.experience_replay` are the storage components for off-policy algorithms.
 
-<br />
-
 ### Environments
 
 `hlrl.core.envs` contains the base environment and wrappers for common environment types.
-
-<br />
 
 ### Policies
 
 The `hlrl.torch.policies` package contains multi-layer generalizations of single layers and common networks such as Gaussians. This is used to quickly spin up a model without needing to subclass `nn.Module` yourself.
 
 <br />
-<br />
 
 ## Concepts
-
-<br />
 
 ### Wrappers
 
 The base wrapper is implemented in `hlrl.core.common.wrappers`. Wrappers are used to add additional functionality to existing classes, or to change existing functionality. Functionally, wrapping a class creates prototypal inheritance, allowing for wrappers to work on any class. This creates a very flexible container that allows you to swap out and modifiy algorithms and agents by simply wrapping it with your desired class.
 
-<br />
-
 ### Experiences
 
 Experiences are passed between modules as a dictionaries. This allows you to add to additional values to experiences without affecting old functionality. Combined with [wrappers](#wrappers), you can create more functionality on top of base algorithms.
 
-<br />
 <br />
 
 ## Examples
