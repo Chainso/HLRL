@@ -6,6 +6,7 @@ HLRL is High Level Reinforcement Learning, a library that implements many state 
 <br />
 
 ## Contents
+- [Installation](#installation)
 - [Code Structure](#code-structure)
     - [Agents](#agents)
     - [Algorithms](#algorithms)
@@ -16,12 +17,25 @@ HLRL is High Level Reinforcement Learning, a library that implements many state 
     - [Wrappers](#wrappers)
     - [Experiences](#experiences)
 - [Examples](#examples)
+    - [Implemented Examples](#implemented-examples)
+
+<br />
+
+## Installation
+
+Installation is done by cloning the git repository and installing using [`setup.py`](https://github.com/Chainso/HLRL/tree/master/setup.py).
+
+```
+git clone https://github.com/Chainso/HLRL
+cd HLRL
+python setup.py install
+```
 
 <br />
 
 ## Code Structure
 
-[`hlrl.core`](https://github.com/Chainso/HLRL/tree/master/hlrl/core) contains common modules that are agnostic to any particular framework. [`hlrl.torch`](https://github.com/Chainso/HLRL/tree/master/hlrl/torch) is for modules that are implemented using the [PyTorch](https://github.com/pytorch/pytorch) backend.
+[`hlrl.core`](https://github.com/Chainso/HLRL/tree/master/hlrl/core) contains common modules that are agnostic to any particular framework. [`hlrl.torch`](https://github.com/Chainso/HLRL/tree/master/hlrl/torch) is for modules that are implemented using the [PyTorch](https://pytorch.org/) backend.
 
 ### Agents
 
@@ -59,15 +73,20 @@ Experiences are passed between modules as a dictionaries. This allows you to add
 
 ## Examples
 
-Examples are in the examples directory. They take command line arguments to configure the algorithm and will log results using TensorBoard.
+Examples are in the [`examples`](https://github.com/Chainso/HLRL/tree/master/examples) directory. They take command line arguments to configure the algorithm and will log results using TensorBoard.
 
-- Currently Implemented
-    - Base Algorithms
-        - [SAC](https://arxiv.org/abs/1801.01290)
-        - [DQN](https://arxiv.org/abs/1312.5602)
-        - [IQN](https://arxiv.org/abs/1806.06923) - With Rainbow features
-    - Flexible Algorithms - Can be mixed, matched and stacked with any algorithm.
-        - [RND](https://arxiv.org/abs/1810.12894) - Without state normalization
-        - [MunchausenRL](https://arxiv.org/abs/2007.14430)
-        - [Ape-X](https://arxiv.org/abs/1803.00933) - Single machine implementation
-        - [R2D2](https://openreview.net/forum?id=r1lyTjAqYX)
+
+### Implemented Examples
+
+Flexible algorithms can be used with any base algorithm that supports it. Wrappers can be used with any algorithm and in combination with any number of wrappers.
+
+
+| Algorithm | Flexible | Wrapper | Recurrent | Description |
+|:-|:-:|:-:|:-:|:-|
+| [SAC](https://arxiv.org/abs/1801.01290) | ❌ | N/A | ✅ | SAC auto temperature tuning and optional twin Q-networks, recurrent with R2D2 |
+| [DQN](https://arxiv.org/abs/1312.5602) | ❌ | N/A | ✅ | DQN with Rainbow features excluding noisy networks, dueling architecture and C51, recurrent with R2D2 |
+| [IQN](https://arxiv.org/abs/1806.06923) | ❌ | N/A | ✅ | IQN with Rainbow features excluding noisy networks, recurrent R2D2 |
+| [RND](https://arxiv.org/abs/1810.12894) | ✅ | ✅ | N/A | RND excluding state normalization |
+| [MunchausenRL](https://arxiv.org/abs/2007.14430) | ✅ | ✅ | N/A | MunchausenRL as seen in the literature |
+| [Ape-X](https://arxiv.org/abs/1803.00933) | ✅ | ❌ | N/A | Ape-X for multi-core machines with a single model shared across agents |
+| [R2D2](https://openreview.net/forum?id=r1lyTjAqYX) | ✅ | ❌ | N/A | R2D2 with hidden state storing and burning in |
