@@ -82,10 +82,10 @@ Flexible algorithms can be used with any base algorithm that supports it. Wrappe
 
 | Algorithm | Flexible | Wrapper | Recurrent | Description |
 |:-|:-:|:-:|:-:|:-|
-| [SAC](https://arxiv.org/abs/1801.01290) | ❌ | N/A | ✅ | SAC auto temperature tuning and optional twin Q-networks, recurrent with R2D2 |
-| [DQN](https://arxiv.org/abs/1312.5602) | ❌ | N/A | ✅ | DQN with Rainbow features excluding noisy networks, dueling architecture and C51, recurrent with R2D2 |
-| [IQN](https://arxiv.org/abs/1806.06923) | ❌ | N/A | ✅ | IQN with Rainbow features excluding noisy networks, recurrent R2D2 |
-| [RND](https://arxiv.org/abs/1810.12894) | ✅ | ✅ | N/A | RND excluding state normalization |
-| [MunchausenRL](https://arxiv.org/abs/2007.14430) | ✅ | ✅ | N/A | MunchausenRL as seen in the literature |
-| [Ape-X](https://arxiv.org/abs/1803.00933) | ✅ | ❌ | N/A | Ape-X for multi-core machines with a single model shared across agents |
-| [R2D2](https://openreview.net/forum?id=r1lyTjAqYX) | ✅ | ❌ | N/A | R2D2 with hidden state storing and burning in |
+| [SAC](https://arxiv.org/abs/1801.01290) | ❌ | N/A | ✔️ | SAC auto temperature tuning and optional twin Q-networks, recurrent with R2D2 |
+| [DQN](https://arxiv.org/abs/1312.5602) | ❌ | N/A | ✔️ | DQN with Rainbow features excluding noisy networks, dueling architecture and C51, recurrent with R2D2 |
+| [IQN](https://arxiv.org/abs/1806.06923) | ❌ | N/A | ✔️ | IQN with Rainbow features excluding noisy networks, recurrent R2D2 |
+| [RND](https://arxiv.org/abs/1810.12894) | ✔️ | ✔️ | N/A | RND excluding state normalization |
+| [MunchausenRL](https://arxiv.org/abs/2007.14430) | ✔️ | ✔️ | N/A | MunchausenRL as seen in the literature |
+| [Ape-X](https://arxiv.org/abs/1803.00933) | ✔️ | ❌ | N/A | Ape-X for multi-core machines with a single model shared across agents |
+| [R2D2](https://openreview.net/forum?id=r1lyTjAqYX) | ✔️ | ❌ | N/A | R2D2 with hidden state storing and burning in |
