@@ -33,7 +33,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         Creates the Rainbow-IQN network.
 
         Args:
-            enc_dim: The dimension of the encoded state tensor.
+            enc_dim: The output dimension of the autoencoder.
             autoencoder: The state autoencoder before fed into the quantile
                 network.
             q_func: The Q-function that takes in the observation and action.

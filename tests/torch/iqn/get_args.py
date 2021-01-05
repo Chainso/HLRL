@@ -139,7 +139,7 @@ def get_args():
         help="if recurrent, the length of the sequence to train on"
     )
     parser.add_argument(
-        "--max_factor", type=int, default=0.9,
+        "--max_factor", type=float, default=0.9,
         help="if recurrent, factor of max priority to mean priority for R2D2"
     )
 

@@ -46,8 +46,8 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         # Tile the feature dimension to the quantile dimension size
         latent_tiled = latent.repeat(self.n_quantiles, 1, 1)
-        latent_tiled = latent.view(
-            observation.shape[0] * self.n_quantiles * observation.shape[1], -1
+        latent_tiled = latent_tiled.view(
+            self.n_quantiles * observation.shape[0] * observation.shape[1], -1
         )
 
         # Sample a random number and tile for the embedding dimension
@@ -67,7 +67,7 @@ class RainbowIQNRecurrent(RainbowIQN):
         quantile_values = self.relu(self.quantiles(torch.cos(quantile_values)))
 
         # Multiple with input feature dim
-        quantile_values = latent_tiled * quantiles_values
+        quantile_values = latent_tiled * quantile_values
         quantile_values = q_func(quantile_values)
   
         return quantile_values, quantiles, next_hiddens
@@ -94,7 +94,7 @@ class RainbowIQNRecurrent(RainbowIQN):
         )
 
         quantile_values = quantile_values.view(
-            self.n_quantiles, observation.shape[0], observation.shape[1], -1
+            self.n_quantiles, observation.shape[0] * observation.shape[1], -1
         )
 
         # Get the mean to find the q values
@@ -112,11 +112,13 @@ class RainbowIQNRecurrent(RainbowIQN):
                     action_gap, self.env_steps
                 )
 
-
         if greedy:
             action = torch.argmax(probs, dim=-1, keepdim=True)
         else:
             action = torch.multinomial(probs, 1)
+
+        action = action.view(observation.shape[0], observation.shape[1], -1)
+        q_val = q_val.view(observation.shape[0], observation.shape[1], -1)
 
         return action, q_val, next_hiddens
 
@@ -170,10 +172,15 @@ class RainbowIQNRecurrent(RainbowIQN):
         next_hiddens = rollouts["next_hidden_state"]
 
         # Tile parameters for the quantiles
-        actions = actions.repeat(self.n_quantiles, 1)
-        rewards = rewards.repeat(self.n_quantiles, 1)
+        actions = actions.repeat(self.n_quantiles, 1, 1)
+        actions = actions.view(actions.shape[0] * actions.shape[1], -1)
 
-        terminal_mask = (1 - terminals).repeat(self.n_quantiles, 1)
+        rewards = rewards.repeat(self.n_quantiles, 1, 1)
+        rewards = rewards.view(rewards.shape[0] * rewards.shape[1], -1)
+
+        terminals = terminals.repeat(self.n_quantiles, 1, 1)
+        terminals = terminals.view(terminals.shape[0] * terminals.shape[1], -1)
+        terminal_mask = 1 - terminals
 
         with torch.no_grad():
             target_quantile_values = self._calculate_q_target(
@@ -247,12 +254,12 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         # Calculate the new Q-values and target for PER
         with torch.no_grad():
-            _, new_q_val, new_next_hiddens = self.step(states)
+            _, new_q_val, new_next_hiddens = self.step(states, hidden_states)
 
             new_quantile_values_target = self._calculate_q_target(
                 rewards, next_states, terminal_mask, new_next_hiddens
             )
-            new_quantile_values_target = new_target_quantile_values.view(
+            new_quantile_values_target = new_quantile_values_target.view(
                 self.n_quantiles, next_states.shape[0], next_states.shape[1], 1
             )
             new_q_target = torch.mean(new_quantile_values_target, dim=0)

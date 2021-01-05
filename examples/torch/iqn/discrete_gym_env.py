@@ -172,7 +172,7 @@ if __name__ == "__main__":
         help="if recurrent, the length of the sequence to train on"
     )
     parser.add_argument(
-        "--max_factor", type=int, default=0.9,
+        "--max_factor", type=float, default=0.9,
         help="if recurrent, factor of max priority to mean priority for R2D2"
     )
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
         )
 
         algo = RainbowIQNRecurrent(
-            args.hidden_size, autoencoder, qfunc, args.discount,
+            autoencoder_out_n, autoencoder, qfunc, args.discount,
             args.polyak, args.n_quantiles, args.embedding_dim,
             args.huber_threshold, args.target_update_interval, optim,
             optim, args.device, algo_logger
