@@ -21,27 +21,27 @@ HLRL is High Level Reinforcement Learning, a library that implements many state 
 
 ## Code Structure
 
-[`hlrl.core`](https://github.com/Chainso/HLRL/tree/master/hlrl/core) contains common modules that are agnostic to any particular framework. `hlrl.torch` is for modules that are implemented using the [PyTorch](https://github.com/pytorch/pytorch) backend.
+[`hlrl.core`](https://github.com/Chainso/HLRL/tree/master/hlrl/core) contains common modules that are agnostic to any particular framework. [`hlrl.torch`](https://github.com/Chainso/HLRL/tree/master/hlrl/torch) is for modules that are implemented using the [PyTorch](https://github.com/pytorch/pytorch) backend.
 
 ### Agents
 
-`hlrl.*.agents` packages contain agents that interact with the environment and train models.
+[`hlrl.core.agents`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/agents) packages contain agents that interact with the environment and train models.
 
 ### Algorithms
 
-`hlrl.*.algos` contain the logic for the inference and training of reinforcement learning algorithms.
+[`hlrl.core.algos`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/algos) contain the logic for the inference and training of reinforcement learning algorithms.
 
 ### Experience Replay
 
-`hlrl.*.experience_replay` are the storage components for off-policy algorithms.
+[`hlrl.core.experience_replay`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/experience_replay) are the storage components for off-policy algorithms.
 
 ### Environments
 
-`hlrl.core.envs` contains the base environment and wrappers for common environment types.
+[`hlrl.core.envs`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/envs) contains the base environment and wrappers for common environment types.
 
 ### Policies
 
-The `hlrl.torch.policies` package contains multi-layer generalizations of single layers and common networks such as Gaussians. This is used to quickly spin up a model without needing to subclass `nn.Module` yourself.
+The [`hlrl.torch.policies`](https://github.com/Chainso/HLRL/tree/master/hlrl/torch/policies) package contains multi-layer generalizations of single layers and common networks such as Gaussians. This is used to quickly spin up a model without needing to subclass `nn.Module` yourself.
 
 <br />
 
@@ -49,7 +49,7 @@ The `hlrl.torch.policies` package contains multi-layer generalizations of single
 
 ### Wrappers
 
-The base wrapper is implemented in `hlrl.core.common.wrappers`. Wrappers are used to add additional functionality to existing classes, or to change existing functionality. Functionally, wrapping a class creates prototypal inheritance, allowing for wrappers to work on any class. This creates a very flexible container that allows you to swap out and modifiy algorithms and agents by simply wrapping it with your desired class.
+The base wrapper is implemented in [`hlrl.core.common.wrappers`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/common/wrappers). Wrappers are used to add additional functionality to existing classes, or to change existing functionality. Functionally, wrapping a class creates prototypal inheritance, allowing for wrappers to work on any class. This creates a very flexible container that allows you to swap out and modifiy algorithms and agents by simply wrapping it with your desired class.
 
 ### Experiences
 
