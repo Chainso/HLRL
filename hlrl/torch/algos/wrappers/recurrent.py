@@ -9,17 +9,25 @@ class TorchRecurrentAlgo(MethodWrapper):
     """
     A wrapper to burn in hidden states when training a recurrent algorithm.
     """
-    def __init__(self, algo: TorchRLAlgo, burn_in_length: int = 0):
+    def __init__(
+            self,
+            algo: TorchRLAlgo,
+            burn_in_length: int = 0,
+            n_steps: int = 1
+        ):
         """
         Creates the recurrent algorithm wrapper on the underlying algorithm.
 
         Args:
             algo: The algorithm to wrap.
             burn_in_length: The number of states to burn in the hidden state.
+            n_steps: The number of steps between the state and next states
+                (needed to get the next hidden states properly)
         """
         super().__init__(algo)
 
         self.burn_in_length = burn_in_length
+        self.n_steps = n_steps
 
     def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
         """
@@ -83,7 +91,7 @@ class TorchRecurrentAlgo(MethodWrapper):
         rollouts["terminal"] = terminals[:, self.burn_in_length:].contiguous()
 
         with torch.no_grad():
-            first_burned_in = states[:, :1]
+            first_burned_in = states[:, :self.n_steps]
             *_, next_hiddens = self.forward(
                 first_burned_in, new_hiddens
             )

@@ -112,10 +112,6 @@ if __name__ == "__main__":
 
     # Agent args
     parser.add_argument(
-		"--decay", type=float, default=0.99,
-		help="the gamma decay for the target Q-values"
-	)
-    parser.add_argument(
 		"--n_steps", type=int, default=5,
 		help="the number of decay steps"
 	)
@@ -202,11 +198,11 @@ if __name__ == "__main__":
         )
 
         algo = DQNRecurrent(
-            qfunc, args.discount, args.polyak, args.target_update_interval,
-            optim, args.device, algo_logger
+            qfunc, args.discount ** args.n_steps, args.polyak,
+            args.target_update_interval, optim, args.device, algo_logger
         )
 
-        algo = TorchRecurrentAlgo(algo, args.burn_in_length)
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
     else:
         qfunc = LinearPolicy(
             env.state_space[0], env.action_space[0], args.hidden_size,
@@ -214,8 +210,8 @@ if __name__ == "__main__":
         )
 
         algo = DQN(
-            qfunc, args.discount, args.polyak, args.target_update_interval,
-            optim, args.device, algo_logger
+            qfunc, args.discount ** args.n_steps, args.polyak,
+            args.target_update_interval, optim, args.device, algo_logger
         )
 
     if args.exploration == "rnd":

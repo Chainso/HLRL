@@ -54,7 +54,7 @@ def setup_test(args, env):
             autoencoder = nn.Sequential(autoencoder, activation_fn())
 
         algo = RainbowIQN(
-            args.hidden_size, autoencoder, qfunc, args.discount,
+            args.hidden_size, autoencoder, qfunc, args.discount ** args.n_steps,
             args.polyak, args.n_quantiles, args.embedding_dim,
             args.huber_threshold, args.target_update_interval, optim,
             optim, logger

@@ -163,7 +163,7 @@ class OffPolicyTrainer():
                 agent = agent_builder(env=env_builder(), logger=agent_logger)
 
                 agent.train(
-                    args.episodes, 1, args.decay, args.n_steps,
+                    args.episodes, 1, args.discount, args.n_steps,
                     experience_replay, args.batch_size, args.start_size,
                     save_path, args.save_interval
                 )
@@ -208,7 +208,7 @@ class OffPolicyTrainer():
                     )
 
                     agent_train_args.append((
-                        1, 1, args.decay, args.n_steps, agent_queue,
+                        1, 1, args.discount, args.n_steps, agent_queue,
                         queue_barrier
                     ))
                     agent_train_kwargs.append({

@@ -126,10 +126,6 @@ if __name__ == "__main__":
 
     # Agent args
     parser.add_argument(
-		"--decay", type=float, default=0.99,
-		help="the gamma decay for the target Q-values"
-	)
-    parser.add_argument(
 		"--n_steps", type=int, default=5,
 		help="the number of decay steps"
 	)
@@ -228,13 +224,13 @@ if __name__ == "__main__":
         )
 
         algo = RainbowIQNRecurrent(
-            autoencoder_out_n, autoencoder, qfunc, args.discount,
-            args.polyak, args.n_quantiles, args.embedding_dim,
-            args.huber_threshold, args.target_update_interval, optim,
-            optim, args.device, algo_logger
+            autoencoder_out_n, autoencoder, qfunc,
+            args.discount ** args.n_steps, args.polyak, args.n_quantiles,
+            args.embedding_dim, args.huber_threshold,
+            args.target_update_interval, optim, optim, args.device, algo_logger
         )
 
-        algo = TorchRecurrentAlgo(algo, args.burn_in_length)
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
     else:
         autoencoder = LinearPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,
@@ -245,7 +241,7 @@ if __name__ == "__main__":
             autoencoder = nn.Sequential(autoencoder, activation_fn())
 
         algo = RainbowIQN(
-            args.hidden_size, autoencoder, qfunc, args.discount,
+            args.hidden_size, autoencoder, qfunc, args.discount ** args.n_steps,
             args.polyak, args.n_quantiles, args.embedding_dim,
             args.huber_threshold, args.target_update_interval, optim,
             optim, args.device, algo_logger

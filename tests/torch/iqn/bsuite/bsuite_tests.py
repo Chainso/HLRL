@@ -3,7 +3,7 @@ from hlrl.core.distributed import ApexWorker
 def run_experiment(args, algo, agent_pool, env, experience_replay,
     experience_queue, done_event):
     agent_procs = agent_pool.train_process(
-        args.episodes, args.decay, args.n_steps, experience_queue,
+        args.episodes, args.discount, args.n_steps, experience_queue,
         done_event
     )
 

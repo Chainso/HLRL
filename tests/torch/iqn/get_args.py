@@ -97,10 +97,6 @@ def get_args():
 		help="the number of episodes to train for"
 	)
     parser.add_argument(
-		"--decay", type=float, default=0.99,
-		help="the gamma decay for the target Q-values"
-	)
-    parser.add_argument(
 		"--n_steps", type=int, default=5,
 		help="the number of decay steps"
 	)
