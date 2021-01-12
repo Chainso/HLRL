@@ -68,6 +68,11 @@ class OffPolicyAgent(RLAgent):
         experience = super().get_buffer_experience(experiences, decay)
 
         next_q_val = experience.pop("next_q_val")
+
+        # Correct for n_step
+        if len(experiences) > 0:
+            next_q_val = experiences[-1]["next_q_val"]
+
         target_q_val = experience["reward"] + decay * next_q_val
 
         # Update experience with target q value
