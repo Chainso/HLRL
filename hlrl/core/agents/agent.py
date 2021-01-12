@@ -235,6 +235,8 @@ class RLAgent():
         """
         decayed_reward = self.n_step_decay(experiences, decay)
 
+
+        experiences[0]["next_state"] = experiences[-1]["next_state"]
         experience = experiences.popleft()
         experience["reward"] = decayed_reward
 
