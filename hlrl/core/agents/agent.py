@@ -244,6 +244,8 @@ class RLAgent():
                 if key.startswith("next_"):
                     experience[key] = experiences[-1][key]
 
+            experience["terminal"] = experiences[-1]["terminal"]
+
         return experience
 
     def add_to_buffer(self,
