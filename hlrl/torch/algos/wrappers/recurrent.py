@@ -36,7 +36,7 @@ class TorchRecurrentAlgo(MethodWrapper):
         Returns:
             A tuple of the class and input arguments.
         """
-        return (type(self), (self.obj, self.burn_in_length))
+        return (type(self), (self.obj, self.burn_in_length, self.n_steps))
 
     def burn_in_hidden_states(self,
             rollouts: Dict[str, torch.Tensor]
@@ -91,7 +91,7 @@ class TorchRecurrentAlgo(MethodWrapper):
         rollouts["terminal"] = terminals[:, self.burn_in_length:].contiguous()
 
         with torch.no_grad():
-            first_burned_in = states[:, :self.n_steps]
+            first_burned_in = rollouts["state"][:, :self.n_steps]
             *_, next_hiddens = self.forward(
                 first_burned_in, new_hiddens
             )
