@@ -122,7 +122,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         quantile_values = quantile_values * math.pi * quantiles_tiled
         quantile_values = self.relu(self.quantiles(torch.cos(quantile_values)))
 
-        # Multiple with input feature dim
+        # Multiply with input feature dim
         quantile_values = latent_tiled * quantile_values
         quantile_values = q_func(quantile_values)
   
@@ -234,7 +234,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
             states, self.q_func
         )
         quantile_values = quantile_values.gather(-1, actions)
-        quantile_values = quantile_values.view(
+        quantile_values = quantile_values.view( 
             self.n_quantiles, states.shape[0], 1
         )
         quantile_values = quantile_values.transpose(0, 1)

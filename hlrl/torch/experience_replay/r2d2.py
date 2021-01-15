@@ -32,7 +32,11 @@ class TorchR2D2(TorchPER):
 
         self.max_factor = max_factor
 
-    def get_error(self, q_val, q_target):
+    def get_error(
+            self,
+            q_val: torch.Tensor,
+            q_target: torch.Tensor
+        ) -> torch.Tensor:
         """
         Computes the error (absolute difference) between the Q-value and the
         target Q-value.
@@ -42,7 +46,8 @@ class TorchR2D2(TorchPER):
             q_target: The target Q-value.
 
         Returns:
-            The absolute difference between the Q-value and its target.
+            A combination of the max and mean absolute difference between
+            Q-values scaled by the max factor.
         """
         reg_error = torch.abs(q_val - q_target)
 

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from .linear import LinearPolicy
-from .gaussian import GaussianPolicy, TanhGaussianPolicy
+from .distribution import GaussianPolicy, TanhGaussianPolicy
 
 class LSTMPolicy(nn.Module):
     """

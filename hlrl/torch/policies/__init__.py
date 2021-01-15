@@ -1,4 +1,4 @@
 from .linear import *
-from .gaussian import *
+from .distribution import *
 from .recurrent import *
 from .convolution import *
