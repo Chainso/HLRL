@@ -176,19 +176,14 @@ class OffPolicyTrainer():
                 queue_barrier = mp.Barrier(args.num_agents + 2)
 
                 max_queue_size = 64
-                agent_queue = mp.Queue(maxsize=max_queue_size)
-                sample_queue = mp.Queue(maxsize=max_queue_size)
-                priority_queue = mp.Queue(maxsize=max_queue_size)
+                experience_queue = mp.Queue(maxsize=max_queue_size)
+                param_pipes = None
+                param_send_interval = 400
 
                 learner_args = (
                     algo, done_event, queue_barrier, args.training_steps,
-                    sample_queue, priority_queue, save_path, args.save_interval
-                )
-
-                worker_args = (
-                    experience_replay, done_event, queue_barrier, agent_queue,
-                    sample_queue, priority_queue, args.batch_size,
-                    args.start_size
+                    experience_replay, experience_queue, param_pipes,
+                    param_save_interval, save_path, args.save_interval
                 )
 
                 agents = []
@@ -217,6 +212,5 @@ class OffPolicyTrainer():
 
                 runner = ApexRunner(done_event)
                 runner.start(
-                    learner_args, worker_args, agents, agent_train_args,
-                    agent_train_kwargs
+                    learner_args, agents, agent_train_args, agent_train_kwargs
                 )

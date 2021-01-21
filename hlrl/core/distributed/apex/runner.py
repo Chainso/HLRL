@@ -32,7 +32,6 @@ class ApexRunner():
 
     def start(self,
               learner_args: Tuple[Any, ...],
-              worker_args: Tuple[Any, ...],
               agents: Tuple[RLAgent, ...],
               agent_train_args: Tuple[Tuple[Any], ...],
               agent_train_kwargs: Tuple[Dict[str, Any], ...]) -> None:
@@ -42,7 +41,6 @@ class ApexRunner():
 
         Args:
             learner_args: Arguments for the Ape-X learner.
-            worker_args: Arguments for the Ape-X worker.
             agents: The pool of agents to run.
             agent_train_args: Arguments for the agent training processes.
             agent_train_kwargs: Keyword arguments for the agent training
@@ -53,10 +51,6 @@ class ApexRunner():
         # Create the learner
         learner = ApexLearner()
         learner_proc = mp.Process(target=learner.train, args=learner_args)
-
-        # Create the worker for the model
-        worker = ApexWorker()
-        worker_proc = mp.Process(target=worker.train, args=worker_args)
 
         # Create agent processes
         agent_procs = tuple(
@@ -69,14 +63,12 @@ class ApexRunner():
 
         # Start all processes
         learner_proc.start()
-        worker_proc.start()
 
         for agent_proc in agent_procs:
             agent_proc.start()
 
         # Wait for processes to end
         learner_proc.join()
-        worker_proc.join()
 
         for agent_proc in agent_procs:
             agent_proc.join()
