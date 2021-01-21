@@ -9,7 +9,7 @@ from hlrl.core.envs import Env
 from hlrl.core.algos import RLAlgo
 from hlrl.core.logger import TensorboardLogger
 from hlrl.core.common.functional import compose
-from hlrl.core.distributed import ApexRunner
+from hlrl.core.distributed import ApexLearner, ApexRunner
 from hlrl.core.agents import (
     OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent
 )
@@ -180,9 +180,12 @@ class OffPolicyTrainer():
                 param_pipes = []
                 param_send_interval = 400
 
+                learner = ApexLearner(
+                    done_event, queue_barrier, experience_replay
+                )
+
                 learner_args = (
-                    algo, done_event, queue_barrier, args.training_steps,
-                    args.batch_size, args.start_size, experience_replay,
+                    algo, args.training_steps, args.batch_size, args.start_size,
                     experience_queue, param_pipes, param_send_interval,
                     save_path, args.save_interval
                 )
