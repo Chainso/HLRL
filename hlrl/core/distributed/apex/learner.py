@@ -60,7 +60,7 @@ class ApexLearner():
             if (len(experience_replay) >= batch_size
                 and len(experience_replay) >= start_size):
                 
-                if algo.logger is not None and training_step == 0:
+                if algo.logger is not None and train_start == 0:
                     train_start = time()
 
                 sample = experience_replay.sample(batch_size)
@@ -74,7 +74,7 @@ class ApexLearner():
 
                 if algo.logger is not None:
                     train_time = time() - train_start
-                    train_speed = train_time / training_step
+                    train_speed = training_step / train_time
 
                     algo.logger["Train/Training Steps per Second"] = (
                         train_speed, training_step
