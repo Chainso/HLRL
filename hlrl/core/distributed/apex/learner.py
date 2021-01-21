@@ -1,10 +1,14 @@
 
 import queue
-
-from multiprocessing import Barrier, Queue, Event
+from typing import Optional
 from time import time
 
+from torch import cuda
+from torch.multiprocessing import Barrier, Event, Pipe, Queue
+
 from hlrl.core.algos import RLAlgo
+from hlrl.core.experience_replay import ExperienceReplay
+
 
 class ApexLearner():
     """
@@ -13,15 +17,19 @@ class ApexLearner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def train(self,
-        algo: RLAlgo,
-        done_event: Event,
-        queue_barrier: Barrier,
-        training_steps: int,
-        sample_queue: Queue,
-        priority_queue: Queue,
-        save_path: str = None,
-        save_interval: int = 10000):
+    def train(
+            self,
+            algo: RLAlgo,
+            done_event: Event,
+            queue_barrier: Barrier,
+            training_steps: int,
+            experience_replay: ExperienceReplay,
+            experience_queue: Queue,
+            param_pipes: Tuple[Pipe],
+            param_send_interval: int,
+            save_path: Optional[str] = None,
+            save_interval: int = 10000
+        ) -> None:
         """
         Trains the algorithm until all agent processes have ended.
 
@@ -31,47 +39,71 @@ class ApexLearner():
             queue_barrier: A barrier to use when all queue tasks are complete on
                 all processes.
             training_steps: The number of steps to train for.
-            sample_queue: The queue to receive buffer samples from.
-            priority_queue: The queue to send updated values to.
+            experience_queue: The queue to experiences from.
+            param_pipes: A tuple of pipes to send parameters to periodically.
+            param_send_interval: The number of training steps in between each
+                send of the model paramters.
             save_path: The directory to save the model to.
             save_interval: The number of training steps in-between model saves.
         """
         training_step = 0
+        
+        # Training vars
+        train_ret = None
+
+        if algo.logger is not None:
+            train_start = 0
+
+        query_func = lambda: str(algo.device) != "cuda" or cuda.query()
 
         while training_step < training_steps and not done_event.is_set():
-            if algo.logger is not None:
-                sample_start = time()
+            # Update samples once all computation is complete
+            # (since gpu is asynchronous)
+            if (query_func() and train_ret is not None):
 
-            sample = sample_queue.get()
-            rollouts, idxs, is_weights = sample
+                experience_replay.calculate_and_update_priorities(*sample)
 
-            if algo.logger is not None:
-                train_start = time()
+                train_ret = None
+                training_step += 1
 
-                algo.logger["Train/Samples per Second"] = (
-                    1 / (train_start - sample_start), algo.training_steps
-                )
+                if algo.logger is not None:
+                    train_time = time() - train_start
+                    train_speed = train_time / training_step
 
-            new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
+                    algo.logger["Train/Training Steps per Second"] = (
+                        train_speed, training_step
+                    )
 
-            priority_queue.put((idxs, new_qs, new_q_targs))
+            # Start training a sample
+            if (training_step < training_steps
+                and len(experience_replay) >= batch_size
+                and len(experience_replay) >= start_size
+                and query_func() and train_ret is None):
+                
+                if algo.logger is not None:
+                    train_start = time()
 
-            if algo.logger is not None:
-                train_end = time()
+                sample = experience_replay.sample(batch_size)
+                rollouts, idxs, is_weights = sample
 
-                algo.logger["Train/Training Steps per Second"] = (
-                    1 / (train_end - train_start), algo.training_steps
-                )
+                train_ret = algo.train_batch(rollouts, is_weights)
 
-                algo.logger["Train/Training Steps + Samples per Second"] = (
-                    1 / (train_end - sample_start), algo.training_steps
-                )
+            # Add all new experiences to the queue
+            try:
+                for _ in range(experience_queue.qsize()):
+                    experience = experience_queue.get_nowait()
+                    experience_replay.add(experience)
+            except queue.Empty:
+                pass
 
             if(save_path is not None
                 and algo.training_steps % save_interval == 0):
+
                 algo.save(save_path)
 
-            training_step += 1
+            if algo.training_steps % param_send_interval == 0:
+                for pipe in param_pipes:
+                    pipe.send(algo.save_dict())
 
         # Signal exit
         done_event.set()
@@ -81,10 +113,7 @@ class ApexLearner():
 
         # Clear queues
         try:
-            while not sample_queue.empty():
+            while not experience_queue.empty():
                 sample_queue.get_nowait()
         except queue.Empty:
-            pass
-
-        while not priority_queue.empty():
             pass
