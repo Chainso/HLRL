@@ -18,8 +18,8 @@ class ApexLearner():
     """
     def __init__(
             self,
-            done_event: Event,
-            queue_barrier: Barrier,
+            done_event: mp.Event,
+            queue_barrier: mp.Barrier,
             experience_replay: ExperienceReplay
         ):
         """
@@ -40,7 +40,7 @@ class ApexLearner():
 
     def receive_experiences(
             self,
-            experience_queue: Queue
+            experience_queue: mp.Queue
         ) -> None:
         """
         Receieves experiences from a queue and adds them to the replay buffer.
@@ -74,7 +74,7 @@ class ApexLearner():
             training_steps: int,
             batch_size: int,
             start_size: int,
-            param_pipes: Tuple[Pipe],
+            param_pipes: Tuple[mp.Pipe],
             param_send_interval: int,
             save_path: Optional[str] = None,
             save_interval: int = 10000
@@ -140,8 +140,8 @@ class ApexLearner():
             training_steps: int,
             batch_size: int,
             start_size: int,
-            experience_queue: Queue,
-            param_pipes: Tuple[Pipe],
+            experience_queue: mp.Queue,
+            param_pipes: Tuple[mp.Pipe],
             param_send_interval: int,
             save_path: Optional[str] = None,
             save_interval: int = 10000
