@@ -48,12 +48,14 @@ class TorchRLAgent(MethodWrapper):
 
         return state_dict
 
-    def transform_reward(self,
-                         state: Any,
-                         algo_step: OrderedDict[str, Any],
-                         reward: Any,
-                         terminal: Any,
-                         next_state: Any) -> Any:
+    def transform_reward(
+            self,
+            state: Any,
+            algo_step: OrderedDict[str, Any],
+            reward: Any,
+            terminal: Any,
+            next_state: Any
+        ) -> Any:
         """
         Creates a tensor from the reward.
 

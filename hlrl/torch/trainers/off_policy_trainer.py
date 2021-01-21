@@ -23,10 +23,12 @@ class OffPolicyTrainer():
     """
     A trainer for off-policy algorithms.
     """
-    def train(self,
-              args: Namespace,
-              env_builder: Callable[[], Env],
-              algo: RLAlgo):
+    def train(
+            self,
+            args: Namespace,
+            env_builder: Callable[[], Env],
+            algo: RLAlgo
+        ) -> None:
         """
         Trains the algorithm on the environment given using the argument
         namespace as parameters.
@@ -87,19 +89,17 @@ class OffPolicyTrainer():
             OffPolicyAgent, algo=algo, render=args.render, silent=args.silent
         )
 
-        if args.num_agents > 0 and not args.play:
-            agent_builder = compose(agent_builder, QueueAgent)
-
-        agent_builder = compose(
-            agent_builder,
-            partial(TorchRLAgent, batch_state=not args.vectorized)
-        )
-        agent_builder = compose(agent_builder, TorchOffPolicyAgent)
-        
-        if args.recurrent:
+        if args.num_agents == 0 or args.play:
             agent_builder = compose(
-                agent_builder, SequenceInputAgent, TorchRecurrentAgent
+                agent_builder,
+                partial(TorchRLAgent, batch_state=not args.vectorized)
             )
+            agent_builder = compose(agent_builder, TorchOffPolicyAgent)
+
+            if args.recurrent:
+                agent_builder = compose(
+                    agent_builder, SequenceInputAgent, TorchRecurrentAgent
+                )
 
         if args.play:
             algo.eval()
@@ -193,6 +193,27 @@ class OffPolicyTrainer():
                     args.start_size
                 )
 
+                # Must come before the other wrapper since there are infinite
+                # recursion errors
+                # TODO come up with a better way to implement wrappers      
+                agent_builder = compose(
+                    agent_builder,
+                    partial(
+                        QueueAgent,
+                        experience_replay=experience_replay_func(capacity=1)
+                    )
+                )
+                agent_builder = compose(
+                    agent_builder,
+                    partial(TorchRLAgent, batch_state=not args.vectorized)
+                )
+                agent_builder = compose(agent_builder, TorchOffPolicyAgent)
+                
+                if args.recurrent:
+                    agent_builder = compose(
+                        agent_builder, SequenceInputAgent, TorchRecurrentAgent
+                    )
+
                 agents = []
                 agent_train_args = []
                 agent_train_kwargs = []
@@ -205,17 +226,8 @@ class OffPolicyTrainer():
                         )
                         agent_logger = TensorboardLogger(agent_logs_path)
 
-                    agent_kwargs = {
-                        "env": env_builder(),
-                        "logger": agent_logger,
-                        
-                        # Dummy experience replay to use the error/priority
-                        # calculation methods QueueAgent
-                        "experience_replay": experience_replay_func(capacity=1)
-                    }
-
                     agents.append(
-                        agent_builder(**agent_kwargs)
+                        agent_builder(env=env_builder(), logger=agent_logger)
                     )
 
                     agent_train_args.append((

@@ -1,3 +1,5 @@
+from typing import Any, Tuple
+
 from torch.utils.tensorboard import SummaryWriter
 
 from .logger import Logger
@@ -19,8 +21,14 @@ class TensorboardLogger(Logger):
         self._logs_path = logs_path
         self._tensorboard = SummaryWriter(logs_path)
 
-    def __reduce__(self):
-        return (TensorboardLogger, (self._logs_path,))
+    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
+        """
+        Returns a serialzed version of the Tensorboard logger.
+
+        Returns:
+            The serialized Tensorboard logger.
+        """
+        return (type(self), (self._logs_path,))
 
     # Make sure to deal with single values and tuple values
     def _add_val(self, key, val):

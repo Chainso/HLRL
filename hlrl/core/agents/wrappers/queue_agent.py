@@ -1,6 +1,6 @@
 import queue
 from multiprocessing import Barrier, Queue
-from typing import Any, Callable, Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 
 from hlrl.core.agents import OffPolicyAgent
 from hlrl.core.experience_replay import PER
@@ -24,6 +24,15 @@ class QueueAgent(MethodWrapper):
         super().__init__(agent)
 
         self.experience_replay = experience_replay
+
+    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
+        """
+        Returns a serialzed version of the queue agent wrapper on the object.
+
+        Returns:
+            The serialized wrapper.
+        """
+        return (type(self), (self.obj, self.experience_replay))
 
     def train_step(
             self,
