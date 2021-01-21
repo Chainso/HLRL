@@ -52,7 +52,7 @@ class ApexRunner():
         assert len(agents) == len(agent_train_args) == len(agent_train_kwargs)
 
         # Create the learner
-        learner_proc = mp.Process(target=learner.train, args=learner_args)
+        learner_proc = mp.Process(target=learner.train, args=learner_train_args)
 
         # Create agent processes
         agent_procs = tuple(

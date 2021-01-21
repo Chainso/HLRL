@@ -216,5 +216,6 @@ class OffPolicyTrainer():
 
                 runner = ApexRunner(done_event)
                 runner.start(
-                    learner_args, agents, agent_train_args, agent_train_kwargs
+                    learner, learner_args, agents, agent_train_args,
+                    agent_train_kwargs
                 )

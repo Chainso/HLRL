@@ -48,7 +48,7 @@ class ApexLearner():
         Args:
             experience_queue: The queue to experiences from.
         """
-        while not self.done_event():
+        while not self.done_event.is_set():
             # Add all new experiences to the queue
             try:
                 for _ in range(experience_queue.qsize()):
@@ -96,7 +96,7 @@ class ApexLearner():
         training_step = 0
         train_start = 0
 
-        while training_step < training_steps and not done_event.is_set():
+        while training_step < training_steps and not self.done_event.is_set():
             # Start training a sample
             if (len(experience_replay) >= batch_size
                 and len(experience_replay) >= start_size):
@@ -132,7 +132,7 @@ class ApexLearner():
 
                 training_step += 1
 
-        done_event.set()
+        self.done_event.set()
 
     def train(
             self,
@@ -165,7 +165,7 @@ class ApexLearner():
         receive_experience_thread = Thread(
             target=self.receive_experiences, args = (experience_queue,)
         )
-        receieve_experience_thread.start()
+        receive_experience_thread.start()
 
         self.train_algo(
             algo, training_steps, batch_size, start_size, param_pipes,
