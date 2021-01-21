@@ -30,14 +30,11 @@ class ApexRunner():
         """
         self.done_event.set()
 
-    def start(
-            self,
-            learner: ApexLearner,
-            learner_train_args: Tuple[Any, ...],
-            agents: Tuple[RLAgent, ...],
-            agent_train_args: Tuple[Tuple[Any], ...],
-            agent_train_kwargs: Tuple[Dict[str, Any], ...]
-        ) -> None:
+    def start(self,
+              learner_args: Tuple[Any, ...],
+              agents: Tuple[RLAgent, ...],
+              agent_train_args: Tuple[Tuple[Any], ...],
+              agent_train_kwargs: Tuple[Dict[str, Any], ...]) -> None:
         """
         Starts the runner, creating and starting the learner, worker and agent
         procceses.
@@ -52,7 +49,8 @@ class ApexRunner():
         assert len(agents) == len(agent_train_args) == len(agent_train_kwargs)
 
         # Create the learner
-        learner_proc = mp.Process(target=learner.train, args=learner_train_args)
+        learner = ApexLearner()
+        learner_proc = mp.Process(target=learner.train, args=learner_args)
 
         # Create agent processes
         agent_procs = tuple(
