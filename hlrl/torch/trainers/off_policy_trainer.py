@@ -177,13 +177,14 @@ class OffPolicyTrainer():
 
                 max_queue_size = 64
                 experience_queue = mp.Queue(maxsize=max_queue_size)
-                param_pipes = None
+                param_pipes = []
                 param_send_interval = 400
 
                 learner_args = (
                     algo, done_event, queue_barrier, args.training_steps,
-                    experience_replay, experience_queue, param_pipes,
-                    param_save_interval, save_path, args.save_interval
+                    args.batch_size, args.start_size, experience_replay,
+                    experience_queue, param_pipes, param_send_interval,
+                    save_path, args.save_interval
                 )
 
                 agents = []
@@ -203,7 +204,7 @@ class OffPolicyTrainer():
                     )
 
                     agent_train_args.append((
-                        1, 1, args.discount, args.n_steps, agent_queue,
+                        1, 1, args.discount, args.n_steps, experience_queue,
                         queue_barrier
                     ))
                     agent_train_kwargs.append({

@@ -11,7 +11,7 @@ class QueueAgent(MethodWrapper):
     An agent that sends its experiences into a queue 1 at a time rather than
     training directly.
     """
-    def __init__(self, algo, param_pipe):
+    def __init__(self, algo, param_pipe = None):
         """
         Creates the queue agent on the algorithm.
         """

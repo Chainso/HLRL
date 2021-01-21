@@ -1,6 +1,6 @@
 
 import queue
-from typing import Optional
+from typing import Optional, Tuple
 from time import time
 
 from torch import cuda
@@ -23,6 +23,8 @@ class ApexLearner():
             done_event: Event,
             queue_barrier: Barrier,
             training_steps: int,
+            batch_size: int,
+            start_size: int,
             experience_replay: ExperienceReplay,
             experience_queue: Queue,
             param_pipes: Tuple[Pipe],
@@ -39,6 +41,9 @@ class ApexLearner():
             queue_barrier: A barrier to use when all queue tasks are complete on
                 all processes.
             training_steps: The number of steps to train for.
+            batch_size: The size of the training batch.
+            start_size: The number of samples in the buffer to start training.
+            experience_replay: The replay buffer to add experiences into.
             experience_queue: The queue to experiences from.
             param_pipes: A tuple of pipes to send parameters to periodically.
             param_send_interval: The number of training steps in between each
@@ -54,14 +59,18 @@ class ApexLearner():
         if algo.logger is not None:
             train_start = 0
 
-        query_func = lambda: str(algo.device) != "cuda" or cuda.query()
+        if str(algo.device) == "cuda":
+            stream = cuda.current_stream(algo.device)
+            query_func = lambda: stream.query()
+        else:
+            query_func = lambda: True
 
         while training_step < training_steps and not done_event.is_set():
             # Update samples once all computation is complete
             # (since gpu is asynchronous)
             if (query_func() and train_ret is not None):
 
-                experience_replay.calculate_and_update_priorities(*sample)
+                experience_replay.update_priorities(*train_ret)
 
                 train_ret = None
                 training_step += 1
