@@ -98,8 +98,8 @@ class ApexLearner():
 
         while training_step < training_steps and not self.done_event.is_set():
             # Start training a sample
-            if (len(experience_replay) >= batch_size
-                and len(experience_replay) >= start_size):
+            if (len(self.experience_replay) >= batch_size
+                and len(self.experience_replay) >= start_size):
 
                 if algo.logger is not None and train_start == 0:
                     train_start = time()
