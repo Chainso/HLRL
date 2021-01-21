@@ -3,8 +3,7 @@ import queue
 from typing import Optional, Tuple
 from time import time
 
-from torch import cuda
-from torch.multiprocessing import Barrier, Event, Pipe, Queue
+from multiprocessing import Barrier, Event, Pipe, Queue
 
 from hlrl.core.algos import RLAlgo
 from hlrl.core.experience_replay import ExperienceReplay
@@ -52,29 +51,25 @@ class ApexLearner():
             save_interval: The number of training steps in-between model saves.
         """
         training_step = 0
-        
-        # Training vars
-        sample_ids = None
-        train_ret = None
 
         if algo.logger is not None:
             train_start = 0
 
-        if str(algo.device) == "cuda":
-            stream = cuda.current_stream(algo.device)
-            query_func = lambda: stream.query()
-        else:
-            query_func = lambda: True
-
         while training_step < training_steps and not done_event.is_set():
-            # Update samples once all computation is complete
-            # (since gpu is asynchronous)
-            if (query_func() and train_ret is not None):
+            # Start training a sample
+            if (len(experience_replay) >= batch_size
+                and len(experience_replay) >= start_size):
+                
+                if algo.logger is not None and training_step == 0:
+                    train_start = time()
+
+                sample = experience_replay.sample(batch_size)
+                rollouts, sample_ids, is_weights = sample
+
+                train_ret = algo.train_batch(rollouts, is_weights)
 
                 experience_replay.update_priorities(sample_ids, *train_ret)
 
-                sample_ids = None
-                train_ret = None
                 training_step += 1
 
                 if algo.logger is not None:
@@ -85,19 +80,14 @@ class ApexLearner():
                         train_speed, training_step
                     )
 
-            # Start training a sample
-            if (training_step < training_steps
-                and len(experience_replay) >= batch_size
-                and len(experience_replay) >= start_size
-                and query_func() and sample_ids is None):
-                
-                if algo.logger is not None:
-                    train_start = time()
+                if(save_path is not None
+                    and algo.training_steps % save_interval == 0):
 
-                sample = experience_replay.sample(batch_size)
-                rollouts, sample_ids, is_weights = sample
+                    algo.save(save_path)
 
-                train_ret = algo.train_batch(rollouts, is_weights)
+                if algo.training_steps % param_send_interval == 0:
+                    for pipe in param_pipes:
+                        pipe.send(algo.save_dict())
 
             # Add all new experiences to the queue
             try:
@@ -106,15 +96,6 @@ class ApexLearner():
                     experience_replay.add(experience)
             except queue.Empty:
                 pass
-
-            if(save_path is not None
-                and algo.training_steps % save_interval == 0):
-
-                algo.save(save_path)
-
-            if algo.training_steps % param_send_interval == 0:
-                for pipe in param_pipes:
-                    pipe.send(algo.save_dict())
 
         # Signal exit
         done_event.set()
@@ -125,6 +106,6 @@ class ApexLearner():
         # Clear queues
         try:
             while not experience_queue.empty():
-                sample_queue.get_nowait()
+                experience_queue.get_nowait()
         except queue.Empty:
             pass
