@@ -40,17 +40,19 @@ class ApexWorker():
             # Add all new experiences to the queue
             try:
                 for _ in range(agent_queue.qsize()):
-                    experience = agent_queue.get_nowait()
-                    experience_replay.add(experience)
+                    experiences, priorities = agent_queue.get_nowait()
+
+                    for experience, priority in zip(experiences, priorities):
+                        experience_replay.add(experience, priority)
             except queue.Empty:
                 pass
 
             # Receive new Q-values and targets to update
             try:
                 for _ in range(priority_queue.qsize()):
-                    idxs, new_qs, new_q_targs = priority_queue.get_nowait()
-                    experience_replay.update_priorities(
-                        idxs, new_qs, new_q_targs
+                    ids, new_qs, new_q_targs = priority_queue.get_nowait()
+                    experience_replay.calculate_and_update_priorities(
+                        ids, new_qs, new_q_targs
                     )
             except queue.Empty:
                 pass
