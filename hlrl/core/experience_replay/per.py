@@ -1,5 +1,6 @@
+from typing import Any, Dict, Tuple
+
 import numpy as np
-from typing import Any, Tuple
 
 from .binary_sum_tree import BinarySumTree
 from .replay import ExperienceReplay
@@ -25,7 +26,7 @@ class PER(ExperienceReplay):
             beta: The beta value for the importance sampling, between 0 and 1
                 inclusive.
             beta_increment: The value to increment the beta by.
-            epsilon : The value of epsilon to add to the priority.
+            epsilon: The value of epsilon to add to the priority.
         """
         super().__init__(capacity)
         self.alpha = alpha
@@ -35,10 +36,14 @@ class PER(ExperienceReplay):
 
         self.experiences = {}
         self.priorities = BinarySumTree(capacity)
+        self.ids = np.zeros(self.capacity, dtype=np.object)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Returns the number of experiences added to the buffer.
+
+        Returns:
+            The number of experiences added.
         """
         return len(self.priorities)
 
@@ -57,90 +62,131 @@ class PER(ExperienceReplay):
         """
         return np.abs(q_val - q_target)
 
-    def add(self, experience):
+    def add(self, experience: Dict[str, Any], priority: float) -> None:
         """
-        Adds the given experience to the replay buffer with the priority being
-        the given error added to the epsilon value.
+        Adds the experience to the buffer with the priority given.
 
         Args:
-            experience (Dict) : The experience dictionary to add to the buffer.
+            experience: The experience to add.
+            priority: The priority of the experience.
+        """
+        current_index = self.priorities.next_index()
+
+        # Store individually for faster "zipping"
+        for key in experience:
+            if key not in self.experiences:
+                self.experiences[key] = np.zeros(self.capacity, dtype=np.object)
+
+            self.experiences[key][current_index] = experience[key]
+
+        # Store the ID in order to check if replay is still in the buffer
+        exp_id = None
+        if "id" in self.experiences[key][current_index]:
+            exp_id = self.experiences[key][current_index].pop("id")
+
+        self.ids[current_index] = exp_id
+        self.priorities.add(priority)
+        
+    def calculate_and_add(self, experience: Dict[str, Any]) -> None:
+        """
+        Adds the given experience to the replay buffer with the priority being
+        the given calculated from the the Q-value and target Q-value, added to
+        the epsilon value.
+
+        Args:
+            experience: The experience dictionary to add to the buffer.
         """
         q_val = experience.pop("q_val")
         target_q_val = experience.pop("target_q_val")
 
         error = self.get_error(q_val, target_q_val).item()
-
-        current_index = self.priorities.next_index()
-    
-        # Store individually for faster "zipping"
-        for key in experience:
-            if key not in self.experiences:
-                self.experiences[key] = np.zeros(self.capacity, dtype=object)
-
-            self.experiences[key][current_index] = experience[key]
-
         priority = self.get_priority(error)
+    
+        self.add(experience, priority)
 
-        self.priorities.add(priority)
- 
-    def sample(self, size):
+    def sample(
+            self,
+            size: int
+        ) -> Tuple[Dict[str, np.array], Tuple[np.array, Tuple[Any], np.array]:
         """
-        Samples "size" number of experiences from the buffer
+        Samples "size" number of experiences from the buffer.
 
-        size : The number of experiences to sample
+        Args:
+            size: The number of experiences to sample.
+        
+        Returns:
+            A sample of the size given from the replay buffer along with the
+            identifier to update the priorities of the experiences and the
+            importance sampling weights.
         """
-        assert(size > 0)
-
         priorities = self.priorities.get_leaves() / self.priorities.sum()
 
         # A hack right now
-        priorities /= priorities.sum()
+        #priorities /= priorities.sum()
 
         indices = np.random.choice(len(priorities), size, p = priorities)
 
-        batch = {key: np.concatenate(self.experiences[key][indices].tolist())
-            for key in self.experiences}
+        ids = self.ids[indices]
+        ids = tuple(zip(indices, ids))
+
+        batch = {
+            key: np.concatenate(self.experiences[key][indices].tolist())
+            for key in self.experiences
+        }
 
         probabilities = priorities[indices]
 
-        is_weights = np.power(len(self.priorities) * probabilities,
-                              -self.beta)
+        is_weights = np.power(
+            len(self.priorities) * probabilities, -self.beta
+        )
         is_weights /= is_weights.max()
 
         self.beta = np.min([1.0, self.beta + self.beta_increment])
 
-        return batch, indices, is_weights
+        return batch, ids, is_weights
 
-    def update_priority(self, index: int, error: float):
+    def update_priority(self, index: int, priority: float) -> None:
         """
-        Updates the priority of the experience at the given index, using the
-        error given.
+        Updates the priority of the experience at the index to the one given.
 
         Args:
-            index: The index of the experience
-            error: The new error of the experience
+            index: The index of the experience.
+            priority: The updated priority of the experience:
         """
-        if index < self.capacity:
-            priority = self.get_priority(error)
-            self.priorities.set(priority, index)
+        self.priorities.set(priority, index)
 
-    def update_priorities(self,
-                          indices: Tuple[int, Tuple[int, ...]],
-                          q_vals: Tuple[Any, ...],
-                          q_targets: Tuple[Any, ...]) -> None:
+    def update_priorities(
+            self,
+            ids: Tuple[Iterable[int], Iterable[Any]],
+            priorities: Iterable[float]
+        ) -> None:
+        """
+        Updates the priority of the experiences at the given indices.
+
+        Args:
+            ids: The indices and ids of the experiences.
+            priorities: The updated priorities of the experiences.
+        """
+        for (index, exp_id), priority in zip(ids, priorities):
+            if self.ids[index] == exp_id:
+                self.update_priority(index, priority)
+
+    def calculate_and_update_priorities(
+            self,
+            ids: Tuple[Iterable[int], Iterable[Any]],
+            q_vals: np.array,
+            q_targets: np.array
+        ) -> None:
         """
         Updates the priority of the experiences at the given indices, using the
         errors given.
 
         Args:
-            indices: The indices of the experiences to update.
+            ids: The indices and ids of the experiences.
             q_vals: The updated Q-values of the actions taken.
             q_targets: The new targets for the Q-values.
         """
         errors = self.get_error(q_vals, q_targets)
+        priorities = self.get_priority(errors)
 
-        for index, error in zip(indices, errors):
-            index = index
-            error = error
-
-            self.update_priority(index, error)
+        self.update_priorities(ids, priorities)
