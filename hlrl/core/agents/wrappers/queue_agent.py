@@ -11,6 +11,15 @@ class QueueAgent(MethodWrapper):
     An agent that sends its experiences into a queue 1 at a time rather than
     training directly.
     """
+    def __init__(self, algo, agent_id, param_pipe):
+        """
+        Creates the queue agent on the algorithm.
+        """
+        super().__init__(algo)
+
+        self.id = agent_id
+        self.param_pipe = param_pipe
+
     def train_step(self,
                    ready_experiences: Dict[str, Iterable[Any]],
                    batch_size: int,
@@ -27,6 +36,18 @@ class QueueAgent(MethodWrapper):
             True, if ready experiences were used, False if the batch was too
             small.
         """
+        # Check to see if a new model was sent
+        if self.param_pipe is not None and self.param_pipe.poll():
+            # Make sure to save env episodes and env steps since those would not
+            # be correct coming from another process
+            env_episodes = self.algo.env_episodes
+            env_steps = self.algo.env_steps
+
+            self.algo.load(self.param_pipe.recv())
+
+            self.algo.env_episodes = env_episodes
+            self.algo.env_steps = env_steps
+
         added = False
 
         # Get length of a random key
