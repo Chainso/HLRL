@@ -128,7 +128,7 @@ class OffPolicyTrainer():
             er_capacity = int(args.er_capacity)
             if args.recurrent:
                 experience_replay_func = partial(
-                    TorchR2D2, er_capacity, args.er_alpha, args.er_beta,
+                    TorchR2D2, args.er_alpha, args.er_beta,
                     args.er_beta_increment, args.er_epsilon, args.max_factor
                 )
 
@@ -144,11 +144,11 @@ class OffPolicyTrainer():
                 )
             else:
                 experience_replay_func = partial(
-                    TorchPER, er_capacity, args.er_alpha, args.er_beta,
+                    TorchPER, args.er_alpha, args.er_beta,
                     args.er_beta_increment, args.er_epsilon
                 )
 
-            experience_replay = experience_replay_func()
+            experience_replay = experience_replay_func(capacity=er_capacity)
 
             base_agent_logs_path = None
             if logs_path is not None:
@@ -203,8 +203,17 @@ class OffPolicyTrainer():
                         )
                         agent_logger = TensorboardLogger(agent_logs_path)
 
+                    agent_kwargs = {
+                        "env": env_builder(),
+                        "logger": agent_logger,
+                        
+                        # Dummy experience replay to use the error/priority
+                        # calculation methods QueueAgent
+                        "experience_replay": experience_replay_func(capacity=0)
+                    }
+
                     agents.append(
-                        agent_builder(env=env_builder(), logger=agent_logger)
+                        agent_builder(**agent_kwargs)
                     )
 
                     agent_train_args.append((

@@ -1,9 +1,9 @@
 import queue
-
 from multiprocessing import Barrier, Queue
 from typing import Any, Callable, Dict, Iterable, Optional
 
-
+from hlrl.core.agents import OffPolicyAgent
+from hlrl.core.experience_replay import PER
 from hlrl.core.common.wrappers import MethodWrapper
 
 class QueueAgent(MethodWrapper):
@@ -11,10 +11,26 @@ class QueueAgent(MethodWrapper):
     An agent that sends its experiences into a queue 1 at a time rather than
     training directly.
     """
-    def train_step(self,
-                   ready_experiences: Dict[str, Iterable[Any]],
-                   batch_size: int,
-                   experience_queue: Queue) -> bool:
+    def __init__(self, agent: OffPolicyAgent, experience_replay: PER):
+        """
+        Creates the queue agent, that passes experiences to a queue to be
+        inserting into replay buffer.
+
+        Args:
+            agent: The off policy agent to wrap.
+            experience_replay: The PER object responsible for computing the
+                errors and priorites of experiences.
+        """
+        super().__init__(agent)
+
+        self.experience_replay = experience_replay
+
+    def train_step(
+            self,
+            ready_experiences: Dict[str, Iterable[Any]],
+            batch_size: int,
+            experience_queue: Queue
+        ) -> bool:
         """
         Trains on the ready experiences.
 

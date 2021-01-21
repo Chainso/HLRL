@@ -7,8 +7,10 @@ class MethodWrapper():
     Wraps an object so that it mimics class inheritance. To access the wrapped
     object's methods, use self.om instead of self.obj.
     """
-    def __init__(self,
-                 obj: Any):
+    def __init__(
+            self,
+            obj: Any
+        ):
         """
         Wraps the object given.
 
