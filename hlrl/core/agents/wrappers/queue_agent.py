@@ -69,21 +69,27 @@ class QueueAgent(MethodWrapper):
                 errors = self.experience_replay.get_error(q_vals, target_q_vals)
                 priorities = self.experience_replay.get_priority(errors)
 
+                for i in range(len(batch)):
+                    batch[i]["id"] = (self.algo.env_steps, i)
+
                 try:
                     experience_queue.put_nowait((batch, priorities))
+                    added = True
                 except queue.Full:
                     pass
 
         return added
 
-    def train(self,
-              num_episodes: int,
-              batch_size: int,
-              decay: float,
-              n_steps: int,
-              experience_queue: Queue,
-              queue_barrier: Barrier,
-              exit_condition: Optional[Callable[[], bool]] = None) -> None:
+    def train(
+            self,
+            num_episodes: int,
+            batch_size: int,
+            decay: float,
+            n_steps: int,
+            experience_queue: Queue,
+            queue_barrier: Barrier,
+            exit_condition: Optional[Callable[[], bool]] = None
+        ) -> None:
         """
         Trains the algorithm for the number of episodes specified on the
         environment.

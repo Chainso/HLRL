@@ -131,9 +131,7 @@ class PER(ExperienceReplay):
             importance sampling weights.
         """
         priorities = self.priorities.get_leaves() / self.priorities.sum()
-
-        # A hack right now
-        #priorities /= priorities.sum()
+        priorities /= priorities.sum()
 
         indices = np.random.choice(len(priorities), size, p = priorities)
 

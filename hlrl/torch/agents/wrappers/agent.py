@@ -119,7 +119,7 @@ class TorchRLAgent(MethodWrapper):
             A dictionary of each field necessary for training.
         """
         batch = {
-            torch.cat(ready_experiences[key]) for key in ready_experiences
+            key: torch.cat(ready_experiences[key]) for key in ready_experiences
         }
 
         return self.om.create_batch(batch)

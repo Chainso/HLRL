@@ -28,7 +28,9 @@ class TorchOffPolicyAgent(MethodWrapper):
         # Unsqueeze the batch dimension which was lost in the translation from
         # the rollout dictionary to a list of individual rollouts
         batch = tuple(
-            {experience[key].unsqueeze(0) for key in experience}
+            {
+                key: experience[key].unsqueeze(0) for key in experience
+            }
             for experience in batch
         )
 

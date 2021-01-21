@@ -1,5 +1,4 @@
 import queue
-
 from collections import deque
 from time import time
 from typing import Any, Dict, List, Tuple, OrderedDict
@@ -48,8 +47,6 @@ class OffPolicyAgent(RLAgent):
         q_vals = ready_experiences.pop("q_val")
         target_q_vals = ready_experiences.pop("target_q_val")
 
-        # Create and id
-        print("Before id", ready_experiences["state"].shape)
         batch = tuple(
             dict(zip(ready_experiences, experience))
             for experience in zip(*ready_experiences.values())
@@ -115,7 +112,11 @@ class OffPolicyAgent(RLAgent):
                 errors = experience_replay.get_error(q_vals, target_q_vals)
                 priorities = experience_replay.get_priority(errors)
 
-                for experience, priority in zip(experiences_to_add, priorities):
+                for i in range(len(experiences_to_add)):
+                    experience = experiences_to_add[i]
+                    priority = priorities[i]
+
+                    experience["id"] = (self.algo.env_steps, i)
                     experience_replay.add(experience, priority)
 
                 added = True
