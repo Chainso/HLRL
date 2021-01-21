@@ -231,8 +231,8 @@ class OffPolicyTrainer():
                     )
 
                     agent_train_args.append((
-                        1, 1, args.discount, args.n_steps, agent_queue,
-                        queue_barrier
+                        1, max(args.batch_size // args.num_agents // 8, 1),
+                        args.discount, args.n_steps, agent_queue, queue_barrier
                     ))
                     agent_train_kwargs.append({
                         "exit_condition": done_event.is_set

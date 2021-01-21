@@ -83,6 +83,13 @@ class PER(ExperienceReplay):
         """
         current_index = self.priorities.next_index()
 
+        # Store the ID in order to check if replay is still in the buffer
+        exp_id = None
+        if "id" in experience:
+            exp_id = experience.pop("id")
+
+        self.ids[current_index] = exp_id
+
         # Store individually for faster "zipping"
         for key in experience:
             if key not in self.experiences:
@@ -90,12 +97,6 @@ class PER(ExperienceReplay):
 
             self.experiences[key][current_index] = experience[key]
 
-        # Store the ID in order to check if replay is still in the buffer
-        exp_id = None
-        if "id" in self.experiences[key][current_index]:
-            exp_id = self.experiences[key][current_index].pop("id")
-
-        self.ids[current_index] = exp_id
         self.priorities.add(priority)
         
     def calculate_and_add(self, experience: Dict[str, Any]) -> None:
