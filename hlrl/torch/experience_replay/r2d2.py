@@ -10,13 +10,15 @@ class TorchR2D2(TorchPER):
     An implementation of Recurrent Experience Replay using torch.
     https://openreview.net/pdf?id=r1lyTjAqYX
     """
-    def __init__(self,
-                 capacity: int,
-                 alpha: float,
-                 beta: float,
-                 beta_increment: float,
-                 epsilon: float,
-                 max_factor: float):
+    def __init__(
+            self,
+            capacity: int,
+            alpha: float,
+            beta: float,
+            beta_increment: float,
+            epsilon: float,
+            max_factor: float
+        ):
         """
         Args:
             capacity: The capacity of the replay buffer.
@@ -39,7 +41,8 @@ class TorchR2D2(TorchPER):
         ) -> torch.Tensor:
         """
         Computes the error (absolute difference) between the Q-value and the
-        target Q-value.
+        target Q-value and uses a mixture of the max and mean values errors of
+        the sequence to compute the error of the entire sequence.
 
         Args:
             q_val: The Q-value of the experience.
@@ -51,7 +54,9 @@ class TorchR2D2(TorchPER):
         """
         reg_error = torch.abs(q_val - q_target)
 
-        error = (self.max_factor * reg_error.max(dim=1).values
-                 + (1 - self.max_factor) * reg_error.mean(dim=1))
+        error = (
+            self.max_factor * reg_error.max(dim=1).values
+            + (1 - self.max_factor) * reg_error.mean(dim=1)
+        )
 
         return error

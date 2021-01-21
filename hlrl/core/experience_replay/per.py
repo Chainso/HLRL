@@ -47,18 +47,29 @@ class PER(ExperienceReplay):
         """
         return len(self.priorities)
 
-    def get_priority(self, error):
+    def get_priority(self, error: np.array) -> np.array:
         """
         Computes the priority for the given error.
 
-        error : The error to get the priority for.
+        Args:
+            error: The error to get the priority for.
+        
+        Returns:
+            The calculated priority using the error given.
         """
         return (error + self.epsilon) ** self.alpha
 
-    def get_error(self, q_val, q_target):
+    def get_error(self, q_val: np.array, q_target: np.array) -> np.array:
         """
         Computes the error (absolute difference) between the Q-value plus the
         reward and the discounted Q-value of the next state.
+
+        Args:
+            q_val: The Q value of the experiences.
+            q_target: The target Q-value of the experiences.
+
+        Returns:
+            The absolute difference between the Q-value and its target.
         """
         return np.abs(q_val - q_target)
 
@@ -99,15 +110,15 @@ class PER(ExperienceReplay):
         q_val = experience.pop("q_val")
         target_q_val = experience.pop("target_q_val")
 
-        error = self.get_error(q_val, target_q_val).item()
-        priority = self.get_priority(error)
+        error = self.get_error(q_val, target_q_val)
+        priority = self.get_priority(error).item()
     
         self.add(experience, priority)
 
     def sample(
             self,
             size: int
-        ) -> Tuple[Dict[str, np.array], Tuple[np.array, Tuple[Any], np.array]:
+        ) -> Tuple[Dict[str, np.array], Tuple[np.array, Tuple[Any]], np.array]:
         """
         Samples "size" number of experiences from the buffer.
 
@@ -136,9 +147,7 @@ class PER(ExperienceReplay):
 
         probabilities = priorities[indices]
 
-        is_weights = np.power(
-            len(self.priorities) * probabilities, -self.beta
-        )
+        is_weights = np.power(len(self) * probabilities, -self.beta)
         is_weights /= is_weights.max()
 
         self.beta = np.min([1.0, self.beta + self.beta_increment])
@@ -158,7 +167,7 @@ class PER(ExperienceReplay):
     def update_priorities(
             self,
             ids: Tuple[Iterable[int], Iterable[Any]],
-            priorities: Iterable[float]
+            priorities: np.array
         ) -> None:
         """
         Updates the priority of the experiences at the given indices.
@@ -169,7 +178,7 @@ class PER(ExperienceReplay):
         """
         for (index, exp_id), priority in zip(ids, priorities):
             if self.ids[index] == exp_id:
-                self.update_priority(index, priority)
+                self.update_priority(index, priority.item())
 
     def calculate_and_update_priorities(
             self,

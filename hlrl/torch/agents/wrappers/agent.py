@@ -87,8 +87,7 @@ class TorchRLAgent(MethodWrapper):
     def transform_action(self, action):
         return self.om.transform_action(action).squeeze().cpu().numpy()
 
-    def reward_to_float(self,
-                        reward: torch.Tensor) -> float:
+    def reward_to_float(self, reward: torch.Tensor) -> float:
         """
         Converts the reward to a single float value.
 
@@ -106,7 +105,7 @@ class TorchRLAgent(MethodWrapper):
     def create_batch(
             self,
             ready_experiences: Dict[str, List[Any]],
-        ) -> Dict[str, torch.FloatTensor]:
+        ) -> Dict[str, torch.Tensor]:
         """
         Creates a batch of experiences to be trained on from the ready
         experiences.
@@ -117,10 +116,8 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             A dictionary of each field necessary for training.
         """
-        batch = {}
-        for key in ready_experiences:
-            batch[key] = torch.cat(ready_experiences[key])
+        batch = {
+            torch.cat(ready_experiences[key]) for key in ready_experiences
+        }
 
-        batch = self.om.create_batch(batch)
-
-        return batch
+        return self.om.create_batch(batch)

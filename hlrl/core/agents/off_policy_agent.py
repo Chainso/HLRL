@@ -45,12 +45,17 @@ class OffPolicyAgent(RLAgent):
             A dictionary of each field necessary for training.
         """
         # Convert to list of dicts to send to replay buffer 1 by 1
+        q_vals = ready_experiences.pop("q_val")
+        target_q_vals = ready_experiences.pop("target_q_val")
+
+        # Create and id
+        print("Before id", ready_experiences["state"].shape)
         batch = tuple(
             dict(zip(ready_experiences, experience))
             for experience in zip(*ready_experiences.values())
         )
 
-        return batch
+        return batch, q_vals, target_q_vals
 
     def get_buffer_experience(self,
                               experiences: Tuple[Dict[str, Any], ...],
@@ -103,10 +108,15 @@ class OffPolicyAgent(RLAgent):
         if len(keys) > 0:
             key = keys[0]
             if len(ready_experiences[key]) == batch_size:
-                experiences_to_add = self.create_batch(ready_experiences)
+                experiences_to_add, q_vals, target_q_vals = self.create_batch(
+                    ready_experiences
+                )
 
-                for experience in experiences_to_add:
-                    experience_replay.add(experience)
+                errors = experience_replay.get_error(q_vals, target_q_vals)
+                priorities = experience_replay.get_priority(errors)
+
+                for experience, priority in zip(experiences_to_add, priorities):
+                    experience_replay.add(experience, priority)
 
                 added = True
 

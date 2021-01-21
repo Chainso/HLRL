@@ -10,7 +10,7 @@ class TorchOffPolicyAgent(MethodWrapper):
     def create_batch(
             self,
             ready_experiences: Dict[str, List[Any]],
-        ) -> Tuple[Dict[str, Any]]:
+        ) -> Tuple[Dict[str, torch.Tensor]]:
         """
         Creates a batch of experiences to be trained on from the ready
         experiences.
@@ -21,12 +21,13 @@ class TorchOffPolicyAgent(MethodWrapper):
         Returns:
             A dictionary of each field necessary for training.
         """
-        batch = self.om.create_batch(ready_experiences)
+        batch, *rest = self.om.create_batch(ready_experiences)
 
         # Unsqueeze the batch dimension which was lost in the translation from
         # the rollout dictionary to a list of individual rollouts
-        for experience in batch:
-            for key in experience:
-                experience[key] = experience[key].unsqueeze(0)
+        batch = tuple(
+            {experience[key].unsqueeze(0) for key in experience}
+            for experience in batch
+        )
 
-        return batch
+        return batch, *rest

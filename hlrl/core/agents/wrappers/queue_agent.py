@@ -37,12 +37,15 @@ class QueueAgent(MethodWrapper):
             # Going to use >= here because in the case the queue is full, the
             # number of ready experiences may be greater than the batch size
             if len(ready_experiences[key]) >= batch_size:
-                batch = self.create_batch(ready_experiences)
+                batch, q_vals, target_q_vals = self.create_batch(
+                    ready_experiences
+                )
+
+                errors = self.experience_replay.get_error(q_vals, target_q_vals)
+                priorities = self.experience_replay.get_priority(errors)
 
                 try:
-                    for experience in batch:
-                        experience_queue.put_nowait(experience)
-                        added = True
+                    experience_queue.put_nowait((batch, priorities))
                 except queue.Full:
                     pass
 
