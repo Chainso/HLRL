@@ -54,6 +54,7 @@ class ApexLearner():
         training_step = 0
         
         # Training vars
+        sample_ids = None
         train_ret = None
 
         if algo.logger is not None:
@@ -70,8 +71,9 @@ class ApexLearner():
             # (since gpu is asynchronous)
             if (query_func() and train_ret is not None):
 
-                experience_replay.update_priorities(*train_ret)
+                experience_replay.update_priorities(sample_ids, *train_ret)
 
+                sample_ids = None
                 train_ret = None
                 training_step += 1
 
@@ -87,13 +89,13 @@ class ApexLearner():
             if (training_step < training_steps
                 and len(experience_replay) >= batch_size
                 and len(experience_replay) >= start_size
-                and query_func() and train_ret is None):
+                and query_func() and sample_ids is None):
                 
                 if algo.logger is not None:
                     train_start = time()
 
                 sample = experience_replay.sample(batch_size)
-                rollouts, idxs, is_weights = sample
+                rollouts, sample_ids, is_weights = sample
 
                 train_ret = algo.train_batch(rollouts, is_weights)
 
