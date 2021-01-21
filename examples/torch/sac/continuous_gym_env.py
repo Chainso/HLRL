@@ -150,7 +150,7 @@ if(__name__ == "__main__"):
 		help="the increment of the beta value on each sample for PER"
     )
     parser.add_argument(
-        "--er_epsilon", type=float, default=1e-3,
+        "--er_epsilon", type=float, default=1e-4,
         help="the epsilon value for PER"
     )
     parser.add_argument(

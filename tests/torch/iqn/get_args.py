@@ -119,7 +119,7 @@ def get_args():
 		help="the beta value for PER"
 	)
     parser.add_argument(
-		"--er_beta_increment", type=float, default=1e-3,
+		"--er_beta_increment", type=float, default=1e-4,
 		help="the increment of the beta value on each sample for PER"
 	)
     parser.add_argument(

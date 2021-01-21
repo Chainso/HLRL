@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Tuple
 
+import torch
+
 from hlrl.core.common.wrappers import MethodWrapper
 
 class TorchOffPolicyAgent(MethodWrapper):

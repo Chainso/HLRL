@@ -87,7 +87,7 @@ class OffPolicyTrainer():
             OffPolicyAgent, algo=algo, render=args.render, silent=args.silent
         )
 
-        if args.num_agents > 0:
+        if args.num_agents > 0 and not args.play:
             agent_builder = compose(agent_builder, QueueAgent)
 
         agent_builder = compose(
@@ -128,8 +128,9 @@ class OffPolicyTrainer():
             er_capacity = int(args.er_capacity)
             if args.recurrent:
                 experience_replay_func = partial(
-                    TorchR2D2, args.er_alpha, args.er_beta,
-                    args.er_beta_increment, args.er_epsilon, args.max_factor
+                    TorchR2D2, alpha=args.er_alpha, beta=args.er_beta,
+                    beta_increment=args.er_beta_increment,
+                    epsilon=args.er_epsilon, max_factor=args.max_factor
                 )
 
                 agent_builder = compose(
@@ -144,8 +145,9 @@ class OffPolicyTrainer():
                 )
             else:
                 experience_replay_func = partial(
-                    TorchPER, args.er_alpha, args.er_beta,
-                    args.er_beta_increment, args.er_epsilon
+                    TorchPER, alpha=args.er_alpha, beta=args.er_beta,
+                    beta_increment=args.er_beta_increment,
+                    epsilon=args.er_epsilon
                 )
 
             experience_replay = experience_replay_func(capacity=er_capacity)
@@ -209,7 +211,7 @@ class OffPolicyTrainer():
                         
                         # Dummy experience replay to use the error/priority
                         # calculation methods QueueAgent
-                        "experience_replay": experience_replay_func(capacity=0)
+                        "experience_replay": experience_replay_func(capacity=1)
                     }
 
                     agents.append(

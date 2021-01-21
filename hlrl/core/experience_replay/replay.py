@@ -1,6 +1,6 @@
 import queue
 from abc import ABC, abstractmethod
-from typing import Any, Iterable
+from typing import Any, Dict, Iterable
 
 
 class ExperienceReplay(ABC):
