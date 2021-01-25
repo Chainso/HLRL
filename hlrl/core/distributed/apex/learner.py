@@ -13,15 +13,17 @@ class ApexLearner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def train(self,
-        algo: RLAlgo,
-        done_event: Event,
-        queue_barrier: Barrier,
-        training_steps: int,
-        sample_queue: Queue,
-        priority_queue: Queue,
-        save_path: str = None,
-        save_interval: int = 10000):
+    def train(
+            self,
+            algo: RLAlgo,
+            done_event: Event,
+            queue_barrier: Barrier,
+            training_steps: int,
+            sample_queue: Queue,
+            priority_queue: Queue,
+            save_path: str = None,
+            save_interval: int = 10000
+        ) -> None:
         """
         Trains the algorithm until all agent processes have ended.
 
@@ -47,13 +49,13 @@ class ApexLearner():
             rollouts, idxs, is_weights = sample
 
             if algo.logger is not None:
-                step_start = time()
-
                 if train_start == 0:
                     train_start = time()
 
+                train_step_start = time()
+
                 algo.logger["Train/Samples per Second"] = (
-                    1 / (step_start - sample_start), algo.training_steps
+                    1 / (train_step_start - sample_start), algo.training_steps
                 )
 
             new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
@@ -63,7 +65,11 @@ class ApexLearner():
             if algo.logger is not None:
                 train_end = time()
 
-                algo.logger["Train/Training Steps per Second"] = (
+                algo.logger["Training Steps per Second"] = (
+                    1 / (train_end - train_step_start), algo.training_steps
+                )
+
+                algo.logger["Train/Training Steps + Samples per Second"] = (
                     training_step / (train_end - train_start),
                     algo.training_steps
                 )
