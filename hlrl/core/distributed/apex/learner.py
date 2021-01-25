@@ -65,7 +65,7 @@ class ApexLearner():
             if algo.logger is not None:
                 train_end = time()
 
-                algo.logger["Training Steps per Second"] = (
+                algo.logger["Train/Training Steps per Second"] = (
                     1 / (train_end - train_step_start), algo.training_steps
                 )
 

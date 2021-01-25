@@ -43,12 +43,6 @@ class ApexWorker():
                     experiences, priorities = agent_queue.get_nowait()
 
                     for experience, priority in zip(experiences, priorities):
-                        for key in experience:
-                            if (key != "id"
-                                and "cuda" in str(experience[key].device)):
-                     
-                                experience[key] = experience[key].clone()
-
                         experience_replay.add(experience, priority)
             except queue.Empty:
                 pass
