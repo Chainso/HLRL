@@ -37,6 +37,7 @@ class ApexLearner():
             save_interval: The number of training steps in-between model saves.
         """
         training_step = 0
+        train_start = 0
 
         while training_step < training_steps and not done_event.is_set():
             if algo.logger is not None:
@@ -46,10 +47,13 @@ class ApexLearner():
             rollouts, idxs, is_weights = sample
 
             if algo.logger is not None:
-                train_start = time()
+                step_start = time()
+
+                if train_start == 0:
+                    train_start = time()
 
                 algo.logger["Train/Samples per Second"] = (
-                    1 / (train_start - sample_start), algo.training_steps
+                    1 / (step_start - sample_start), algo.training_steps
                 )
 
             new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
@@ -60,11 +64,8 @@ class ApexLearner():
                 train_end = time()
 
                 algo.logger["Train/Training Steps per Second"] = (
-                    1 / (train_end - train_start), algo.training_steps
-                )
-
-                algo.logger["Train/Training Steps + Samples per Second"] = (
-                    1 / (train_end - sample_start), algo.training_steps
+                    training_step / (train_end - train_start),
+                    algo.training_steps
                 )
 
             if(save_path is not None
