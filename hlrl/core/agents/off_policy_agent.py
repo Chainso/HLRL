@@ -117,6 +117,7 @@ class OffPolicyAgent(RLAgent):
                     priority = priorities[i]
 
                     experience["id"] = (self.algo.env_steps, i)
+
                     experience_replay.add(experience, priority)
 
                 added = True

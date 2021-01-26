@@ -492,21 +492,6 @@ class RLAgent():
             while len(experiences) > 0:
                 self.add_to_buffer(ready_experiences, experiences, decay)
 
-            # Get length of a random key
-            keys = list(ready_experiences)
-            if len(keys) > 0:
-                key = keys[0]
-
-                # Since it is the last batch, the batch may be a bit smaller
-                # Pass in the current size to make sure not to miss this update
-                trained = self.train_step(
-                    ready_experiences, len(ready_experiences[key]), learner,
-                    *learner_args, **learner_kwargs
-                )
-
-            if (trained):
-                ready_experiences = {}
-
             self.algo.env_episodes += 1
 
             if self.logger is not None:
