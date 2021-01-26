@@ -46,7 +46,7 @@ class ApexLearner():
                 sample_start = time()
 
             sample = sample_queue.get()
-            rollouts, idxs, is_weights = sample
+            rollouts, ids, is_weights = sample
 
             if algo.logger is not None:
                 if train_start == 0:
@@ -60,7 +60,7 @@ class ApexLearner():
 
             new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
 
-            priority_queue.put((idxs, new_qs, new_q_targs))
+            priority_queue.put((ids, new_qs, new_q_targs))
 
             if algo.logger is not None:
                 train_end = time()
