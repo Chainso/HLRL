@@ -202,6 +202,12 @@ class OffPolicyTrainer():
                 sample_queue = mp.Queue(maxsize=args.num_prefetch_batches)
                 priority_queue = mp.Queue(maxsize=args.num_prefetch_batches)
 
+                learner_args = (
+                    algo, done_event, queue_barrier, args.training_steps,
+                    sample_queue, param_pipes, args.model_sync_interval,
+                    save_path, args.save_interval
+                )
+
                 worker_args = (
                     experience_replay, done_event, queue_barrier, agent_queue,
                     sample_queue, priority_queue, args.batch_size,
