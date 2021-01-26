@@ -110,6 +110,13 @@ class SACRecurrent(SAC):
         Returns:
             The updated Q-value and target Q-value.
         """
+        rollouts = {
+            key: value.to(self.device) for key, value in rollouts.items()
+        }
+
+        if type(is_weights) != int:
+            is_weights = is_weights.to(self.device)
+
         states = rollouts["state"]
         actions = rollouts["action"]
         rewards = rollouts["reward"]

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
 class RLAlgo(ABC):
     """
@@ -78,7 +79,11 @@ class RLAlgo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, load_path, load_dict=None):
+    def load(
+            self,
+            load_path: str = "",
+            load_dict: Optional[Dict[str, Any]] = None
+        ):
         """
         Loads the algorithm from a given save path. Will use the given state
         dictionary if given, or load from a file otherwise.

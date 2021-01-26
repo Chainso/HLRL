@@ -1,8 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
 
+from hlrl.core.experience_replay import ExperienceReplay
 from hlrl.core.logger import Logger
 from hlrl.core.algos import RLAlgo
 
@@ -32,33 +33,16 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         """
         raise NotImplementedError
 
-    def train_batch(
-            self,
-            batch: Dict[str, torch.Tensor],
-            *args: Any,
-            **kwargs: Any
-        ) -> Any:
-        """
-        Converts the tensors of the batch to the current device before training.
+    def save_dict(self):
+        state_dict = self.state_dict()
 
-        Args:
-            batch: The batch to train on.
-            args: The arguments of the algorithm train batch.
-            kwargs: The keyword arguments of the algorithm train batch.
-
-        Returns:
-            The train batch method of the underlying algorithm.
-        """
-        batch = {
-            key: batch[key].to(self.device) for key in batch
+        cpu_state_dict = {
+            key: state_dict[key].to("cpu") for key in state_dict
         }
 
-        return self.om.train_batch(batch, *args, **kwargs)
-
-    def save_dict(self):
         # Save all the dicts
         state = {
-            "state_dict": self.state_dict(),
+            "state_dict": cpu_state_dict,
             "env_episodes": self.env_episodes,
             "training_steps": self.training_steps,
             "env_steps": self.env_steps
@@ -73,7 +57,7 @@ class TorchRLAlgo(RLAlgo, nn.Module):
     def load_dict(self, load_path):
         return torch.load(load_path)
 
-    def load(self, load_path, load_dict=None):
+    def load(self, load_path: str = "", load_dict=None):
         if load_dict is None:
             load_dict = self.load_dict(load_path)
 
@@ -98,8 +82,14 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
         super().__init__(device, logger)
 
 
-    def train_from_buffer(self, experience_replay, batch_size, start_size,
-                          save_path=None, save_interval=10000):
+    def train_from_buffer(
+            self,
+            experience_replay: ExperienceReplay,
+            batch_size: int,
+            start_size: int,
+            save_path: Optional[str] = None,
+            save_interval: int = 110000
+        ):
         """
         Starts training the network.
 

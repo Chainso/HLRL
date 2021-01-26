@@ -36,7 +36,7 @@ class partial_iterator(functools.partial):
     A partial function where keywords can be either a static keyword or a value
     acquired from an iterator.
     """
-    def __call__(self, *args, **kwargs) -> Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
         Calls the underlying function, advance the iteration of all iterated
         keywords.
@@ -49,12 +49,12 @@ class partial_iterator(functools.partial):
             The value of the underlying function called with the given
                 arguments.
         """
-        generated_keywords = {}
+        iterated_keywords = {}
 
         for keyword in self.keywords:
-            value, generate = self.keywords[keyword]
-            iterator_keys[keyword] = next(value) if generate else value
+            value, iterate = self.keywords[keyword]
+            iterated_keywords[keyword] = next(value) if iterate else value
 
-        all_keywords = {**self.keywords, **kwargs}
+        all_keywords = {**iterated_keywords, **kwargs}
 
-        return self.func(self.args, *args, **all_keywords)
+        return self.func(*self.args, *args, **all_keywords)

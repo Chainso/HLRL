@@ -1,5 +1,5 @@
-
 import queue
+from typing import Any, Callable, Optional, Tuple
 
 from multiprocessing import Barrier, Event, Pipe, Queue
 from time import time
@@ -13,6 +13,15 @@ class ApexLearner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
+    def __init__(self, prestart_func: Optional[Callable[[RLAlgo], Any]] = None):
+        """
+        Creates the learner for a distributed RL algorithm.
+
+        Args:
+            prestart_func: A function to run when training start.
+        """
+        self.prestart_func = prestart_func
+
     def train(
             self,
             algo: RLAlgo,
@@ -21,7 +30,7 @@ class ApexLearner():
             training_steps: int,
             sample_queue: Queue,
             priority_queue: Queue,
-            param_pipes: Tuple[Pipe] = [],
+            param_pipes: Tuple[Pipe, ...] = tuple(),
             param_send_interval: int = 0,
             save_path: str = None,
             save_interval: int = 10000
@@ -44,8 +53,12 @@ class ApexLearner():
             save_path: The directory to save the model to.
             save_interval: The number of training steps in-between model saves.
         """
-        for pipe in param_pipes:
-            pipe.send(algo.save_dict())
+        if self.prestart_func is not None:
+            self.prestart_func(algo)
+
+        if param_send_interval > 0:
+            for pipe in param_pipes:
+                pipe.send(algo.save_dict())
 
         training_step = 0
         train_start = 0

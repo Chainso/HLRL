@@ -1,7 +1,8 @@
+from copy import deepcopy
+from typing import Dict, Tuple, Union
+
 import torch
 import torch.nn as nn
-
-from copy import deepcopy
 
 from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.common import polyak_average
@@ -143,7 +144,11 @@ class SAC(TorchOffPolicyAlgo):
         with torch.no_grad():
             return self(observation)
 
-    def train_batch(self, rollouts, is_weights=1):
+    def train_batch(
+            self,
+            rollouts: Dict[str, torch.Tensor],
+            is_weights: Union[int, torch.Tensor] = 1
+        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
@@ -156,6 +161,9 @@ class SAC(TorchOffPolicyAlgo):
         rollouts = {
             key: value.to(self.device) for key, value in rollouts.items()
         }
+
+        if type(is_weights) != int:
+            is_weights = is_weights.to(self.device)
 
         # Get all the parameters from the rollouts
         states = rollouts["state"]
@@ -253,7 +261,7 @@ class SAC(TorchOffPolicyAlgo):
 
         return state_dict
 
-    def load(self, load_path, load_dict=None):
+    def load(self, load_path="", load_dict=None):
         if load_dict is None:
             load_dict = self.load_dict(load_path)
 

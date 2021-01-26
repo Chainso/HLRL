@@ -1,7 +1,7 @@
 from argparse import Namespace
 from functools import partial
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 import torch
 import torch.multiprocessing as mp
@@ -9,11 +9,12 @@ import torch.multiprocessing as mp
 from hlrl.core.envs import Env
 from hlrl.core.algos import RLAlgo
 from hlrl.core.logger import TensorboardLogger
-from hlrl.core.common.functional import compose, partial_generator
+from hlrl.core.common.functional import compose, partial_iterator
 from hlrl.core.distributed import ApexRunner
 from hlrl.core.agents import (
     OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent
 )
+from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.agents import (
     TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
     TorchRecurrentAgent, TorchOffPolicyAgent
@@ -169,7 +170,7 @@ class OffPolicyTrainer():
 
             # Single process
             if args.num_agents == 0:
-                algo.create_optimizers()
+                self._start_training()
 
                 agent_logger = None
                 if base_agent_logs_path is not None:
@@ -185,15 +186,20 @@ class OffPolicyTrainer():
 
             # Multiple processes
             else:
-                algo.device = torch.device("cpu")
-                param_pipes = [None] * args.num_agents
+                recv_pipes = []
+                send_pipes = []
 
-                if args.model_sync_interval > 0:
+                if args.model_sync_interval == 0:
                     algo.share_memory()
-                    
-                    param_pipes = tuple(
-                        mp.Pipe(duplex=False) for _ in range(args.num_agents)
-                    )
+                else:
+                    algo.device = torch.device("cpu")
+
+                    for i in range(args.num_agents):
+                        param_pipe = mp.Pipe(duplex=False)
+
+                        recv_pipes.append(param_pipe[0])
+                        send_pipes.append(param_pipe[1])
+
 
                 done_event = mp.Event()
 
@@ -207,14 +213,11 @@ class OffPolicyTrainer():
                 sample_queue = mp.Queue(maxsize=args.num_prefetch_batches)
                 priority_queue = mp.Queue(maxsize=args.num_prefetch_batches)
 
-                
-                algo = algo.to(args.device)
-                algo.create_optimizers()
-
-                learner_args = (
+                learner_args = (partial(self._start_training, args=args),)
+                learner_train_args = (
                     algo, done_event, queue_barrier, args.training_steps,
-                    sample_queue, param_pipes, args.model_sync_interval,
-                    save_path, args.save_interval
+                    sample_queue, priority_queue, send_pipes,
+                    args.model_sync_interval, save_path, args.save_interval
                 )
 
                 worker_args = (
@@ -228,12 +231,12 @@ class OffPolicyTrainer():
                 # TODO come up with a better way to implement wrappers
                 agent_builder = compose(
                     agent_builder,
-                    partial_generator(
+                    partial_iterator(
                         QueueAgent,
                         experience_replay=(
                             experience_replay_func(capacity=1), False
                         ),
-                        param_pipe=(iter(param_pipes), True)
+                        param_pipe=(iter(recv_pipes), True)
                     )
                 )
                 agent_builder = compose(
@@ -273,6 +276,18 @@ class OffPolicyTrainer():
 
                 runner = ApexRunner(done_event)
                 runner.start(
-                    learner_args, worker_args, agents, agent_train_args,
-                    agent_train_kwargs
+                    learner_args, learner_train_args, worker_args, agents,
+                    agent_train_args, agent_train_kwargs
                 )
+
+    def _start_training(self, algo: TorchRLAlgo, args: Any) -> None:
+        """
+        A function to call at the start of training.
+
+        Args:
+            algo: The algorithm to start training for.
+            args: Arguments for the program.
+        """
+        algo.device = args.device
+        algo.to(args.device)
+        algo.create_optimizers()

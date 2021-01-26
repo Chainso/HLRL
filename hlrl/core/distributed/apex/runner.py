@@ -1,6 +1,7 @@
-import multiprocessing as mp
+from typing import Tuple, Any, Dict, Callable, Union
 
-from typing import Tuple, Any, Dict, Callable
+import torch
+import torch.multiprocessing as mp
 
 from hlrl.core.distributed.apex.learner import ApexLearner
 from hlrl.core.distributed.apex.worker import ApexWorker
@@ -13,8 +14,7 @@ class ApexRunner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def __init__(self,
-                 done_event: mp.Event):
+    def __init__(self, done_event: mp.Event):
         """
         Creates the handler, with an event to allow stopping.
 
@@ -30,18 +30,23 @@ class ApexRunner():
         """
         self.done_event.set()
 
-    def start(self,
-              learner_args: Tuple[Any, ...],
-              worker_args: Tuple[Any, ...],
-              agents: Tuple[RLAgent, ...],
-              agent_train_args: Tuple[Tuple[Any], ...],
-              agent_train_kwargs: Tuple[Dict[str, Any], ...]) -> None:
+    def start(
+            self,
+            learner_args: Tuple[Any, ...],
+            learner_train_args: Tuple[Any, ...],
+            worker_args: Tuple[Any, ...],
+            agents: Tuple[RLAgent, ...],
+            agent_train_args: Tuple[Tuple[Any], ...],
+            agent_train_kwargs: Tuple[Dict[str, Any], ...]
+        ) -> None:
         """
         Starts the runner, creating and starting the learner, worker and agent
         procceses.
 
         Args:
             learner_args: Arguments for the Ape-X learner.
+            learner_train_args: Arguments to start the train method of the
+                learner.
             worker_args: Arguments for the Ape-X worker.
             agents: The pool of agents to run.
             agent_train_args: Arguments for the agent training processes.
@@ -50,13 +55,12 @@ class ApexRunner():
         """
         assert len(agents) == len(agent_train_args) == len(agent_train_kwargs)
 
-        # Create the learner
-        learner = ApexLearner()
-        learner_proc = mp.Process(target=learner.train, args=learner_args)
+        all_procs = []
 
         # Create the worker for the model
         worker = ApexWorker()
         worker_proc = mp.Process(target=worker.train, args=worker_args)
+        all_procs.append(worker_proc)
 
         # Create agent processes
         agent_procs = tuple(
@@ -67,16 +71,16 @@ class ApexRunner():
             for i in range(len(agents))
         )
 
+        for proc in agent_procs:
+            all_procs.append(proc)
+
         # Start all processes
-        learner_proc.start()
-        worker_proc.start()
+        for proc in all_procs:
+            proc.start()
 
-        for agent_proc in agent_procs:
-            agent_proc.start()
+        # Create the learner
+        learner = ApexLearner(*learner_args)
+        learner.train(*learner_train_args)
 
-        # Wait for processes to end
-        learner_proc.join()
-        worker_proc.join()
-
-        for agent_proc in agent_procs:
-            agent_proc.join()
+        for proc in all_procs:
+            proc.join()

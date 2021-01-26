@@ -52,7 +52,7 @@ class QueueAgent(MethodWrapper):
             env_episodes = self.algo.env_episodes
             env_steps = self.algo.env_steps
 
-            self.algo.load(self.param_pipe.recv())
+            self.algo.load(load_dict=self.param_pipe.recv())
 
             self.algo.env_episodes = env_episodes
             self.algo.env_steps = env_steps
