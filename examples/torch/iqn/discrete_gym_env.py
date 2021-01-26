@@ -126,12 +126,21 @@ if __name__ == "__main__":
 
     # Agent args
     parser.add_argument(
-		"--n_steps", type=int, default=5,
-		help="the number of decay steps"
-	)
+        "--n_steps", type=int, default=5, help="the number of decay steps"
+    )
     parser.add_argument(
         "--num_agents", type=int, default=1,
-        help="the number of agents to run concurrently"
+        help="the number of agents to run concurrently, 0 is single process"
+    )
+    parser.add_argument(
+        "--model_sync_interval", type=int, default=400,
+        help="the number of training steps between agent model syncs, if 0, "
+            + "all processes will share the same model",
+    )
+    parser.add_argument(
+        "--num_prefetch_batches", type=int, default=16,
+        help="the number of batches to prefetch to the learner in distributed "
+            + "learning"
     )
     parser.add_argument(
         "--silent", action="store_true",

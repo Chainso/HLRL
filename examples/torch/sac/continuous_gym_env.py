@@ -130,6 +130,16 @@ if(__name__ == "__main__"):
         help="the number of agents to run concurrently, 0 is single process"
     )
     parser.add_argument(
+        "--model_sync_interval", type=int, default=400,
+        help="the number of training steps between agent model syncs, if 0, "
+            + "all processes will share the same model",
+    )
+    parser.add_argument(
+        "--num_prefetch_batches", type=int, default=16,
+        help="the number of batches to prefetch to the learner in distributed "
+            + "learning"
+    )
+    parser.add_argument(
         "--silent", action="store_true",
         help="will run without standard output from agents"
     )

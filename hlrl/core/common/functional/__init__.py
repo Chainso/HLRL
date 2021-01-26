@@ -1,1 +1,1 @@
-from .compose import compose
+from .functions import *

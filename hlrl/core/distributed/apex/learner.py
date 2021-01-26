@@ -1,7 +1,7 @@
 
 import queue
 
-from multiprocessing import Barrier, Queue, Event
+from multiprocessing import Barrier, Event, Pipe, Queue
 from time import time
 
 from hlrl.core.algos import RLAlgo
@@ -21,6 +21,8 @@ class ApexLearner():
             training_steps: int,
             sample_queue: Queue,
             priority_queue: Queue,
+            param_pipes: Tuple[Pipe] = [],
+            param_send_interval: int = 0,
             save_path: str = None,
             save_interval: int = 10000
         ) -> None:
@@ -35,9 +37,16 @@ class ApexLearner():
             training_steps: The number of steps to train for.
             sample_queue: The queue to receive buffer samples from.
             priority_queue: The queue to send updated values to.
+            param_pipes: A tuple of pipes to send the model state to
+                periodically.
+            param_send_interval: The number of training steps in between
+                parameter sends, 0 for never.
             save_path: The directory to save the model to.
             save_interval: The number of training steps in-between model saves.
         """
+        for pipe in param_pipes:
+            pipe.send(algo.save_dict())
+
         training_step = 0
         train_start = 0
 
@@ -46,7 +55,7 @@ class ApexLearner():
                 sample_start = time()
 
             sample = sample_queue.get()
-            rollouts, ids, is_weights = sample
+            rollouts, idxs, is_weights = sample
 
             if algo.logger is not None:
                 if train_start == 0:
@@ -60,7 +69,7 @@ class ApexLearner():
 
             new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
 
-            priority_queue.put((ids, new_qs, new_q_targs))
+            priority_queue.put((idxs, new_qs, new_q_targs))
 
             if algo.logger is not None:
                 train_end = time()
@@ -77,6 +86,10 @@ class ApexLearner():
             if(save_path is not None
                 and algo.training_steps % save_interval == 0):
                 algo.save(save_path)
+
+            if training_step % param_send_interval == 0:
+                for pipe in param_pipes:
+                    pipe.send(algo.save_dict())
 
             training_step += 1
 

@@ -1,5 +1,5 @@
 import queue
-from multiprocessing import Barrier, Queue
+from multiprocessing import Barrier, Pipe, Queue
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 
 from hlrl.core.agents import OffPolicyAgent
@@ -11,7 +11,12 @@ class QueueAgent(MethodWrapper):
     An agent that sends its experiences into a queue 1 at a time rather than
     training directly.
     """
-    def __init__(self, agent: OffPolicyAgent, experience_replay: PER):
+    def __init__(
+            self,
+            agent: OffPolicyAgent,
+            experience_replay: PER,
+            param_pipe: Optional[Pipe] = None
+        ):
         """
         Creates the queue agent, that passes experiences to a queue to be
         inserting into replay buffer.
@@ -20,10 +25,12 @@ class QueueAgent(MethodWrapper):
             agent: The off policy agent to wrap.
             experience_replay: The PER object responsible for computing the
                 errors and priorites of experiences.
+            param_pipe: The pipe to receive models parameters from.
         """
         super().__init__(agent)
 
         self.experience_replay = experience_replay
+        self.param_pipe = param_pipe
 
     def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
         """
@@ -32,7 +39,23 @@ class QueueAgent(MethodWrapper):
         Returns:
             The serialized wrapper.
         """
-        return (type(self), (self.obj, self.experience_replay))
+        return (type(self), (self.obj, self.experience_replay, self.param_pipe))
+
+    def receive_parameters(self) -> None:
+        """
+        Checks to see if a new set of model parameters are available, and
+        the model if there is.
+        """
+        if self.param_pipe is not None and self.param_pipe.poll():
+            # Make sure to save env episodes and env steps since those would not
+            # be correct coming from another process
+            env_episodes = self.algo.env_episodes
+            env_steps = self.algo.env_steps
+
+            self.algo.load(self.param_pipe.recv())
+
+            self.algo.env_episodes = env_episodes
+            self.algo.env_steps = env_steps
 
     def train_step(
             self,
@@ -52,6 +75,9 @@ class QueueAgent(MethodWrapper):
             True, if ready experiences were used, False if the batch was too
             small.
         """
+        # Check to see if a new model was sent
+        self.receive_parameters()
+
         added = False
 
         # Get length of a random key

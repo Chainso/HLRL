@@ -8,7 +8,7 @@ import torch.multiprocessing as mp
 from hlrl.core.envs import Env
 from hlrl.core.algos import RLAlgo
 from hlrl.core.logger import TensorboardLogger
-from hlrl.core.common.functional import compose
+from hlrl.core.common.functional import compose, partial_generator
 from hlrl.core.distributed import ApexRunner
 from hlrl.core.agents import (
     OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent
@@ -43,6 +43,11 @@ class OffPolicyTrainer():
             n_steps (int): The number of decay steps.
             num_agents (int): The number of agents to run concurrently, 0 is
                 single process.
+            model_sync_interval (int): The number of training steps between
+                agent model syncs, if 0, all processes will share the same
+                model.
+            num_prefetch_batches (int): The number of batches to prefetch to the
+                learner in distributed learning.
             vectorized (bool): If the environment is vectorized.
             recurrent (bool),Make the network recurrent (using LSTM)
             play (bool): Runs the environment using the model instead of
@@ -120,17 +125,20 @@ class OffPolicyTrainer():
                 )
 
             algo.create_optimizers()
-
             algo.train()
-            algo.share_memory()
 
             # Experience replay
-            er_capacity = int(args.er_capacity)
+            # Won't increment in multiple processes to keep it consistent
+            # across actors
+            er_beta_increment = (
+                args.er_beta_increment if args.num_agents == 0 else 0
+            )
+
             if args.recurrent:
                 experience_replay_func = partial(
                     TorchR2D2, alpha=args.er_alpha, beta=args.er_beta,
-                    beta_increment=args.er_beta_increment,
-                    epsilon=args.er_epsilon, max_factor=args.max_factor
+                    beta_increment=er_beta_increment, epsilon=args.er_epsilon,
+                    max_factor=args.max_factor
                 )
 
                 agent_builder = compose(
@@ -146,11 +154,12 @@ class OffPolicyTrainer():
             else:
                 experience_replay_func = partial(
                     TorchPER, alpha=args.er_alpha, beta=args.er_beta,
-                    beta_increment=args.er_beta_increment,
-                    epsilon=args.er_epsilon
+                    beta_increment=er_beta_increment, epsilon=args.er_epsilon
                 )
 
-            experience_replay = experience_replay_func(capacity=er_capacity)
+            experience_replay = experience_replay_func(
+                capacity=args.er_capacity
+            )
 
             base_agent_logs_path = None
             if logs_path is not None:
@@ -172,20 +181,26 @@ class OffPolicyTrainer():
 
             # Multiple processes
             else:
+                param_pipes = [None] * args.num_agents
+
+                if args.model_sync_interval > 0:
+                    algo.share_memory()
+                    
+                    param_pipes = tuple(
+                        mp.Pipe(duplex=False) for _ in range(args.num_agents)
+                    )
+
                 done_event = mp.Event()
 
                 # Number of agents + worker + learner
                 queue_barrier = mp.Barrier(args.num_agents + 2)
 
                 max_queue_size = 64
-                agent_queue = mp.Queue(maxsize=max_queue_size)
-                sample_queue = mp.Queue(maxsize=max_queue_size)
-                priority_queue = mp.Queue(maxsize=max_queue_size)
-
-                learner_args = (
-                    algo, done_event, queue_barrier, args.training_steps,
-                    sample_queue, priority_queue, save_path, args.save_interval
+                agent_queue = mp.Queue(
+                    maxsize=args.num_prefetch_batches * args.num_agents * 4
                 )
+                sample_queue = mp.Queue(maxsize=args.num_prefetch_batches)
+                priority_queue = mp.Queue(maxsize=args.num_prefetch_batches)
 
                 worker_args = (
                     experience_replay, done_event, queue_barrier, agent_queue,
@@ -195,12 +210,15 @@ class OffPolicyTrainer():
 
                 # Must come before the other wrapper since there are infinite
                 # recursion errors
-                # TODO come up with a better way to implement wrappers      
+                # TODO come up with a better way to implement wrappers
                 agent_builder = compose(
                     agent_builder,
-                    partial(
+                    partial_generator(
                         QueueAgent,
-                        experience_replay=experience_replay_func(capacity=1)
+                        experience_replay=(
+                            experience_replay_func(capacity=1), False
+                        ),
+                        param_pipe=(iter(param_pipes), True)
                     )
                 )
                 agent_builder = compose(

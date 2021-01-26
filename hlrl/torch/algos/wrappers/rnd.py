@@ -95,20 +95,3 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
         """
         with torch.no_grad():
             return self._get_loss(next_state).item()
-
-    def save_dict(self):
-        """
-        Adds the rnd network to the save dict of the algorithm.
-        """
-        state_dict = self.om.save_dict()
-        state_dict["rnd"] = self.rnd.state_dict()
-        state_dict["rnd_target"] = self.rnd_target.state_dict()
-        state_dict["rnd_optim"] = self.rnd_optim.state_dict()
-
-        return state_dict
-
-    def load(self, load_path, load_dict=None):
-        if load_dict is None:
-            load_dict = self.load_dict(load_path)
-
-        self.om.load(load_path, load_dict)
