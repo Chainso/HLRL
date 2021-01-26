@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import torch
 import torch.nn as nn
 
@@ -22,13 +24,36 @@ class TorchRLAlgo(RLAlgo, nn.Module):
 
         self.device = torch.device(device)
 
-    def create_optimizers(self):
+    def create_optimizers(self) -> None:
         """
         Creates the optimizers for the algorithm, separate from the
         intialization so that the model can be moved to a different device first
         if needed.
         """
         raise NotImplementedError
+
+    def train_batch(
+            self,
+            batch: Dict[str, torch.Tensor],
+            *args: Any,
+            **kwargs: Any
+        ) -> Any:
+        """
+        Converts the tensors of the batch to the current device before training.
+
+        Args:
+            batch: The batch to train on.
+            args: The arguments of the algorithm train batch.
+            kwargs: The keyword arguments of the algorithm train batch.
+
+        Returns:
+            The train batch method of the underlying algorithm.
+        """
+        batch = {
+            key: batch[key].to(self.device) for key in batch
+        }
+
+        return self.om.train_batch(batch, *args, **kwargs)
 
     def save_dict(self):
         # Save all the dicts
