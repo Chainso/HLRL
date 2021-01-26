@@ -3,6 +3,7 @@ from functools import partial
 from pathlib import Path
 from typing import Callable
 
+import torch
 import torch.multiprocessing as mp
 
 from hlrl.core.envs import Env
@@ -95,6 +96,8 @@ class OffPolicyTrainer():
         )
 
         if args.num_agents == 0 or args.play:
+            algo = algo.to(args.device)
+
             agent_builder = compose(
                 agent_builder,
                 partial(TorchRLAgent, batch_state=not args.vectorized)
@@ -124,7 +127,6 @@ class OffPolicyTrainer():
                     agent_builder, partial(MunchausenAgent, alpha=0.9)
                 )
 
-            algo.create_optimizers()
             algo.train()
 
             # Experience replay
@@ -167,6 +169,8 @@ class OffPolicyTrainer():
 
             # Single process
             if args.num_agents == 0:
+                algo.create_optimizers()
+
                 agent_logger = None
                 if base_agent_logs_path is not None:
                     agent_logger = TensorboardLogger(base_agent_logs_path)
@@ -181,6 +185,7 @@ class OffPolicyTrainer():
 
             # Multiple processes
             else:
+                algo.device = torch.device("cpu")
                 param_pipes = [None] * args.num_agents
 
                 if args.model_sync_interval > 0:
@@ -201,6 +206,10 @@ class OffPolicyTrainer():
                 )
                 sample_queue = mp.Queue(maxsize=args.num_prefetch_batches)
                 priority_queue = mp.Queue(maxsize=args.num_prefetch_batches)
+
+                
+                algo = algo.to(args.device)
+                algo.create_optimizers()
 
                 learner_args = (
                     algo, done_event, queue_barrier, args.training_steps,

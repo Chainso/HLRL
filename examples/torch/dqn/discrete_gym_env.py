@@ -236,8 +236,6 @@ if __name__ == "__main__":
 
         algo = RND(algo, rnd_network, rnd_target, optim)
 
-    algo = algo.to(torch.device(args.device))
-
     if args.load_path is not None:
         algo.load(args.load_path)
 

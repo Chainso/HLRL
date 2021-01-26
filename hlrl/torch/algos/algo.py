@@ -15,7 +15,7 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         Args:
             device (str): The device of the tensors in the module.
             logger (Logger, optional): The logger to log results while training
-                nd evaluating.
+                and evaluating.
         """
         RLAlgo.__init__(self, logger)
         nn.Module.__init__(self)
