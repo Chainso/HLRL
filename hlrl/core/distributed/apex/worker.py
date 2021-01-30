@@ -41,7 +41,6 @@ class ApexWorker():
         while not done_event.is_set():
             # Add all new experiences to the queue
             try:
-                #for _ in range(agent_queue.qsize()):
                 experiences, priorities = agent_queue.get_nowait()
 
                 for experience, priority in zip(experiences, priorities):

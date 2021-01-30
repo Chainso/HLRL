@@ -142,6 +142,11 @@ if __name__ == "__main__":
             + "learning"
     )
     parser.add_argument(
+        "--local_batch_size", type=int, default=64,
+        help="the number of experiences the agent sends at once in distributed "
+            + "learning"
+    )
+    parser.add_argument(
         "--silent", action="store_true",
         help="will run without standard output from agents"
     )

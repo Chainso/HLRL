@@ -50,6 +50,8 @@ class OffPolicyTrainer():
                 model.
             num_prefetch_batches (int): The number of batches to prefetch to the
                 learner in distributed learning.
+            local_batch_size (int): The number of experiences the agent sends at
+                once in distributed learning.
             vectorized (bool): If the environment is vectorized.
             recurrent (bool),Make the network recurrent (using LSTM)
             play (bool): Runs the environment using the model instead of
@@ -271,8 +273,8 @@ class OffPolicyTrainer():
                     )
 
                     agent_train_args.append((
-                        1, 1, args.discount, args.n_steps, agent_queue,
-                        queue_barrier
+                        1, args.local_batch_size, args.discount, args.n_steps,
+                        agent_queue, queue_barrier
                     ))
                     agent_train_kwargs.append({
                         "exit_condition": done_event.is_set
