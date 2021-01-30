@@ -45,11 +45,11 @@ class ApexWorker():
                 experiences, priorities = agent_queue.get_nowait()
 
                 for experience, priority in zip(experiences, priorities):
-                    #for key in experience:
-                        #if key != "id":
-                            #experience[key] = experience[key].clone()
+                    for key in experience:
+                        if key != "id":
+                            experience[key] = experience[key].clone()
 
-                    experience_replay.add(experience, priority)
+                    experience_replay.add(experience, priority.item())
             except queue.Empty:
                 pass
 
