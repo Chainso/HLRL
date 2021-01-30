@@ -4,8 +4,8 @@ import torch
 import torch.multiprocessing as mp
 
 from hlrl.core.distributed.apex.learner import ApexLearner
+from hlrl.core.distributed.apex.worker import ApexWorker
 from hlrl.core.agents import RLAgent
-from hlrl.torch.distributed.apex.worker import TorchApexWorker
 
 class ApexRunner():
     """
@@ -34,6 +34,7 @@ class ApexRunner():
             self,
             learner_args: Tuple[Any, ...],
             learner_train_args: Tuple[Any, ...],
+            worker: ApexWorker,
             worker_args: Tuple[Any, ...],
             agents: Tuple[RLAgent, ...],
             agent_train_args: Tuple[Tuple[Any], ...],
@@ -47,6 +48,7 @@ class ApexRunner():
             learner_args: Arguments for the Ape-X learner.
             learner_train_args: Arguments to start the train method of the
                 learner.
+            worker: The worker for Ape-X.
             worker_args: Arguments for the Ape-X worker.
             agents: The pool of agents to run.
             agent_train_args: Arguments for the agent training processes.
@@ -58,7 +60,6 @@ class ApexRunner():
         all_procs = []
 
         # Create the worker for the model
-        worker = TorchApexWorker()
         worker_proc = mp.Process(target=worker.train, args=worker_args)
         all_procs.append(worker_proc)
 

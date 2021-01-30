@@ -20,6 +20,7 @@ from hlrl.torch.agents import (
     TorchRecurrentAgent, TorchOffPolicyAgent
 )
 from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
+from hlrl.torch.distributed import TorchApexWorker
 
 class OffPolicyTrainer():
     """
@@ -225,6 +226,7 @@ class OffPolicyTrainer():
                     args.model_sync_interval, save_path, args.save_interval
                 )
 
+                worker = TorchApexWorker()
                 worker_args = (
                     experience_replay, done_event, queue_barrier, agent_queue,
                     sample_queue, priority_queue, args.batch_size,
@@ -282,8 +284,8 @@ class OffPolicyTrainer():
 
                 runner = ApexRunner(done_event)
                 runner.start(
-                    learner_args, learner_train_args, worker_args, agents,
-                    agent_train_args, agent_train_kwargs
+                    learner_args, learner_train_args, worker, worker_args,
+                    agents, agent_train_args, agent_train_kwargs
                 )
 
     def _start_training(self, algo: TorchRLAlgo, args: Any) -> None:
