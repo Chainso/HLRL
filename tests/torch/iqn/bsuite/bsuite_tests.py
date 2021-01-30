@@ -1,4 +1,4 @@
-from hlrl.core.distributed import ApexWorker
+from hlrl.torch.distributed import TorchApexWorker
 
 def run_experiment(args, algo, agent_pool, env, experience_replay,
     experience_queue, done_event):
@@ -8,7 +8,7 @@ def run_experiment(args, algo, agent_pool, env, experience_replay,
     )
 
     # Start the worker for the model
-    worker = ApexWorker(algo, experience_replay, experience_queue)
+    worker = TorchApexWorker(algo, experience_replay, experience_queue)
     worker.train(
         agent_procs, done_event, args.batch_size, args.start_size,
         args.save_path, args.save_interval

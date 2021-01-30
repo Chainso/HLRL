@@ -12,6 +12,18 @@ class ApexWorker():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
+    def on_receive_experiences(self, experiences, priorities):
+        """
+        A function to call whenever a batch of experiences is received.
+
+        Args:
+            experiences: The receieved experience.
+            priorities: The priority of the experiences.
+        """
+        priorities = [priority.item() for priority in priorities]
+
+        return experiences, priorities
+
     def train(
             self,
             experience_replay: ExperienceReplay,
@@ -42,13 +54,12 @@ class ApexWorker():
             # Add all new experiences to the queue
             try:
                 experiences, priorities = agent_queue.get_nowait()
-
+                experiences, priorities = self.on_receive_experiences(
+                    experiences, priorities
+                )
+                
                 for experience, priority in zip(experiences, priorities):
-                    for key in experience:
-                        if key != "id":
-                            experience[key] = experience[key].clone()
-
-                    experience_replay.add(experience, priority.item())
+                    experience_replay.add(experience, priority)
             except queue.Empty:
                 pass
 

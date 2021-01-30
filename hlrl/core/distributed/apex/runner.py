@@ -4,8 +4,8 @@ import torch
 import torch.multiprocessing as mp
 
 from hlrl.core.distributed.apex.learner import ApexLearner
-from hlrl.core.distributed.apex.worker import ApexWorker
 from hlrl.core.agents import RLAgent
+from hlrl.torch.distributed.apex.worker import TorchApexWorker
 
 class ApexRunner():
     """
@@ -58,7 +58,7 @@ class ApexRunner():
         all_procs = []
 
         # Create the worker for the model
-        worker = ApexWorker()
+        worker = TorchApexWorker()
         worker_proc = mp.Process(target=worker.train, args=worker_args)
         all_procs.append(worker_proc)
 
