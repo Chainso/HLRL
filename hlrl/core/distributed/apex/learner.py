@@ -100,7 +100,9 @@ class ApexLearner():
                 and algo.training_steps % save_interval == 0):
                 algo.save(save_path)
 
-            if training_step % param_send_interval == 0:
+            if (param_send_interval > 0
+                and training_step % param_send_interval == 0):
+                
                 for pipe in param_pipes:
                     pipe.send(algo.save_dict())
 

@@ -190,7 +190,10 @@ class OffPolicyTrainer():
                 send_pipes = []
 
                 if args.model_sync_interval == 0:
+                    algo = algo.to(args.device)
                     algo.share_memory()
+
+                    recv_pipes = [None] * args.num_agents
                 else:
                     algo.device = torch.device("cpu")
 
@@ -233,6 +236,7 @@ class OffPolicyTrainer():
                     agent_builder,
                     partial_iterator(
                         QueueAgent,
+                        agent_id=(iter(range(args.num_agents)), True),
                         experience_replay=(
                             experience_replay_func(capacity=1), False
                         ),

@@ -14,6 +14,7 @@ class QueueAgent(MethodWrapper):
     def __init__(
             self,
             agent: OffPolicyAgent,
+            agent_id: int,
             experience_replay: PER,
             param_pipe: Optional[Pipe] = None
         ):
@@ -23,12 +24,14 @@ class QueueAgent(MethodWrapper):
 
         Args:
             agent: The off policy agent to wrap.
+            agent_id: The id of the agent.
             experience_replay: The PER object responsible for computing the
                 errors and priorites of experiences.
             param_pipe: The pipe to receive models parameters from.
         """
         super().__init__(agent)
 
+        self.id = agent_id
         self.experience_replay = experience_replay
         self.param_pipe = param_pipe
 
@@ -39,7 +42,10 @@ class QueueAgent(MethodWrapper):
         Returns:
             The serialized wrapper.
         """
-        return (type(self), (self.obj, self.experience_replay, self.param_pipe))
+        return (
+            type(self),
+            (self.obj, self.id, self.experience_replay, self.param_pipe)
+        )
 
     def receive_parameters(self) -> None:
         """
@@ -96,7 +102,7 @@ class QueueAgent(MethodWrapper):
                 priorities = self.experience_replay.get_priority(errors)
 
                 for i in range(len(batch)):
-                    batch[i]["id"] = (self.algo.env_steps, i)
+                    batch[i]["id"] = (self.id, self.algo.env_steps, i)
 
                 try:
                     experience_queue.put_nowait((batch, priorities))

@@ -16,7 +16,6 @@ if __name__ == "__main__":
     from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
     mp.set_start_method("spawn")
-    mp.set_sharing_strategy("file_system")
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(

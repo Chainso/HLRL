@@ -244,7 +244,7 @@ class RLAgent():
                 if key.startswith("next_"):
                     experience[key] = experiences[-1][key]
 
-            #experience["terminal"] = experiences[-1]["terminal"]
+            experience["terminal"] = experiences[-1]["terminal"]
 
         return experience
 
