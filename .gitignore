@@ -114,6 +114,9 @@ events.out.tfevents.*
 *.pt
 *.zip
 
+# Model Configurations
+*.yml
+
 # Testing files
 *.csv
 *.png
