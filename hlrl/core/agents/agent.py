@@ -202,9 +202,11 @@ class RLAgent():
         # The simplest agent doesn't need to do anything
         return ready_experiences
 
-    def n_step_decay(self,
-                     experiences: Tuple[Dict[str, Any], ...],
-                     decay: float) -> Any:
+    def n_step_decay(
+            self,
+            experiences: Tuple[Dict[str, Any], ...],
+            decay: float
+        ) -> Any:
         """
         Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples
 
@@ -220,9 +222,11 @@ class RLAgent():
             for i, experience in enumerate(experiences)
         ])
 
-    def get_buffer_experience(self,
-                              experiences: List[Dict[str, Any]],
-                              decay: float) -> Any:
+    def get_buffer_experience(
+            self,
+            experiences: List[Dict[str, Any]],
+            decay: float
+        ) -> Any:
         """
         Perpares the experience to add to the buffer.
 
