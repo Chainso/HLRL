@@ -4,10 +4,10 @@ hlrl.core.common.functional package
 Submodules
 ----------
 
-hlrl.core.common.functional.compose module
-------------------------------------------
+hlrl.core.common.functional.functions module
+--------------------------------------------
 
-.. automodule:: hlrl.core.common.functional.compose
+.. automodule:: hlrl.core.common.functional.functions
    :members:
    :undoc-members:
    :show-inheritance:
