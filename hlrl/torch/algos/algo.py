@@ -88,7 +88,7 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
             batch_size: int,
             start_size: int,
             save_path: Optional[str] = None,
-            save_interval: int = 110000
+            save_interval: int = 10000
         ):
         """
         Starts training the network.
@@ -105,12 +105,14 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
         if(batch_size <= len(experience_replay)
            and start_size <= len(experience_replay)):
             sample = experience_replay.sample(batch_size)
-            rollouts, idxs, is_weights = sample
+            rollouts, ids, is_weights = sample
 
             new_q, new_q_targ = self.train_batch(rollouts, is_weights)
-            idxs = idxs[-len(new_q):]
+            ids = ids[-len(new_q):]
 
-            experience_replay.update_priorities(idxs, new_q, new_q_targ)
+            experience_replay.calculate_and_update_priorities(
+                ids, new_q, new_q_targ
+            )
 
             if(save_path is not None
                and self.training_steps % save_interval == 0):

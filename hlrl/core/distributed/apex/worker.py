@@ -19,6 +19,9 @@ class ApexWorker():
         Args:
             experiences: The receieved experience.
             priorities: The priority of the experiences.
+
+        Returns:
+            The received experiences and priorities of the batch.
         """
         priorities = [priority.item() for priority in priorities]
 

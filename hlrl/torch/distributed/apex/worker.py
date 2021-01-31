@@ -15,6 +15,9 @@ class TorchApexWorker(ApexWorker):
         Args:
             experiences: The receieved experience.
             priorities: The priority of the experiences.
+
+        Returns:
+            The received experiences and priorities of the batch.
         """
         experiences, priorities = super().on_receive_experiences(
             experiences, priorities
