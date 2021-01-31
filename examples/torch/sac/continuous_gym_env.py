@@ -3,9 +3,10 @@ if(__name__ == "__main__"):
     import torch.nn as nn
     import torch.multiprocessing as mp
     import gym
+    import yaml
 
     from gym.wrappers import RescaleAction
-    from argparse import ArgumentParser
+    from argparse import ArgumentParser, Namespace
     from functools import partial
     from pathlib import Path
 
@@ -35,6 +36,10 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "--load_path", type=str,
         help="the path of the saved model to load"
+    )
+    parser.add_argument(
+        "-c", "--config_file", type=str,
+        help="the path of the yaml configuration file"
     )
 
     # Env args
@@ -183,6 +188,11 @@ if(__name__ == "__main__"):
 
     args = parser.parse_args()
 
+    if args.config_path is not None:
+        with open(args.config_path, "r") as config_file:
+            arg_dict = yaml.load(config_file)
+            args = Namespace(**arg_dict)
+
     logs_path = None
     save_path = None
 
@@ -194,6 +204,9 @@ if(__name__ == "__main__"):
         save_path = Path(args.experiment_path, "models")
         save_path.mkdir(parents=True, exist_ok=True)
         save_path = str(save_path)
+
+        with open(Path(args.experiment_path, "config.yml"), "w") as config_file:
+            yaml.dump(vars(args), config_file)
 
     # Initialize the environment, and rescale for Tanh policy
     args.vectorized = False
