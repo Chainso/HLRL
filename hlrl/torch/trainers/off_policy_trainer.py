@@ -207,7 +207,7 @@ class OffPolicyTrainer():
 
             # Single process
             if args.num_agents == 0:
-                self._start_training()
+                self._start_training(algo, args)
 
                 agent_logger = None
                 if base_agent_logs_path is not None:
