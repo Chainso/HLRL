@@ -130,7 +130,7 @@ if(__name__ == "__main__"):
         help="the number of agents to run concurrently, 0 is single process"
     )
     parser.add_argument(
-        "--model_sync_interval", type=int, default=400,
+        "--model_sync_interval", type=int, default=0,
         help="the number of training steps between agent model syncs, if 0, "
             + "all processes will share the same model",
     )
