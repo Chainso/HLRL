@@ -29,7 +29,7 @@ Installation is done by cloning the git repository and installing using [`setup.
 ```
 git clone https://github.com/Chainso/HLRL
 cd HLRL
-python setup.py install
+pip install .
 ```
 
 <br />
