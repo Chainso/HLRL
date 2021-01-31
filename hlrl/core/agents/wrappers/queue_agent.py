@@ -50,7 +50,7 @@ class QueueAgent(MethodWrapper):
     def receive_parameters(self) -> None:
         """
         Checks to see if a new set of model parameters are available, and
-        the model if there is.
+        updates the model if there is.
         """
         if self.param_pipe is not None and self.param_pipe.poll():
             # Make sure to save env episodes and env steps since those would not
