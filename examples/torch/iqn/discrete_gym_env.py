@@ -192,8 +192,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.config_path is not None:
-        with open(args.config_path, "r") as config_file:
+    if args.config_file is not None:
+        with open(args.config_file, "r") as config_file:
             arg_dict = yaml.load(config_file)
             args = Namespace(**arg_dict)
 
