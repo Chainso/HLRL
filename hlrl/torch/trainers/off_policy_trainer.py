@@ -123,12 +123,18 @@ class OffPolicyTrainer():
                 recv_pipes = []
                 send_pipes = []
 
+                prestart_func = None
+
                 if args.model_sync_interval == 0:
-                    algo = algo.to(args.device)
+                    self._start_training(algo, args)
                     algo.share_memory()
 
                     recv_pipes = [None] * args.num_agents
                 else:
+                    prestart_func = partial(
+                        self._start_training, algo=algo, args=args
+                    )
+
                     algo.device = torch.device("cpu")
 
                     for i in range(args.num_agents):
@@ -228,17 +234,13 @@ class OffPolicyTrainer():
                 # Number of agents + worker + learner
                 queue_barrier = mp.Barrier(args.num_agents + 2)
 
-                max_queue_size = 64
                 agent_queue = mp.Queue(
                     maxsize=args.num_prefetch_batches * args.num_agents * 4
                 )
                 sample_queue = mp.Queue(maxsize=args.num_prefetch_batches)
                 priority_queue = mp.Queue(maxsize=args.num_prefetch_batches)
 
-                learner_args = (
-                    dummy_experience_replay,
-                    partial(self._start_training, args=args)
-                )
+                learner_args = (dummy_experience_replay,)
                 learner_train_args = (
                     algo, done_event, queue_barrier, args.training_steps,
                     sample_queue, priority_queue, send_pipes,
@@ -279,7 +281,7 @@ class OffPolicyTrainer():
                 runner = ApexRunner(done_event)
                 runner.start(
                     learner_args, learner_train_args, worker, worker_args,
-                    agents, agent_train_args, agent_train_kwargs
+                    agents, agent_train_args, agent_train_kwargs, prestart_func
                 )
 
     def _start_training(self, algo: TorchRLAlgo, args: Any) -> None:

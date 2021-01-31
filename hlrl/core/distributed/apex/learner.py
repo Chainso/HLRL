@@ -16,8 +16,7 @@ class ApexLearner():
     """
     def __init__(
             self,
-            experience_replay: PER,
-            prestart_func: Optional[Callable[[RLAlgo], Any]] = None
+            experience_replay: PER
         ):
         """
         Creates the learner for a distributed RL algorithm.
@@ -25,10 +24,8 @@ class ApexLearner():
         Args:
             experience_replay: The PER object responsible for computing the
                 errors and priorites of training batch.
-            prestart_func: A function to run when training start.
         """
         self.experience_replay = experience_replay
-        self.prestart_func = prestart_func
 
     def train(
             self,
@@ -61,9 +58,6 @@ class ApexLearner():
             save_path: The directory to save the model to.
             save_interval: The number of training steps in-between model saves.
         """
-        if self.prestart_func is not None:
-            self.prestart_func(algo)
-
         if param_send_interval > 0:
             for pipe in param_pipes:
                 pipe.send(algo.save_dict())

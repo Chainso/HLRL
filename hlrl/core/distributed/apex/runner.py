@@ -1,6 +1,5 @@
-from typing import Tuple, Any, Dict, Callable, Union
+from typing import Tuple, Any, Dict, Callable, Optional, Union
 
-import torch
 import torch.multiprocessing as mp
 
 from hlrl.core.distributed.apex.learner import ApexLearner
@@ -38,7 +37,8 @@ class ApexRunner():
             worker_args: Tuple[Any, ...],
             agents: Tuple[RLAgent, ...],
             agent_train_args: Tuple[Tuple[Any], ...],
-            agent_train_kwargs: Tuple[Dict[str, Any], ...]
+            agent_train_kwargs: Tuple[Dict[str, Any], ...],
+            pretrain_func: Optional[Callable]
         ) -> None:
         """
         Starts the runner, creating and starting the learner, worker and agent
@@ -54,6 +54,7 @@ class ApexRunner():
             agent_train_args: Arguments for the agent training processes.
             agent_train_kwargs: Keyword arguments for the agent training
                 processes.
+            pretrain_func: A function to call before training starts.
         """
         assert len(agents) == len(agent_train_args) == len(agent_train_kwargs)
 
@@ -80,6 +81,9 @@ class ApexRunner():
             proc.start()
 
         # Create the learner
+        if pretrain_func is not None:
+            pretrain_func()
+
         learner = ApexLearner(*learner_args)
         learner.train(*learner_train_args)
 
