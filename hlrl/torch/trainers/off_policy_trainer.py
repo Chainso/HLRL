@@ -99,21 +99,73 @@ class OffPolicyTrainer():
             OffPolicyAgent, algo=algo, render=args.render, silent=args.silent
         )
 
-        if args.num_agents == 0 or args.play:
-            algo = algo.to(args.device)
-
-            agent_builder = compose(
-                agent_builder,
-                partial(TorchRLAgent, batch_state=not args.vectorized)
+        if not args.play:
+            # Experience replay
+            # Won't increment in multiple processes to keep it consistent
+            # across actors
+            er_beta_increment = (
+                args.er_beta_increment if args.num_agents == 0 else 0
             )
-            agent_builder = compose(agent_builder, TorchOffPolicyAgent)
 
             if args.recurrent:
-                agent_builder = compose(
-                    agent_builder, SequenceInputAgent, TorchRecurrentAgent
+                experience_replay_func = partial(
+                    TorchR2D2, alpha=args.er_alpha, beta=args.er_beta,
+                    beta_increment=er_beta_increment, epsilon=args.er_epsilon,
+                    max_factor=args.max_factor
+                )
+            else:
+                experience_replay_func = partial(
+                    TorchPER, alpha=args.er_alpha, beta=args.er_beta,
+                    beta_increment=er_beta_increment, epsilon=args.er_epsilon
                 )
 
+            if args.num_agents > 0:
+                recv_pipes = []
+                send_pipes = []
+
+                if args.model_sync_interval == 0:
+                    algo = algo.to(args.device)
+                    algo.share_memory()
+
+                    recv_pipes = [None] * args.num_agents
+                else:
+                    algo.device = torch.device("cpu")
+
+                    for i in range(args.num_agents):
+                        param_pipe = mp.Pipe(duplex=False)
+
+                        recv_pipes.append(param_pipe[0])
+                        send_pipes.append(param_pipe[1])
+
+                # Just needed to get the error/priority calculations
+                dummy_experience_replay = experience_replay_func(capacity=1)
+
+                # Must come before the other wrapper since there are infinite
+                # recursion errors
+                # TODO come up with a better way to implement wrappers
+                agent_builder = compose(
+                    agent_builder,
+                    partial_iterator(
+                        QueueAgent,
+                        agent_id=(iter(range(args.num_agents)), True),
+                        experience_replay=(dummy_experience_replay, False),
+                        param_pipe=(iter(recv_pipes), True)
+                    )
+                )
+
+        agent_builder = compose(
+            agent_builder,
+            partial(TorchRLAgent, batch_state=not args.vectorized)
+        )
+        agent_builder = compose(agent_builder, TorchOffPolicyAgent)
+
+        if args.recurrent:
+            agent_builder = compose(
+                agent_builder, SequenceInputAgent, TorchRecurrentAgent
+            )
+
         if args.play:
+            algo = algo.to(args.device)
             algo.eval()
 
             agent_logger = (
@@ -133,20 +185,7 @@ class OffPolicyTrainer():
 
             algo.train()
 
-            # Experience replay
-            # Won't increment in multiple processes to keep it consistent
-            # across actors
-            er_beta_increment = (
-                args.er_beta_increment if args.num_agents == 0 else 0
-            )
-
             if args.recurrent:
-                experience_replay_func = partial(
-                    TorchR2D2, alpha=args.er_alpha, beta=args.er_beta,
-                    beta_increment=er_beta_increment, epsilon=args.er_epsilon,
-                    max_factor=args.max_factor
-                )
-
                 agent_builder = compose(
                     agent_builder,
                     partial(
@@ -156,11 +195,6 @@ class OffPolicyTrainer():
                         ),
                         overlap=args.burn_in_length
                     )
-                )
-            else:
-                experience_replay_func = partial(
-                    TorchPER, alpha=args.er_alpha, beta=args.er_beta,
-                    beta_increment=er_beta_increment, epsilon=args.er_epsilon
                 )
 
             experience_replay = experience_replay_func(
@@ -189,26 +223,6 @@ class OffPolicyTrainer():
 
             # Multiple processes
             else:
-                recv_pipes = []
-                send_pipes = []
-
-                if args.model_sync_interval == 0:
-                    algo = algo.to(args.device)
-                    algo.share_memory()
-
-                    recv_pipes = [None] * args.num_agents
-                else:
-                    algo.device = torch.device("cpu")
-
-                    for i in range(args.num_agents):
-                        param_pipe = mp.Pipe(duplex=False)
-
-                        recv_pipes.append(param_pipe[0])
-                        send_pipes.append(param_pipe[1])
-
-                # Just needed to get the error/priority calculations
-                dummy_experience_replay = experience_replay_func(capacity=1)
-
                 done_event = mp.Event()
 
                 # Number of agents + worker + learner
@@ -237,29 +251,6 @@ class OffPolicyTrainer():
                     sample_queue, priority_queue, args.batch_size,
                     args.start_size
                 )
-
-                # Must come before the other wrapper since there are infinite
-                # recursion errors
-                # TODO come up with a better way to implement wrappers
-                agent_builder = compose(
-                    agent_builder,
-                    partial_iterator(
-                        QueueAgent,
-                        agent_id=(iter(range(args.num_agents)), True),
-                        experience_replay=(dummy_experience_replay, False),
-                        param_pipe=(iter(recv_pipes), True)
-                    )
-                )
-                agent_builder = compose(
-                    agent_builder,
-                    partial(TorchRLAgent, batch_state=not args.vectorized)
-                )
-                agent_builder = compose(agent_builder, TorchOffPolicyAgent)
-                
-                if args.recurrent:
-                    agent_builder = compose(
-                        agent_builder, SequenceInputAgent, TorchRecurrentAgent
-                    )
 
                 agents = []
                 agent_train_args = []
