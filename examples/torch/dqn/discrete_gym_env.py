@@ -140,7 +140,7 @@ if __name__ == "__main__":
     # Experience Replay args
     parser.add_argument(
 		"--er_capacity", type=int, default=50000,
-		help="the maximum amount of episodes in the replay buffer"
+		help="the maximum amount of experiences in the replay buffer"
 	)
     parser.add_argument(
 		"--er_alpha", type=float, default=0.6,
