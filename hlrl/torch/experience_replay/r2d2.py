@@ -1,7 +1,6 @@
 from typing import Dict
 
 import torch
-import numpy as np
 
 from .per import TorchPER
 

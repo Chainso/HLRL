@@ -10,6 +10,18 @@ class TorchPER(PER):
     A Prioritized Experience Replay implementation using torch tensors
     https://arxiv.org/abs/1511.05952
     """
+    def get_priority(self, error: torch.Tensor) -> np.array:
+        """
+        Computes the priority for the given error.
+
+        Args:
+            error: The error to get the priority for.
+        
+        Returns:
+            The calculated priority using the error given.
+        """
+        return super().get_priority(error).cpu().numpy()
+
     def get_error(
             self,
             q_val: torch.Tensor,

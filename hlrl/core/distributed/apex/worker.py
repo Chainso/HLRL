@@ -23,8 +23,6 @@ class ApexWorker():
         Returns:
             The received experiences and priorities of the batch.
         """
-        priorities = [priority.item() for priority in priorities]
-
         return experiences, priorities
 
     def train(
