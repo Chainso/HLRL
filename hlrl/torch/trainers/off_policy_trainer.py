@@ -206,6 +206,8 @@ class OffPolicyTrainer():
                         recv_pipes.append(param_pipe[0])
                         send_pipes.append(param_pipe[1])
 
+                # Just needed to get the error/priority calculations
+                dummy_experience_replay = experience_replay_func(capacity=1)
 
                 done_event = mp.Event()
 
@@ -219,7 +221,10 @@ class OffPolicyTrainer():
                 sample_queue = mp.Queue(maxsize=args.num_prefetch_batches)
                 priority_queue = mp.Queue(maxsize=args.num_prefetch_batches)
 
-                learner_args = (partial(self._start_training, args=args),)
+                learner_args = (
+                    dummy_experience_replay,
+                    partial(self._start_training, args=args)
+                )
                 learner_train_args = (
                     algo, done_event, queue_barrier, args.training_steps,
                     sample_queue, priority_queue, send_pipes,
@@ -241,9 +246,7 @@ class OffPolicyTrainer():
                     partial_iterator(
                         QueueAgent,
                         agent_id=(iter(range(args.num_agents)), True),
-                        experience_replay=(
-                            experience_replay_func(capacity=1), False
-                        ),
+                        experience_replay=(dummy_experience_replay, False),
                         param_pipe=(iter(recv_pipes), True)
                     )
                 )

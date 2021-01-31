@@ -5,6 +5,7 @@ from multiprocessing import Barrier, Event, Pipe, Queue
 from time import time
 
 from hlrl.core.algos import RLAlgo
+from hlrl.core.experience_replay import PER
 
 class ApexLearner():
     """
@@ -13,13 +14,20 @@ class ApexLearner():
     Based on Ape-X:
     https://arxiv.org/pdf/1803.00933.pdf
     """
-    def __init__(self, prestart_func: Optional[Callable[[RLAlgo], Any]] = None):
+    def __init__(
+            self,
+            experience_replay: PER,
+            prestart_func: Optional[Callable[[RLAlgo], Any]] = None
+        ):
         """
         Creates the learner for a distributed RL algorithm.
 
         Args:
+            experience_replay: The PER object responsible for computing the
+                errors and priorites of training batch.
             prestart_func: A function to run when training start.
         """
+        self.experience_replay = experience_replay
         self.prestart_func = prestart_func
 
     def train(
@@ -68,7 +76,7 @@ class ApexLearner():
                 sample_start = time()
 
             sample = sample_queue.get()
-            rollouts, idxs, is_weights = sample
+            rollouts, ids, is_weights = sample
 
             if algo.logger is not None:
                 if train_start == 0:
@@ -82,7 +90,10 @@ class ApexLearner():
 
             new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
 
-            priority_queue.put((idxs, new_qs, new_q_targs))
+            errors = self.experience_replay.get_error(new_qs, new_q_targs)
+            priorities = self.experience_replay.get_priority(errors)
+
+            priority_queue.put((ids, priorities))
 
             if algo.logger is not None:
                 train_end = time()

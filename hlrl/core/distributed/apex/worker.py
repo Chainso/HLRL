@@ -69,10 +69,8 @@ class ApexWorker():
             # Receive new Q-values and targets to update
             try:
                 for _ in range(priority_queue.qsize()):
-                    ids, new_qs, new_q_targs = priority_queue.get_nowait()
-                    experience_replay.calculate_and_update_priorities(
-                        ids, new_qs, new_q_targs
-                    )
+                    ids, priorities = priority_queue.get_nowait()
+                    experience_replay.update_priorities(ids, priorities)
             except queue.Empty:
                 pass
 
