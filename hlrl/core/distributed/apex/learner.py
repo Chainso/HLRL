@@ -107,6 +107,8 @@ class ApexLearner():
                     algo.training_steps
                 )
 
+            training_step += 1
+
             if(save_path is not None
                 and algo.training_steps % save_interval == 0):
                 algo.save(save_path)
@@ -116,8 +118,6 @@ class ApexLearner():
                 
                 for pipe in param_pipes:
                     pipe.send(algo.save_dict())
-
-            training_step += 1
 
         # Signal exit
         done_event.set()
