@@ -10,6 +10,7 @@ HLRL is High Level Reinforcement Learning, a library that implements many state 
     - [Agents](#agents)
     - [Algorithms](#algorithms)
     - [Experience Replay](#experience-replay)
+    - [Distributed](#distributed)
     - [Environments](#environments)
     - [Loggers](#loggers)
     - [Policies](#policies)
@@ -43,11 +44,15 @@ python setup.py install
 
 ### Algorithms
 
-[`hlrl.*.algos`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/algos) contain the logic for the inference and training of reinforcement learning algorithms.
+[`hlrl.*.algos`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/algos) contains the logic for the inference and training of reinforcement learning algorithms.
 
 ### Experience Replay
 
 [`hlrl.*.experience_replay`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/experience_replay) are the storage components for off-policy algorithms.
+
+### Distributed
+
+[`hlrl.*.distributed`](https://github.com/Chainso/HLRL/tree/master/hlrl/core/distributed) holds architecture for distributed training of algorithms.
 
 ### Environments
 
