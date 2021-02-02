@@ -1,6 +1,6 @@
 import queue
 from multiprocessing import Barrier, Pipe, Queue
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from hlrl.core.agents import OffPolicyAgent
 from hlrl.core.experience_replay import PER
