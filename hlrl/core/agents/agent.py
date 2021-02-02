@@ -278,7 +278,7 @@ class RLAgent():
                    batch_size: int,
                    learner: Any,
                    *learner_args: Any,
-                   **learner_kwargs: Any) -> bool:
+                   **learner_kwargs: Any) -> Dict[str, List[Any]]:
         """
         Trains on the ready experiences.
 
@@ -290,8 +290,7 @@ class RLAgent():
             learner_kwargs: Any keyword arguments for the learner.
 
         Returns:
-            True, if ready experiences were used, False if the batch was too
-            small.
+            The unused ready experiences.
         """
         # Get length of a random key
         keys = list(ready_experiences)
@@ -303,9 +302,9 @@ class RLAgent():
                     learn_batch, *learner_args, **learner_kwargs
                 )
 
-                return True
+                ready_experiences = {}
 
-        return False
+        return ready_experiences
 
     def step(self,
              with_next_step: bool = False) -> None:
@@ -477,13 +476,10 @@ class RLAgent():
                     # Do n-step decay and add to the buffer
                     self.add_to_buffer(ready_experiences, experiences, decay)
 
-                trained = self.train_step(
+                ready_experiences = self.train_step(
                     ready_experiences, batch_size, learner, *learner_args,
                     **learner_kwargs
                 )
-
-                if (trained):
-                    ready_experiences = {}
 
                 if self.logger is not None:
                     self.logger["Train/Agent Steps per Second"] = (
@@ -495,6 +491,11 @@ class RLAgent():
             # Add the rest to the buffer
             while len(experiences) > 0:
                 self.add_to_buffer(ready_experiences, experiences, decay)
+
+                ready_experiences = self.train_step(
+                    ready_experiences, batch_size, learner, *learner_args,
+                    **learner_kwargs
+                )
 
             self.algo.env_episodes += 1
 
