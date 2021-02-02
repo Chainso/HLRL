@@ -82,7 +82,7 @@ class OffPolicyAgent(RLAgent):
                    batch_size: int,
                    experience_replay: ExperienceReplay,
                    *train_args: Any,
-                   **train_kwargs: Any) -> bool:
+                   **train_kwargs: Any) -> Dict[str, List[Any]]:
         """
         Trains on the ready experiences if the batch size is met.
 
@@ -95,11 +95,8 @@ class OffPolicyAgent(RLAgent):
             train_kwargs: Any keyword arguments for the algorithm training.
 
         Returns:
-            True, if ready experiences were used, False if the batch was too
-            small.
+            The ready experiences that were not added to the replay buffer.
         """
-        added = False
-
         # Get length of a random key
         keys = list(ready_experiences)
         if len(keys) > 0:
@@ -120,10 +117,10 @@ class OffPolicyAgent(RLAgent):
 
                     experience_replay.add(experience, priority.item())
 
-                added = True
+                ready_experiences = {}
 
         self.algo.train_from_buffer(
             experience_replay, *train_args, **train_kwargs
         )
 
-        return added
+        return ready_experiences

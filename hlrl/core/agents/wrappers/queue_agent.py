@@ -68,7 +68,7 @@ class QueueAgent(MethodWrapper):
             ready_experiences: Dict[str, Iterable[Any]],
             batch_size: int,
             experience_queue: Queue
-        ) -> bool:
+        ) -> Dict[str, List[Any]]:
         """
         Trains on the ready experiences.
 
@@ -78,13 +78,10 @@ class QueueAgent(MethodWrapper):
             experience_queue: The queue to send experiences to.
 
         Returns:
-            True, if ready experiences were used, False if the batch was too
-            small.
+            The ready experiences that were not added to the queue.
         """
         # Check to see if a new model was sent
         self.receive_parameters()
-
-        added = False
 
         # Get length of a random key
         keys = list(ready_experiences)
@@ -106,11 +103,11 @@ class QueueAgent(MethodWrapper):
 
                 try:
                     experience_queue.put_nowait((batch, priorities))
-                    added = True
+                    ready_experiences = {}
                 except queue.Full:
                     pass
 
-        return added
+        return ready_experiences
 
     def train(
             self,
