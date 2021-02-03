@@ -196,7 +196,7 @@ if __name__ == "__main__":
         play = args.play
 
         with open(args.config_file, "r") as config_file:
-            arg_dict = yaml.load(config_file)
+            arg_dict = yaml.load(config_file, Loader=yaml.FullLoader)
             args = Namespace(**arg_dict)
 
         args.play = play
