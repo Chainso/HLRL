@@ -162,7 +162,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
                 action_gap = action_gap[:, 0] - action_gap[:, 1]
                 action_gap = action_gap.item()
 
-                self.logger["Training/Action-Gap"] = (
+                self.logger["Train/Action-Gap"] = (
                     action_gap, self.env_steps
                 )
 
