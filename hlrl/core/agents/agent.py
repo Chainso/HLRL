@@ -217,10 +217,19 @@ class RLAgent():
         Returns:
             The decayed reward.
         """
-        return sum([
-            experience["reward"] * (decay ** i)
-            for i, experience in enumerate(experiences)
-        ])
+        # Want to check for terminals as well since envs may auto reset
+        decayed_experience = experiences.popleft()
+
+        reward = decayed_experience["reward"]
+        terminal_mask = 1 - decayed_experience["terminal"]
+
+        for i, experience in enumerate(experiences, start=1):
+            reward += terminal_mask * (decay ** i) * experience["reward"]
+            terminal_mask *= 1 - experience["terminal"]
+
+        experiences.appendleft(decayed_experience)
+
+        return reward
 
     def get_buffer_experience(
             self,

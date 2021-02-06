@@ -9,11 +9,13 @@ from hlrl.core.envs.env import Env
 
 class UnityEnv(Env):
     """
-    A environment from Unity
+    A environment from Unity.
     """
-    def __init__(self,
-                 env: UnityEnvironment,
-                 behaviour_name: Optional[str] = None):
+    def __init__(
+            self,
+            env: UnityEnvironment,
+            behaviour_name: Optional[str] = None
+        ):
         """
         Creates a vectorized environment of the given environment from Unity
 
@@ -33,6 +35,9 @@ class UnityEnv(Env):
 
         self.state_space = self.spec.observation_shapes[0]
         self.action_space = (self.spec.action_spec.continuous_size,)
+
+        # Auto resetting env
+        self.terminal = False
 
     def _update_env_state(
             self
@@ -66,13 +71,13 @@ class UnityEnv(Env):
             if agent_id in agent_ids:
                 self._state[agent_id] = terminal_step.obs[0]
                 self.reward[agent_id] = [terminal_step.reward]
-                terminal[agent_id] = [not terminal_step.interrupted]
+                terminal[agent_id] = [terminal_step.interrupted]
                 self.info[agent_id] = [None]
             else:
                 agent_ids.append(agent_id)
                 self._state.append(terminal_step.obs[0])
                 self.reward.append([terminal_step.reward])
-                terminal.append([not terminal_step.interrupted])
+                terminal.append([terminal_step.interrupted])
                 self.info.append([None])
 
         sort_order = np.argsort(agent_ids)
@@ -80,7 +85,6 @@ class UnityEnv(Env):
         self._state = np.array(self._state)[sort_order]
         self.reward = np.array(self.reward)[sort_order]
         terminal = np.array(terminal)[sort_order]
-        self.terminal = np.prod(terminal)
         self.info = np.array(self.info)[sort_order]
 
         return self._state, self.reward, terminal, self.info
