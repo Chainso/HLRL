@@ -9,13 +9,11 @@ from hlrl.core.envs.env import Env
 
 class UnityEnv(Env):
     """
-    A environment from Unity.
+    A environment from Unity
     """
-    def __init__(
-            self,
-            env: UnityEnvironment,
-            behaviour_name: Optional[str] = None
-        ):
+    def __init__(self,
+                 env: UnityEnvironment,
+                 behaviour_name: Optional[str] = None):
         """
         Creates a vectorized environment of the given environment from Unity
 
@@ -35,9 +33,6 @@ class UnityEnv(Env):
 
         self.state_space = self.spec.observation_shapes[0]
         self.action_space = (self.spec.action_spec.continuous_size,)
-
-        # Auto resetting env
-        self.terminal = False
 
     def _update_env_state(
             self
@@ -85,6 +80,7 @@ class UnityEnv(Env):
         self._state = np.array(self._state)[sort_order]
         self.reward = np.array(self.reward)[sort_order]
         terminal = np.array(terminal)[sort_order]
+        self.terminal = 1 - np.prod(1 - terminal)
         self.info = np.array(self.info)[sort_order]
 
         return self._state, self.reward, terminal, self.info
