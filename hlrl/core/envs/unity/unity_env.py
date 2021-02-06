@@ -80,7 +80,7 @@ class UnityEnv(Env):
         self._state = np.array(self._state)[sort_order]
         self.reward = np.array(self.reward)[sort_order]
         terminal = np.array(terminal)[sort_order]
-        self.terminal = 1 - np.prod(1 - terminal)
+        self.terminal = np.prod(terminal)
         self.info = np.array(self.info)[sort_order]
 
         return self._state, self.reward, terminal, self.info
