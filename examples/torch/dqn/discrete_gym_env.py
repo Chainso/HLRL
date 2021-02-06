@@ -244,8 +244,6 @@ if __name__ == "__main__":
             args.target_update_interval, optim, args.device, algo_logger
         )
 
-    print(algo)
-    exit()
     if args.exploration == "rnd":
         rnd_network = LinearPolicy(
             env.state_space[0], args.hidden_size, args.hidden_size,
