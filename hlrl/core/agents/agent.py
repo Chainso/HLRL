@@ -327,6 +327,7 @@ class RLAgent():
                 well.
         """
         if self.env.terminal:
+            self.reset()
             self.env.reset()
 
         if self.render:
