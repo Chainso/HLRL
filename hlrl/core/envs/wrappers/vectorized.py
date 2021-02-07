@@ -18,8 +18,14 @@ class VectorizedEnv(MethodWrapper):
 
         Args:
             action: The action to take in the environment.
+
+        Returns:
+            The next state, reward, terminal and additional information of this
+            environment step.
         """
         state, reward, terminal, info = self.om.step(action)
+
+        reward = np.expand_dims(reward, axis=-1)
         terminal = np.array([[terminal]] * len(state))
 
         return state, reward, terminal, info
