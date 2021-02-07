@@ -1,5 +1,7 @@
 from typing import Any, Tuple
 
+import numpy as np
+
 from hlrl.core.common.wrappers import MethodWrapper
 
 class VectorizedEnv(MethodWrapper):
@@ -18,6 +20,6 @@ class VectorizedEnv(MethodWrapper):
             action: The action to take in the environment.
         """
         state, reward, terminal, info = self.om.step(action)
-        self.terminal = all(terminal)
+        terminal = np.array([[terminal]] * len(state))
 
         return state, reward, terminal, info
