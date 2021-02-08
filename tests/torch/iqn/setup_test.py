@@ -1,11 +1,14 @@
+import yaml
+from functools import partial
+from argparse import Namespace
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 
-from functools import partial
-
 from hlrl.core.logger import TensorboardLogger
 from hlrl.core.agents import AgentPool, OffPolicyAgent
-from hlrl.torch.algos import RainbowIQN
+from hlrl.torch.algos import RainbowIQN, RainbowIQNRecurrent, TorchRecurrentAlgo
 from hlrl.torch.agents import (
     TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
     TorchRecurrentAgent
@@ -15,9 +18,31 @@ from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
 def setup_test(args, env):
     # The logger
-    logger = args.logs_path
-    logger = None if logger is None else TensorboardLogger(logger)
+    if args.config_file is not None:
+        with open(args.config_file, "r") as config_file:
+            arg_dict = yaml.load(config_file, Loader=yaml.FullLoader)
+            args = Namespace(**arg_dict)
+
+    logs_path = None
+    save_path = None
+
+    if args.experiment_path is not None:
+        logs_path = Path(args.experiment_path, "logs")
+        logs_path.mkdir(parents=True, exist_ok=True)
+        logs_path = str(logs_path)
+
+        save_path = Path(args.experiment_path, "models")
+        save_path.mkdir(parents=True, exist_ok=True)
+        save_path = str(save_path)
+
+        with open(Path(args.experiment_path, "config.yml"), "w") as config_file:
+            yaml.dump(vars(args), config_file)
     
+    # The algorithm logger
+    algo_logger = (
+        None if logs_path is None else TensorboardLogger(logs_path + "/algo")
+    )
+
     # Initialize IQN
     activation_fn = nn.ReLU
     optim = partial(torch.optim.Adam, lr=args.lr)
@@ -40,10 +65,18 @@ def setup_test(args, env):
 
         autoencoder = LSTMPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,
-            num_lin_before, args.hidden_size, max(args.num_layers - 2, 1),
-            0, 0, activation_fn
+            num_lin_before, args.hidden_size, max(args.num_layers - 2, 1), 0, 0,
+            activation_fn
         )
-        # TODO CREATE RECURRENT RAINBOW IQN INSTANCE HERE ONCE IMPLEMENTED
+
+        algo = RainbowIQNRecurrent(
+            autoencoder_out_n, autoencoder, qfunc,
+            args.discount ** args.n_steps, args.polyak, args.n_quantiles,
+            args.embedding_dim, args.huber_threshold,
+            args.target_update_interval, optim, optim, args.device, algo_logger
+        )
+
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
     else:
         autoencoder = LinearPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,
@@ -57,10 +90,21 @@ def setup_test(args, env):
             args.hidden_size, autoencoder, qfunc, args.discount ** args.n_steps,
             args.polyak, args.n_quantiles, args.embedding_dim,
             args.huber_threshold, args.target_update_interval, optim,
-            optim, logger
+            optim, args.device, algo_logger
         )
 
-    algo = algo.to(torch.device(args.device))
+    if args.exploration == "rnd":
+        rnd_network = LinearPolicy(
+            env.state_space[0], args.hidden_size, args.hidden_size,
+            args.num_layers + 2, activation_fn
+        )
+
+        rnd_target = LinearPolicy(
+            env.state_space[0], args.hidden_size, args.hidden_size,
+            args.num_layers, activation_fn
+        )
+
+        algo = RND(algo, rnd_network, rnd_target, optim)
 
     if args.load_path is not None:
         algo.load(args.load_path)
