@@ -1,3 +1,0 @@
-[dirs]
-gameserver = /home/chanzo/Games/league-sandbox/drive_c/Games/league-sandbox/LeagueSandbox-RL-Learning/GameServerConsole/bin/Debug/netcoreapp3.0/
-lolclient = /home/chanzo/Games/league-sandbox/drive_c/Games/league-sandbox/league-of-legends-4.20/League-of-Legends-4-20/RADS/solutions/lol_game_client_sln/releases/0.0.1.68/deploy/
