@@ -189,13 +189,11 @@ if(__name__ == "__main__"):
     args = parser.parse_args()
 
     if args.config_file is not None:
-        play = args.play
-
         with open(args.config_file, "r") as config_file:
             arg_dict = yaml.load(config_file, Loader=yaml.FullLoader)
-            args = Namespace(**arg_dict)
+            merged_args = {**arg_dict, **vars(args)}
 
-        args.play = play
+            args = Namespace(**merged_args)
 
     logs_path = None
     save_path = None
