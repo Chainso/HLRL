@@ -1,3 +1,5 @@
+# Fixes self-type reference (RLAgent) for typing annotations
+from __future__ import annotations
 from abc import abstractmethod
 from collections import deque
 from typing import Any, Callable, Dict, List, Optional, Tuple, OrderedDict
@@ -9,14 +11,16 @@ from hlrl.core.algos import RLAlgo
 class RLAgent():
     """
     An agent that collects (state, action, reward, next state) tuple
-    observations
+    observations.
     """
-    def __init__(self,
-                 env: Env,
-                 algo: RLAlgo,
-                 render: bool = False,
-                 silent: bool = False,
-                 logger: Optional[str] = None):
+    def __init__(
+            self,
+            env: Env,
+            algo: RLAlgo,
+            render: bool = False,
+            silent: bool = False,
+            logger: Optional[str] = None
+        ):
         """
         Creates an agent that interacts with the given environment using the
         algorithm given.
@@ -35,9 +39,32 @@ class RLAgent():
         self.silent = silent
         self.logger = logger
 
-    def _add_prefix(self,
-                    map: Dict[str, Any],
-                    prefix: str) -> OrderedDict[str, Any]:
+    @staticmethod
+    def train_from_builder(
+            agent_builder: Callable[[Env], RLAgent],
+            env_builder: Env,
+            *train_args: Any,
+            **train_kwargs: Any
+        ) -> None:
+        """
+        Creates an agent and starts training when given a builder function to
+        create the agent and a builder function to create the environment to
+        train in.
+
+        Args:
+            agent_builder: A function that creates an agent when given the
+                environment.
+            env_builder: A builder function to create an environment for an
+                agent.
+        """
+        agent = agent_builder(env=env_builder())
+        agent.train(*train_args, **train_kwargs)
+
+    def _add_prefix(
+            self,
+            val_dict: Dict[str, Any],
+            prefix: str
+        ) -> OrderedDict[str, Any]:
         """
         Returns a copy of map with the keys having a prefix.
 
@@ -48,7 +75,9 @@ class RLAgent():
         Returns:
             The new ordered dictionary with the prefix prepended to each key.
         """
-        return OrderedDict((prefix + key, value) for key, value in map.items())
+        return OrderedDict(
+            (prefix + key, value) for key, value in val_dict.items()
+        )
 
     def transform_state(self,
                         state: Any) -> OrderedDict[str, Any]:

@@ -254,7 +254,7 @@ class OffPolicyTrainer():
                     args.start_size
                 )
 
-                agents = []
+                agent_builders = []
                 agent_train_args = []
                 agent_train_kwargs = []
 
@@ -266,8 +266,8 @@ class OffPolicyTrainer():
                         )
                         agent_logger = TensorboardLogger(agent_logs_path)
 
-                    agents.append(
-                        agent_builder(env=env_builder(), logger=agent_logger)
+                    agent_builders.append(
+                        partial(agent_builder, logger=agent_logger)
                     )
 
                     agent_train_args.append((
@@ -281,7 +281,8 @@ class OffPolicyTrainer():
                 runner = ApexRunner(done_event)
                 runner.start(
                     learner_args, learner_train_args, worker, worker_args,
-                    agents, agent_train_args, agent_train_kwargs, prestart_func
+                    env_builder, agent_builders, agent_train_args,
+                    agent_train_kwargs, prestart_func
                 )
 
     def _start_training(self, algo: TorchRLAlgo, args: Any) -> None:

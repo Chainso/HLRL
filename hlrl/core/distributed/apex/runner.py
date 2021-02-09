@@ -1,7 +1,8 @@
-from typing import Tuple, Any, Dict, Callable, Optional, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import torch.multiprocessing as mp
 
+from hlrl.core.envs import Env
 from hlrl.core.distributed.apex.learner import ApexLearner
 from hlrl.core.distributed.apex.worker import ApexWorker
 from hlrl.core.agents import RLAgent
@@ -35,7 +36,8 @@ class ApexRunner():
             learner_train_args: Tuple[Any, ...],
             worker: ApexWorker,
             worker_args: Tuple[Any, ...],
-            agents: Tuple[RLAgent, ...],
+            env_builder: Callable[[], Env],
+            agent_builders: Tuple[Callable[[Env], RLAgent]],
             agent_train_args: Tuple[Tuple[Any], ...],
             agent_train_kwargs: Tuple[Dict[str, Any], ...],
             pretrain_func: Optional[Callable]
@@ -50,13 +52,19 @@ class ApexRunner():
                 learner.
             worker: The worker for Ape-X.
             worker_args: Arguments for the Ape-X worker.
-            agents: The pool of agents to run.
+            env_builder: A builder function to create an environment for an
+                agent.
+            agent_builders: A tuple of functions that create an individual agent
+                each, when given the environment.
             agent_train_args: Arguments for the agent training processes.
             agent_train_kwargs: Keyword arguments for the agent training
                 processes.
             pretrain_func: A function to call before training starts.
         """
-        assert len(agents) == len(agent_train_args) == len(agent_train_kwargs)
+        assert (
+            len(agent_builders) == len(agent_train_args)
+            == len(agent_train_kwargs)
+        )
 
         all_procs = []
 
@@ -67,10 +75,11 @@ class ApexRunner():
         # Create agent processes
         agent_procs = tuple(
             mp.Process(
-                target=agents[i].train, args=agent_train_args[i],
+                target=RLAgent.train_from_builder,
+                args=(agent_builders[i], env_builder) + agent_train_args[i],
                 kwargs=agent_train_kwargs[i]
             )
-            for i in range(len(agents))
+            for i in range(len(agent_builders))
         )
 
         for proc in agent_procs:
