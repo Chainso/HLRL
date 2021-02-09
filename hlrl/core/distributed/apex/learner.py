@@ -77,10 +77,12 @@ class ApexLearner():
                     train_start = time()
 
                 train_step_start = time()
-
-                algo.logger["Train/Samples per Second"] = (
-                    1 / (train_step_start - sample_start), algo.training_steps
-                )
+                
+                if train_step_start - sample_start > 0:
+                    algo.logger["Train/Samples per Second"] = (
+                        1 / (train_step_start - sample_start),
+                        algo.training_steps
+                    )
 
             new_qs, new_q_targs = algo.train_batch(rollouts, is_weights)
 
