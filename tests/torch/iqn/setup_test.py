@@ -8,7 +8,9 @@ import torch.nn as nn
 
 from hlrl.core.logger import TensorboardLogger
 from hlrl.core.agents import AgentPool, OffPolicyAgent
-from hlrl.torch.algos import RainbowIQN, RainbowIQNRecurrent, TorchRecurrentAlgo
+from hlrl.torch.algos import (
+    RainbowIQN, RainbowIQNRecurrent, TorchRecurrentAlgo, RND
+)
 from hlrl.torch.agents import (
     TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
     TorchRecurrentAgent
@@ -17,12 +19,7 @@ from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 from hlrl.torch.policies import LinearPolicy, LSTMPolicy
 
 def setup_test(args, env):
-    # The logger
-    if args.config_file is not None:
-        with open(args.config_file, "r") as config_file:
-            arg_dict = yaml.load(config_file, Loader=yaml.FullLoader)
-            args = Namespace(**arg_dict)
-
+    # The logs path
     logs_path = None
     save_path = None
 
@@ -93,57 +90,7 @@ def setup_test(args, env):
             optim, args.device, algo_logger
         )
 
-    if args.exploration == "rnd":
-        rnd_network = LinearPolicy(
-            env.state_space[0], args.hidden_size, args.hidden_size,
-            args.num_layers + 2, activation_fn
-        )
-
-        rnd_target = LinearPolicy(
-            env.state_space[0], args.hidden_size, args.hidden_size,
-            args.num_layers, activation_fn
-        )
-
-        algo = RND(algo, rnd_network, rnd_target, optim)
-
     if args.load_path is not None:
         algo.load(args.load_path)
 
-    # Create agent class
-    agent = OffPolicyAgent(
-        env, algo, args.render, silent=not args.verbose, logger=logger
-    )
-
-    if args.recurrent:
-        agent = SequenceInputAgent(agent)
-        agent = TorchRecurrentAgent(agent)
-    else:
-        agent = TorchRLAgent(agent, batch_state=False)
-
-    algo.create_optimizers()
-
-    algo.train()
-    algo.share_memory()
-    
-    # Experience replay
-    if args.recurrent:
-        experience_replay = TorchR2D2(
-            args.er_capacity, args.er_alpha, args.er_beta,
-            args.er_beta_increment, args.er_epsilon,
-            args.max_factor
-        )
-        agent = ExperienceSequenceAgent(
-            agent, args.burn_in_length + args.sequence_length,
-            args.burn_in_length
-        )
-    else:
-        experience_replay = TorchPER(
-            args.er_capacity, args.er_alpha, args.er_beta,
-            args.er_beta_increment, args.er_epsilon
-        )
-
-    agents = [agent]
-
-    agent_pool = AgentPool(agents)
-
-    return algo, agent_pool, env, experience_replay
+    return algo

@@ -1,18 +1,5 @@
 from hlrl.torch.distributed import TorchApexWorker
-
-def run_experiment(args, algo, agent_pool, env, experience_replay,
-    experience_queue, done_event):
-    agent_procs = agent_pool.train_process(
-        args.episodes, args.discount, args.n_steps, experience_queue,
-        done_event
-    )
-
-    # Start the worker for the model
-    worker = TorchApexWorker(algo, experience_replay, experience_queue)
-    worker.train(
-        agent_procs, done_event, args.batch_size, args.start_size,
-        args.save_path, args.save_interval
-    )
+from hlrl.torch.trainers import OffPolicyTrainer
 
 if __name__ == "__main__":
     import torch.multiprocessing as mp
@@ -57,16 +44,12 @@ if __name__ == "__main__":
         )
         gym_env = gym_wrapper.GymFromDMEnv(bsuite_env)
         env = GymEnv(gym_env)
+        env_builder = lambda: env
 
-        algo, agent_pool, env, experience_replay = setup_test(args, env)
+        algo = setup_test(args, env)
 
-        experience_queue = mp.Queue()
-        done_event = mp.Event()
-
-        run_experiment(
-            args, algo, agent_pool, env, experience_replay, experience_queue,
-            done_event
-        )
+        off_policy_trainer = OffPolicyTrainer()
+        off_policy_trainer.train(args, env_builder, algo)
 
         # Analyze performance
         df, sweep_vars = csv_load.load_bsuite(csv_dir)

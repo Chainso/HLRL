@@ -1,8 +1,9 @@
 from argparse import ArgumentParser, Namespace
 
+import yaml
 import torch
 
-def get_args():
+def get_args() -> Namespace:
     # The hyperparameters as command line arguments
     parser = ArgumentParser(
         description="Rainbow-IQN tests."
@@ -116,7 +117,7 @@ def get_args():
         "--n_steps", type=int, default=5, help="the number of decay steps"
     )
     parser.add_argument(
-        "--num_agents", type=int, default=1,
+        "--num_agents", type=int, default=0,
         help="the number of agents to run concurrently, 0 is single process"
     )
     parser.add_argument(
@@ -172,5 +173,22 @@ def get_args():
         "--max_factor", type=float, default=0.9,
         help="if recurrent, factor of max priority to mean priority for R2D2"
     )
+
+    args = parser.parse_args()
+
+    if args.config_file is not None:
+        with open(args.config_file, "r") as config_file:
+            # Want to make sure to use config file args over defaults, but given
+            # arguments over config file arguments
+            args = vars(args)
+            default = vars(parser.parse_args([]))
+            given_args = {
+                key: args[key] for key in args if args[key] != default[key]
+            }
+
+            config_dict = yaml.load(config_file, Loader=yaml.FullLoader)
+
+            args = {**args, **config_dict, **given_args}
+            args = Namespace(**args)
 
     return args
