@@ -141,6 +141,3 @@ class QueueAgent(MethodWrapper):
         
         # Wait for all processes to finish using queues
         queue_barrier.wait()
-
-        while not experience_queue.empty():
-            pass

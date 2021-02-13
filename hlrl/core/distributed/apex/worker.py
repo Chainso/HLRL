@@ -96,6 +96,3 @@ class ApexWorker():
                 priority_queue.get_nowait()
         except queue.Empty:
             pass
-
-        while not sample_queue.empty():
-            pass

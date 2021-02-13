@@ -70,7 +70,7 @@ class ApexLearner():
                 sample_start = time()
 
             sample = sample_queue.get()
-            rollouts, ids, is_weights = sample
+            rollouts, ids, is_weights = sample      
 
             if algo.logger is not None:
                 if train_start == 0:
@@ -128,5 +128,3 @@ class ApexLearner():
         except queue.Empty:
             pass
 
-        while not priority_queue.empty():
-            pass
