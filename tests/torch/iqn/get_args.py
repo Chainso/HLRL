@@ -32,10 +32,6 @@ def get_args() -> Namespace:
         "-r", "--render", dest="render", action="store_true",
         help="render the environment"
     )
-    parser.add_argument(
-        "-e,", "--env", dest="env", default="CartPole-v1",
-        help="the gym environment to train on"
-    )
 
     # Model args
     parser.add_argument(
@@ -190,5 +186,8 @@ def get_args() -> Namespace:
 
             args = {**args, **config_dict, **given_args}
             args = Namespace(**args)
+
+    args.play = False
+    args.vectorized = True
 
     return args

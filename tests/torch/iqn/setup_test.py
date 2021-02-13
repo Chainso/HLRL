@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from hlrl.core.logger import TensorboardLogger
-from hlrl.core.agents import AgentPool, OffPolicyAgent
+from hlrl.core.agents import OffPolicyAgent
 from hlrl.torch.algos import (
     RainbowIQN, RainbowIQNRecurrent, TorchRecurrentAlgo, RND
 )
