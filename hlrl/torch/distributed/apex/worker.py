@@ -27,7 +27,7 @@ class TorchApexWorker(ApexWorker):
 
         for experience in experiences:
             for key in experience:
-                if isinstance(key, Tensor):
+                if isinstance(experience[key], Tensor):
                     experience[key] = experience[key].clone()
 
         return experiences, priorities
