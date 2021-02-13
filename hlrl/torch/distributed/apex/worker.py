@@ -1,3 +1,5 @@
+from torch import Tensor
+
 from hlrl.core.distributed import ApexWorker
 
 class TorchApexWorker(ApexWorker):
@@ -25,7 +27,7 @@ class TorchApexWorker(ApexWorker):
 
         for experience in experiences:
             for key in experience:
-                if key != "id":
+                if isinstance(key, Tensor):
                     experience[key] = experience[key].clone()
 
         return experiences, priorities
