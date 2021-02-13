@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     # Model args
     parser.add_argument(
-		"--device", type=torch.device, 
+		"--device", type=str, 
         default="cuda" if torch.cuda.is_available() else "cpu",
 		help="the device (cpu/gpu) to train and play on"
 	)
@@ -194,10 +194,18 @@ if __name__ == "__main__":
 
     if args.config_file is not None:
         with open(args.config_file, "r") as config_file:
-            arg_dict = yaml.load(config_file, Loader=yaml.FullLoader)
-            merged_args = {**arg_dict, **vars(args)}
+            # Want to make sure to use config file args over defaults, but given
+            # arguments over config file arguments
+            args = vars(args)
+            default = vars(parser.parse_args([]))
+            given_args = {
+                key: args[key] for key in args if args[key] != default[key]
+            }
 
-            args = Namespace(**merged_args)
+            config_dict = yaml.load(config_file, Loader=yaml.FullLoader)
+
+            args = {**args, **config_dict, **given_args}
+            args = Namespace(**args)
 
     logs_path = None
     save_path = None

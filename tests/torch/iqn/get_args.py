@@ -38,7 +38,7 @@ def get_args():
 
     # Model args
     parser.add_argument(
-		"--device", type=torch.device, 
+		"--device", type=str, 
         default="cuda" if torch.cuda.is_available() else "cpu",
 		help="the device (cpu/gpu) to train and play on"
 	)
