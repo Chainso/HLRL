@@ -1,6 +1,7 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
-
 from torch.distributions import Normal, Categorical, OneHotCategorical
 
 from .linear import LinearPolicy
@@ -12,12 +13,14 @@ class GaussianPolicy(nn.Module):
     LOG_STD_MIN = -20
     LOG_STD_MAX = 2
 
-    def __init__(self,
-        inp_n: int,
-        out_n: int,
-        hidden_size: int,
-        num_layers: int,
-        activation_fn: nn.Module):
+    def __init__(
+            self,
+            inp_n: int,
+            out_n: int,
+            hidden_size: int,
+            num_layers: int,
+            activation_fn: nn.Module
+        ):
         """
         Creates the gaussian policy.
 
@@ -45,7 +48,10 @@ class GaussianPolicy(nn.Module):
         self.mean = nn.Linear(last_in_n, out_n)
         self.log_std = nn.Linear(last_in_n, out_n)
 
-    def compute_mean_and_std(self, inp):
+    def compute_mean_and_std(
+            self,
+            inp: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns the mean and log std of the policy on the input.
 
@@ -65,7 +71,10 @@ class GaussianPolicy(nn.Module):
 
         return mean, log_std
 
-    def forward(self, inp):
+    def forward(
+            self,
+            inp: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a sample of the policy on the input with the mean and log
         probability of the sample.
@@ -91,13 +100,15 @@ class TanhGaussianPolicy(GaussianPolicy):
     """
     A gaussian policy with an extra tanh layer (restricted to (-1, 1))
     """
-    def __init__(self,
-        inp_n: int,
-        out_n: int,
-        hidden_size: int,
-        num_layers: int,
-        activation_fn: nn.Module,
-        action_range: int = 1):
+    def __init__(
+            self,
+            inp_n: int,
+            out_n: int,
+            hidden_size: int,
+            num_layers: int,
+            activation_fn: nn.Module,
+            action_range: int = 1
+        ):
         """
         Creates the gaussian policy.
 
@@ -113,13 +124,18 @@ class TanhGaussianPolicy(GaussianPolicy):
 
         self.action_range = action_range
 
-    def forward(self, inp, epsilon=1e-4):
+    def forward(
+            self,
+            inp: torch.Tensor, epsilon: int = 1e-4
+        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a sample of the policy on the input with the mean and log
         probability of the sample.
 
         Args:
             inp: The input tensor to put through the network.
+            epsilon: The value to add to the standard deviation to prevent
+                division by zero.
 
         Returns:
             A tanh squished gaussian distribution of the network.
@@ -171,22 +187,20 @@ class MultiCategoricalPolicy(nn.Module):
             inp_n, hidden_size, hidden_size, num_layers - 1, activation_fn
         )
 
+        last_in_n = inp_n
+
         if num_layers > 1:
             self.linear = nn.Sequential(self.linear, activation_fn())
             last_in_n = hidden_size
-        else:
-            last_in_n = inp_n
-
-        last_in_n = hidden_size if num_layers > 1 else inp_n
 
         # Will reshape to (b, out_n, classes_n)
         self.probs = nn.Linear(last_in_n, out_n * classes_n)
-        self.value = nn.Sequential(
-            nn.Linear(last_in_n, out_n * classes_n),
-            nn.Tanh()
-        )
 
-    def forward(self, inp: torch.FloatTensor) -> torch.FloatTensor:
+    def forward(
+            self,
+            inp: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor, None]:
+
         """
         Returns a sample of the policy on the input with the mean and log
         probability of the sample.
@@ -200,19 +214,14 @@ class MultiCategoricalPolicy(nn.Module):
         linear = self.linear(inp)
 
         probs = self.probs(linear)
-        probs = probs.view(linear.shape[0], -1, self.num_classes)
-        probs = nn.Softmax(dim=-1)(probs)
+        probs = probs.view(*probs.shape[:-1], -1, self.num_classes)
 
-        value = self.value(linear)
-        value = value.view(linear.shape[0], -1, self.num_classes)
+        dist = Categorical(probs)
 
-        dist = OneHotCategorical(probs)
-
-        # Straight through gradient trick
         sample = dist.sample()
         log_prob = dist.log_prob(sample)
 
+        # Straight through gradient trick
         sample = sample + probs - probs.detach()
-        out = torch.sum(value * sample, dim=-1)
 
-        return out, log_prob, None
+        return sample, log_prob, None
