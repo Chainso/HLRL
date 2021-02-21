@@ -194,7 +194,8 @@ class MultiCategoricalPolicy(nn.Module):
             last_in_n = hidden_size
 
         # Will reshape to (b, out_n, classes_n)
-        self.probs = nn.Linear(last_in_n, out_n * classes_n)
+        self.value = nn.Linear(last_in_n, out_n * classes_n)
+        self.probs = nn.Softmax(dim=-1)
 
     def forward(
             self,
@@ -213,10 +214,11 @@ class MultiCategoricalPolicy(nn.Module):
         """
         linear = self.linear(inp)
 
-        probs = self.probs(linear)
-        probs = probs.view(*probs.shape[:-1], -1, self.num_classes)
-
-        dist = Categorical(probs)
+        value = self.value(linear)
+        value = value.view(*value.shape[:-1], -1, self.num_classes)
+        
+        probs = self.probs(value)
+        dist = OneHotCategorical(probs)
 
         sample = dist.sample()
         log_prob = dist.log_prob(sample)
