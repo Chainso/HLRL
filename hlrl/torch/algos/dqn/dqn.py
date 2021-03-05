@@ -45,7 +45,9 @@ class DQN(TorchOffPolicyAlgo):
 
         # The network
         self.q_func = q_func
-        self.q_func_targ = deepcopy(q_func)
+
+        with torch.no_grad():
+            self.q_func_targ = deepcopy(q_func)
 
     def create_optimizers(self) -> None:
         """

@@ -66,7 +66,9 @@ class RainbowIQN(TorchOffPolicyAlgo):
         self.autoencoder = autoencoder
 
         self.q_func = q_func
-        self.target_q_func = deepcopy(q_func)
+
+        with torch.no_grad():
+            self.q_func_targ = deepcopy(q_func)
 
         # Quantile layer
         self.quantiles = nn.Linear(self.embedding_dim, enc_dim)

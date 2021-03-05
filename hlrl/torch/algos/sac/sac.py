@@ -52,14 +52,18 @@ class SAC(TorchOffPolicyAlgo):
 
         # The networks
         self.q_func1 = q_func
-        self.q_func_targ1 = deepcopy(self.q_func1)
+
+        with torch.no_grad():
+            self.q_func_targ1 = deepcopy(self.q_func1)
 
         # Instantiate a second Q-function for twin SAC
         if(self.twin):
             self.q_func2 = deepcopy(q_func).apply(
                 initialize_weights(nn.init.xavier_uniform_)
             )
-            self.q_func_targ2 = deepcopy(self.q_func2)
+
+            with torch.no_grad():
+                self.q_func_targ2 = deepcopy(self.q_func2)
 
         self.policy = policy
 
