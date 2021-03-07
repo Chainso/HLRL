@@ -58,9 +58,12 @@ class RLAlgo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save_dict(self):
+    def save_dict(self) -> Dict[str, Any]:
         """
-        Returns dictionary of values to save this algorithm.
+        Saves in the current state of the algorithm in a dictionary.
+
+        Returns:
+            A dictionary of values to save this algorithm.
         """
         raise NotImplementedError
 

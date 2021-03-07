@@ -33,7 +33,13 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         """
         raise NotImplementedError
 
-    def save_dict(self):
+    def save_dict(self) -> Dict[str, Any]:
+        """
+        Saves in the current state of the algorithm in a dictionary.
+
+        Returns:
+            A dictionary of values to save this algorithm.
+        """
         state_dict = self.state_dict()
 
         cpu_state_dict = {

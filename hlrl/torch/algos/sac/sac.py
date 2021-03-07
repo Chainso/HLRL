@@ -1,9 +1,10 @@
 from copy import deepcopy
-from typing import Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 
+from hlrl.core.logger import Logger
 from hlrl.torch.algos import TorchOffPolicyAlgo
 from hlrl.torch.common import polyak_average
 from hlrl.torch.common.functional import initialize_weights
@@ -12,32 +13,39 @@ class SAC(TorchOffPolicyAlgo):
     """
     The Soft Actor-Critic algorithm from https://arxiv.org/abs/1801.01290
     """
-    def __init__(self, action_space, q_func, policy, discount, polyak,
-                 target_update_interval, q_optim, p_optim, temp_optim,
-                 twin=True, device="cpu", logger=None):
+    def __init__(
+            self,
+            action_space: Tuple,
+            q_func: nn.Module,
+            policy: nn.Module,
+            discount: float,
+            polyak: float,
+            target_update_interval: int,
+            q_optim: torch.optim.Optimizer,
+            p_optim: torch.optim.Optimizer,
+            temp_optim: torch.optim.Optimizer,
+            twin: bool = True,
+            device: Union[torch.device, str] = "cpu",
+            logger: Optional[Logger] = None
+        ):
         """
-        Creates the soft actor-critic algorithm with the given parameters
+        Creates the soft actor-critic algorithm with the given parameters.
 
         Args:
-            action_space (tuple) : The dimensions of the action space of the
-                                   environment.
-            q_func (torch.nn.Module) : The Q-function that takes in the
-                                       observation and action.
-            policy (torch.nn.Module) : The action policy that takes in the
-                                       observation.
-            discount (float) : The coefficient for the discounted values
-                                (0 < x < 1).
-            polyak (float) : The coefficient for polyak averaging (0 < x < 1).
-            target_update_interval (int): The number of environment steps in
-                                          between target updates.
-            q_optim (torch.nn.Module) : The optimizer for the Q-function.
-            p_optim (torch.nn.Module) : The optimizer for the action policy.
-            temp_optim (toch.nn.Module) : The optimizer for the temperature.
-            twin (bool, optional) : If the twin Q-function algorithm should be
-                                    used, default True.
-            device (str): The device of the tensors in the module.
-            logger (Logger, optional) : The logger to log results while training
-                                        and evaluating, default None.
+            action_space: The dimensions of the action space of the environment.
+            q_func: The Q-function that takes in the observation and action.
+            policy: The action policy that takes in the observation.
+            discount: The coefficient for the discounted values (0 < x < 1).
+            polyak: The coefficient for polyak averaging (0 < x < 1).
+            target_update_interval: The number of environment steps in between
+                target updates.
+            q_optim: The optimizer for the Q-function.
+            p_optim: The optimizer for the action policy.
+            temp_optim: The optimizer for the temperature.
+            twin: If the twin Q-function algorithm should be used, default True.
+            device: The device of the tensors in the module.
+            logger: The logger to log results while training
+                and evaluating, default None.
         """
         super().__init__(device, logger)
 
@@ -85,13 +93,19 @@ class SAC(TorchOffPolicyAlgo):
 
         self.temp_optim = self.temp_optim_func([self.log_temp])
 
-    def _step_optimizers(self, states):
+    def _step_optimizers(
+            self,
+            states: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Assumes the gradients have been computed and updates the parameters of
         the network with the optimizers.
 
         Args:
-            states: The states to recompute losses on.
+            states: The states of the batch.
+
+        Returns:
+            The updated Q-values and target Q-values.
         """
         if self.twin:
             self.q_optim2.step()
@@ -118,13 +132,15 @@ class SAC(TorchOffPolicyAlgo):
         
         return new_qs, new_q_targ
 
-    def forward(self, observation):
+    def forward(
+            self,
+            observation: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Get the model output for a batch of observations
 
         Args:
-            observation (torch.FloatTensor): A batch of observations from the
-                                             environment.
+            observation: A batch of observations from the environment.
 
         Returns:
             The action and Q-value.
@@ -134,13 +150,15 @@ class SAC(TorchOffPolicyAlgo):
 
         return action, q_val
 
-    def step(self, observation):
+    def step(
+            self,
+            observation: torch.Tensor
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Get the model action for a single observation of gameplay.
+        Get the model action for a single observation of the environment.
 
         Args:
-            observation (torch.FloatTensor): A single observation from the
-                                             environment.
+            observation: A single observation from the environment.
 
         Returns:
             The action and Q-value of the action.
@@ -152,15 +170,17 @@ class SAC(TorchOffPolicyAlgo):
             self,
             rollouts: Dict[str, torch.Tensor],
             is_weights: Union[int, torch.Tensor] = 1
-        ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
 
         Args:
-            rollouts (tuple) : The (s, a, r, s', t) of training data for the
-                               network.
-            is_weights (numpy.array) : The importance sampling weights for PER.
+            rollouts: The (s, a, r, s', t) of training data for the network.
+            is_weights: The importance sampling weights for PER.
+
+        Returns:
+            The updated Q-value and Q-value target.
         """
         rollouts = {
             key: value.to(self.device) for key, value in rollouts.items()
@@ -258,14 +278,28 @@ class SAC(TorchOffPolicyAlgo):
 
         return new_qs, new_q_targ
 
-    def save_dict(self):
+    def save_dict(self) -> Dict[str, Any]:
+        """
+        Saves in the current state of the algorithm in a dictionary.
+
+        Returns:
+            A dictionary of values to save this algorithm.
+        """
         # Save all the dicts
         state_dict = super().save_dict()
         state_dict["temperature"] = self.temperature
 
         return state_dict
 
-    def load(self, load_path="", load_dict=None):
+    def load(
+            self,
+            load_path: str = "",
+            load_dict: Optional[Dict[str, Any]] = None
+        ):
+        """
+        Loads the algorithm from a given save path. Will use the given state
+        dictionary if given, or load from a file otherwise.
+        """
         if load_dict is None:
             load_dict = self.load_dict(load_path)
 

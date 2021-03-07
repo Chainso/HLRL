@@ -10,17 +10,20 @@ class SACRecurrent(SAC):
     """
     Soft-Actor-Critic with a recurrent network.
     """
-    def forward(self, observation, hidden_state):
+    def forward(
+            self,
+            observation: torch.Tensor,
+            hidden_state: Tuple[torch.Tensor, torch.Tensor]
+        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get the model output for a batch of observations
 
         Args:
-            observation (torch.FloatTensor): A batch of observations from the
-                                             environment.
+            observation: A batch of observations from the environment.
             hidden_state (torch.Tensor): The hidden state.
 
         Returns:
-            The action, Q-val, and new hidden state if there is one.
+            The action, Q-val, and new hidden state.
         """
         # Only going to update the hidden state using the policy hidden state
         action, log_prob, mean, new_hidden = self.policy(
@@ -31,17 +34,20 @@ class SACRecurrent(SAC):
 
         return action, q_val, new_hidden
 
-    def step(self, observation, hidden_state):
+    def step(
+            self,
+            observation: torch.Tensor,
+            hidden_state: Tuple[torch.Tensor, torch.Tensor]
+        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Get the model action for a single observation of gameplay.
+        Get the model action for a single observation of the environment.
 
         Args:
-            observation (torch.FloatTensor): A single observation from the
-                                             environment.
-            hidden_state (torch.Tensor): The hidden state.
+            observation: A single observation from the environment.
+            hidden_state: The hidden state.
 
         Returns:
-            The action, Q-value of the action and hidden state if applicable
+            The action, Q-value of the action and hidden state.
         """
         with torch.no_grad():
             action, q_val, new_hidden = self(observation, hidden_state)
@@ -50,19 +56,33 @@ class SACRecurrent(SAC):
 
         return action, q_val, new_hidden
 
-    def reset_hidden_state(self) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+    def reset_hidden_state(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Resets the hidden state for the network.
+
+        Returns:
+            The default hidden state of the network.
         """
         return [
             tens.to(self.device)
             for tens in self.policy.reset_hidden_state()
         ]
 
-    def _step_optimizers(self, states, next_states, hidden_states):
+    def _step_optimizers(
+            self,
+            states: torch.Tensor,
+            hidden_states: Tuple[torch.Tensor, torch.Tensor]
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Assumes the gradients have been computed and updates the parameters of
         the network with the optimizers.
+
+        Args:
+            states: The states of the batch.
+            hidden_states: The hidden states of the batch.
+
+        Returns:
+            The updated Q-values and target Q-values.
         """
         if self.twin:
             self.q_optim2.step()
@@ -215,6 +235,4 @@ class SACRecurrent(SAC):
                     q_loss2.detach().item(), self.training_steps
             )
 
-        return self._step_optimizers(
-            states, next_states, hidden_states
-        )
+        return self._step_optimizers(states, hidden_states)
