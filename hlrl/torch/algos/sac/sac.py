@@ -287,12 +287,6 @@ class SAC(TorchOffPolicyAlgo):
             is_weights = is_weights.to(self.device)
 
         if self.twin:
-            q_loss = self.get_critic_loss(rollouts)
-            q_loss = torch.mean(q_loss * is_weights)
-
-            self.q_optim1.zero_grad()
-            q_loss.backward()
-        else:
             q_loss1, q_loss2 = self.get_critic_loss(rollouts)
             q_loss1 = torch.mean(q_loss1 * is_weights)
             q_loss2 = torch.mean(q_loss2 * is_weights)
@@ -302,6 +296,12 @@ class SAC(TorchOffPolicyAlgo):
 
             self.q_optim2.zero_grad()
             q_loss2.backward()
+        else:
+            q_loss = self.get_critic_loss(rollouts)
+            q_loss = torch.mean(q_loss * is_weights)
+
+            self.q_optim1.zero_grad()
+            q_loss.backward()
 
         policy_loss, pred_log_probs = self.get_actor_loss(rollouts)
         policy_loss = torch.mean(policy_loss * is_weights)
@@ -309,7 +309,7 @@ class SAC(TorchOffPolicyAlgo):
         self.p_optim.zero_grad()
         policy_loss.backward()
 
-        temp_loss = self.get_entropy_loss()
+        temp_loss = self.get_entropy_loss(pred_log_probs)
         temp_loss = torch.mean(temp_loss * is_weights)
 
         self.temp_optim.zero_grad()
