@@ -66,12 +66,13 @@ class SAC(TorchOffPolicyAlgo):
 
         # Instantiate a second Q-function for twin SAC
         if(self.twin):
-            self.q_func2 = deepcopy(q_func).apply(
-                initialize_weights(nn.init.xavier_uniform_)
-            )
+            self.q_func2 = deepcopy(q_func)
+            self.q_func2.apply(initialize_weights(nn.init.xavier_uniform_))
 
             with torch.no_grad():
                 self.q_func_targ2 = deepcopy(self.q_func2)
+
+        self.q_loss_func = nn.MSELoss(reduction='none')
 
         self.policy = policy
 
@@ -95,28 +96,44 @@ class SAC(TorchOffPolicyAlgo):
 
     def _step_optimizers(
             self,
-            states: torch.Tensor
+            rollouts: Dict[str, torch.Tensor]
         ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Assumes the gradients have been computed and updates the parameters of
         the network with the optimizers.
 
         Args:
-            states: The states of the batch.
+            rollouts: The (s, a, r, s', t) of training data for the network.
 
         Returns:
             The updated Q-values and target Q-values.
         """
+        states = rollouts["state"]
+        actions = rollouts["action"]
+        rewards = rollouts["reward"]
+        next_states = rollouts["next_state"]
+        terminals = rollouts["terminal"]
+
+        self.q_optim1.step()
+
         if self.twin:
             self.q_optim2.step()
 
-        self.q_optim1.step()
         self.p_optim.step()
         self.temp_optim.step()
 
         self.temperature = torch.exp(self.log_temp).item()
 
         # Get the new q value to update the experience replay
+        with torch.no_grad():
+            next_actions, next_log_probs, _ = self.policy(next_states)
+            q_targ_pred = self.q_func_targ1(next_states, next_actions)
+
+            q_targ = q_targ_pred - self.temperature * next_log_probs
+            new_q_targ = rewards + (1 - terminals) * self._discount * q_targ
+
+        new_qs = self.q_func1(states, actions)
+
         with torch.no_grad():
             updated_actions, new_log_pis, _ = self.policy(states)
             new_qs = self.q_func1(states, updated_actions)
@@ -129,7 +146,6 @@ class SAC(TorchOffPolicyAlgo):
             if (self.twin):
                 polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
 
-        
         return new_qs, new_q_targ
 
     def forward(
@@ -145,7 +161,7 @@ class SAC(TorchOffPolicyAlgo):
         Returns:
             The action and Q-value.
         """
-        action, log_prob, mean = self.policy(observation)
+        action, _, _ = self.policy(observation)
         q_val = self.q_func1(observation, action)
 
         return action, q_val
@@ -165,6 +181,87 @@ class SAC(TorchOffPolicyAlgo):
         """
         with torch.no_grad():
             return self(observation)
+
+    def get_critic_loss(
+            self, rollouts: Dict[str, torch.Tensor]
+        ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Calculates the loss for the Q-function/functions.
+
+        Args:
+            rollouts: The (s, a, r, s', t) of training data for the network.
+
+        Returns:
+            The batch-wise loss for the Q-function/functions.
+        """
+        states = rollouts["state"]
+        actions = rollouts["action"]
+        rewards = rollouts["reward"]
+        next_states = rollouts["next_state"]
+        terminals = rollouts["terminal"]
+
+        with torch.no_grad():
+            next_actions, next_log_probs, _ = self.policy(next_states)
+            q_targ_pred = self.q_func_targ1(next_states, next_actions)
+
+            if self.twin:
+                q_targ_pred2 = self.q_func_targ2(next_states, next_actions)
+                q_targ_pred = torch.min(q_targ_pred, q_targ_pred2)
+
+            q_targ = q_targ_pred - self.temperature * next_log_probs
+            q_next = rewards + (1 - terminals) * self._discount * q_targ
+
+        q_pred = self.q_func1(states, actions)
+        q_loss = self.q_loss_func(q_pred, q_next)
+
+        if self.twin:
+            q_pred2 = self.q_func2(states, actions)
+            q_loss2 = self.q_loss_func(q_pred2, q_next)
+
+            q_loss = (q_loss, q_loss2)
+    
+        return q_loss
+        
+    def get_actor_loss(self, rollouts: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """
+        Calculates the loss for the actor/policy.
+
+        Args:
+            rollouts: The (s, a, r, s', t) of training data for the network.
+
+        Returns:
+            The batch-wise loss for the actor/policy.
+        """
+        states = rollouts["state"]
+
+        pred_actions, pred_log_probs, _ = self.policy(states)
+        
+        p_q_pred = self.q_func1(states, pred_actions)
+
+        if self.twin:
+            p_q_pred2 = self.q_func2(states, pred_actions)
+            p_q_pred = torch.min(p_q_pred, p_q_pred2)
+
+        p_loss = self.temperature * pred_log_probs - p_q_pred
+
+        return p_loss, pred_log_probs
+
+    def get_entropy_loss(self, pred_log_probs: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates the loss for entropy.
+
+        Args:
+            pred_log_probs: The log probabilities of actions of the current
+                policy on the state.
+
+        Returns:
+            The loss for the entropy for soft Q-learning.
+        """
+        # Tune temperature
+        targ_entropy = pred_log_probs.detach() + self.target_entropy
+        temp_loss = -self.log_temp * targ_entropy
+
+        return temp_loss
 
     def train_batch(
             self,
@@ -189,63 +286,31 @@ class SAC(TorchOffPolicyAlgo):
         if isinstance(is_weights, torch.Tensor):
             is_weights = is_weights.to(self.device)
 
-        # Get all the parameters from the rollouts
-        states = rollouts["state"]
-        actions = rollouts["action"]
-        rewards = rollouts["reward"]
-        next_states = rollouts["next_state"]
-        terminals = rollouts["terminal"]
+        if self.twin:
+            q_loss = self.get_critic_loss(rollouts)
+            q_loss = torch.mean(q_loss * is_weights)
 
-        q_loss_func = nn.MSELoss(reduction='none')
+            self.q_optim1.zero_grad()
+            q_loss.backward()
+        else:
+            q_loss1, q_loss2 = self.get_critic_loss(rollouts)
+            q_loss1 = torch.mean(q_loss1 * is_weights)
+            q_loss2 = torch.mean(q_loss2 * is_weights)
 
-        with torch.no_grad():
-            next_actions, next_log_probs, _ = self.policy(next_states)
-            q_targ_pred1 = self.q_func_targ1(next_states, next_actions)
-
-        pred_actions, pred_log_probs, _ = self.policy(states)
-
-        p_q_pred1 = self.q_func1(states, pred_actions)
-
-        # Only get the loss for q_func2 if using the twin Q-function algorithm
-        if(self.twin):
-            with torch.no_grad():
-                q_targ_pred2 = self.q_func_targ2(next_states, next_actions)
-
-                q_targ = (torch.min(q_targ_pred1, q_targ_pred2)
-                        - self.temperature * next_log_probs)
-
-                q_next = rewards + (1 - terminals) * self._discount * q_targ
-
-            p_q_pred2 = self.q_func2(states, pred_actions)
-            p_q_pred = torch.min(p_q_pred1, p_q_pred2)
-
-            q_pred2 = self.q_func2(states, actions)
-            q_loss2 = torch.mean(q_loss_func(q_pred2, q_next) * is_weights)
+            self.q_optim1.zero_grad()
+            q_loss1.backward()
 
             self.q_optim2.zero_grad()
             q_loss2.backward()
-        else:
-            with torch.no_grad():
-                q_targ = q_targ_pred1 - self.temperature * next_log_probs
-                q_next = rewards + (1 - terminals) * self._discount * q_targ
 
-            p_q_pred = p_q_pred1
-
-        q_pred1 = self.q_func1(states, actions)
-        q_loss1 = torch.mean(q_loss_func(q_pred1, q_next) * is_weights)
-
-        self.q_optim1.zero_grad()
-        q_loss1.backward()
-
-        p_loss = self.temperature * pred_log_probs - p_q_pred
-        p_loss = torch.mean(p_loss * is_weights)
+        policy_loss, pred_log_probs = self.get_actor_loss(rollouts)
+        policy_loss = torch.mean(policy_loss * is_weights)
 
         self.p_optim.zero_grad()
-        p_loss.backward()
+        policy_loss.backward()
 
-        # Tune temperature
-        targ_entropy = pred_log_probs.detach() + self.target_entropy
-        temp_loss = -torch.mean(self.log_temp * targ_entropy)
+        temp_loss = self.get_entropy_loss()
+        temp_loss = torch.mean(temp_loss * is_weights)
 
         self.temp_optim.zero_grad()
         temp_loss.backward()
@@ -258,7 +323,7 @@ class SAC(TorchOffPolicyAlgo):
                 q_loss1.detach().item(), self.training_steps
             )
             self.logger["Train/Policy Loss"] = (
-                p_loss.detach().item(), self.training_steps
+                policy_loss.detach().item(), self.training_steps
             )
             self.logger["Train/Temperature"] = (
                 self.temperature, self.training_steps
@@ -274,9 +339,7 @@ class SAC(TorchOffPolicyAlgo):
                     q_loss2.detach().item(), self.training_steps
                 )
 
-        new_qs, new_q_targ = self._step_optimizers(states)
-
-        return new_qs, new_q_targ
+        return self._step_optimizers(rollouts)
 
     def save_dict(self) -> Dict[str, Any]:
         """
