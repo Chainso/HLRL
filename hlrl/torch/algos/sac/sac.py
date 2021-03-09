@@ -134,11 +134,6 @@ class SAC(TorchOffPolicyAlgo):
 
         new_qs = self.q_func1(states, actions)
 
-        with torch.no_grad():
-            updated_actions, new_log_pis, _ = self.policy(states)
-            new_qs = self.q_func1(states, updated_actions)
-            new_q_targ = new_qs - self.temperature * new_log_pis
-
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
             polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
