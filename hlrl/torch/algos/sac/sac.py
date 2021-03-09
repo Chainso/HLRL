@@ -124,15 +124,12 @@ class SAC(TorchOffPolicyAlgo):
 
         self.temperature = torch.exp(self.log_temp).item()
 
-        # Get the new q value to update the experience replay
         with torch.no_grad():
-            next_actions, next_log_probs, _ = self.policy(next_states)
-            q_targ_pred = self.q_func_targ1(next_states, next_actions)
-
-            q_targ = q_targ_pred - self.temperature * next_log_probs
-            new_q_targ = rewards + (1 - terminals) * self._discount * q_targ
-
-        new_qs = self.q_func1(states, actions)
+            # Using the entropy as the difference between Q and target, very
+            # good heuristic for PER
+            updated_actions, new_log_pis, _ = self.policy(states)
+            new_qs = self.q_func1(states, updated_actions)
+            new_q_targ = new_qs - self.temperature * new_log_pis
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
