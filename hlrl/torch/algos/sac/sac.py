@@ -109,10 +109,6 @@ class SAC(TorchOffPolicyAlgo):
             The updated Q-values and target Q-values.
         """
         states = rollouts["state"]
-        actions = rollouts["action"]
-        rewards = rollouts["reward"]
-        next_states = rollouts["next_state"]
-        terminals = rollouts["terminal"]
 
         self.q_optim1.step()
 
@@ -128,8 +124,9 @@ class SAC(TorchOffPolicyAlgo):
             # Using the entropy as the difference between Q and target, very
             # good heuristic for PER
             updated_actions, new_log_pis, _ = self.policy(states)
-            new_qs = self.q_func1(states, updated_actions)
-            new_q_targ = new_qs - self.temperature * new_log_pis
+   
+            new_qs = self.temperature * new_log_pis
+            new_q_targ = torch.zeros_like(new_qs)
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
@@ -175,7 +172,8 @@ class SAC(TorchOffPolicyAlgo):
             return self(observation)
 
     def get_critic_loss(
-            self, rollouts: Dict[str, torch.Tensor]
+            self,
+            rollouts: Dict[str, torch.Tensor]
         ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Calculates the loss for the Q-function/functions.
@@ -214,7 +212,10 @@ class SAC(TorchOffPolicyAlgo):
     
         return q_loss
         
-    def get_actor_loss(self, rollouts: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def get_actor_loss(
+            self,
+            rollouts: Dict[str, torch.Tensor]
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Calculates the loss for the actor/policy.
 
@@ -222,7 +223,8 @@ class SAC(TorchOffPolicyAlgo):
             rollouts: The (s, a, r, s', t) of training data for the network.
 
         Returns:
-            The batch-wise loss for the actor/policy.
+            The batch-wise loss for the actor/policy and the log probability of
+            a sampled action on the current policy.
         """
         states = rollouts["state"]
 
@@ -271,10 +273,6 @@ class SAC(TorchOffPolicyAlgo):
         Returns:
             The updated Q-value and Q-value target.
         """
-        rollouts = {
-            key: value.to(self.device) for key, value in rollouts.items()
-        }
-
         if isinstance(is_weights, torch.Tensor):
             is_weights = is_weights.to(self.device)
 
