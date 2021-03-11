@@ -316,7 +316,7 @@ class SACHybrid(SAC):
     def forward(
             self,
             observation: torch.Tensor
-        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get the model output for a batch of observations.
 
@@ -326,17 +326,39 @@ class SACHybrid(SAC):
         Returns:
             The action, Q-value of the action and the action parameters.
         """
+        batch_size = observation.shape[0]
+
         action, q_val, action_parameters = self.get_action(
             observation, self.q_func1
         )[:3]
+
         q_val = q_val.gather(-1, action)
 
+        # Get the parameters for this specific action
+        action_parameters = torch.split(
+            action_parameters, tuple(self.action_parameter_space)
+        )[:, action]
+        
+        action_parameters = self.make_multipass_input(
+            observation, action_parameters
+        )[-1]
+        
+        scatter_offsets = torch.arange(batch_size, device=self.device)
+        scatter_offsets *= self.num_action_parameters
+
+        select_idxs = scatter_offsets + action.squeeze()
+
+        action_parameters = torch.index_select(
+            action_parameters, 0, select_idxs
+        )
+        action_parameters = action_parameters.nonzero(as_tuple=True)
+        
         return action, q_val, action_parameters
 
     def step(
             self,
             observation: torch.Tensor
-        ) -> Tuple[torch.Tensor, torch.Tensor]:
+        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get the model action for a single observation of the environment.
 
