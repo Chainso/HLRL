@@ -252,7 +252,9 @@ class SAC(TorchOffPolicyAlgo):
             The loss for the entropy for soft Q-learning.
         """
         # Tune temperature
-        targ_entropy = pred_log_probs.detach() + self.target_entropy
+        with torch.no_grad():
+            targ_entropy = pred_log_probs + self.target_entropy
+
         temp_loss = -self.log_temp * targ_entropy
 
         return temp_loss
@@ -331,19 +333,6 @@ class SAC(TorchOffPolicyAlgo):
 
         return self._step_optimizers(rollouts)
 
-    def save_dict(self) -> Dict[str, Any]:
-        """
-        Saves in the current state of the algorithm in a dictionary.
-
-        Returns:
-            A dictionary of values to save this algorithm.
-        """
-        # Save all the dicts
-        state_dict = super().save_dict()
-        state_dict["temperature"] = self.temperature
-
-        return state_dict
-
     def load(
             self,
             load_path: str = "",
@@ -358,4 +347,4 @@ class SAC(TorchOffPolicyAlgo):
 
         # Load all the dicts
         super().load(load_path, load_dict)
-        self.temperature = load_dict["temperature"]
+        self.temperature = torch.exp(self.log_temp).item()
