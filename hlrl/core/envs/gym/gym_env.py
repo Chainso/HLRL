@@ -1,30 +1,25 @@
-from gym.spaces import Discrete
+import gym
 
 from hlrl.core.envs.env import Env
+from hlrl.core.envs.gym.wrappers import ShapedActionWrapper
 
 class GymEnv(Env):
     """
     A environment from OpenAI Gym
     """
-    def __init__(self, env):
+    def __init__(self, env: gym.Env):
         """
         Creates the given environment from OpenAI Gym
 
         Args:
-            env (gym.env): The gym environment to wrap.
+            env: The gym environment to wrap.
         """
         Env.__init__(self)
-        self.env = env
-        self.state_space = self.env.observation_space.shape
 
-        # Easier to just sample an action than deal with the different action
-        # types of gym
-        self.action_space = self.env.action_space
-        self.action_space = (
-            (self.env.action_space.n,)
-            if isinstance(self.env.action_space, Discrete)
-            else self.env.action_space.shape
-        )
+        self.env = ShapedActionWrapper(env)
+
+        self.state_space = self.env.observation_space.shape
+        self.action_space = self.env.action_space.shape
 
     def step(self, action):
         """
