@@ -2,7 +2,7 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
-from torch.distributions import Normal, Categorical, OneHotCategorical
+from torch.distributions import Normal, OneHotCategorical
 
 from .linear import LinearPolicy
 
@@ -30,7 +30,7 @@ class GaussianPolicy(nn.Module):
             hidden_size: The number of units in each hidden layer.
             num_layers: The number of layers before the gaussian layer.
             activation_fn: The activation function in between each layer.
-        """ 
+        """
         super().__init__()
 
         self.linear = LinearPolicy(
@@ -119,7 +119,7 @@ class TanhGaussianPolicy(GaussianPolicy):
             num_layers: The number of layers before the gaussian layer.
             activation_fn: The activation function in between each layer.
             action_range: The range of the output (-action_range, action_range)
-        """ 
+        """
         super().__init__(inp_n, out_n, hidden_size, num_layers, activation_fn)
 
         self.action_range = action_range
@@ -178,7 +178,7 @@ class MultiCategoricalPolicy(nn.Module):
             hidden_size: The number of units in each hidden layer.
             num_layers: The number of layers before the gaussian layer.
             activation_fn: The activation function in between each layer.
-        """ 
+        """
         super().__init__()
 
         self.num_classes = classes_n
@@ -216,7 +216,7 @@ class MultiCategoricalPolicy(nn.Module):
 
         value = self.value(linear)
         value = value.view(*value.shape[:-1], -1, self.num_classes)
-        
+
         probs = self.probs(value)
         dist = OneHotCategorical(probs)
 

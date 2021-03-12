@@ -4,10 +4,11 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical, Distribution
 
-from .sac import SAC
 from hlrl.core.logger import Logger
 from hlrl.torch.common import polyak_average
 from hlrl.torch.common.functional import initialize_bias
+
+from .sac import SAC
 
 class SACHybrid(SAC):
     """
@@ -80,7 +81,7 @@ class SACHybrid(SAC):
         # Entropy tuning, starting at 1 due to auto-tuning
         self.discrete_temperature = 1
         self.discrete_target_entropy = 0.98 * torch.log(
-            self.num_discrete_actions
+            self.num_discrete_actions.float()
         ).item()
         self.discrete_log_temp = nn.Parameter(
             torch.zeros(1), requires_grad=True
@@ -133,12 +134,12 @@ class SACHybrid(SAC):
             zero_target = torch.zeros_like(entropy)
 
         # Update the target
-        if (self.training_steps % self._target_update_interval == 0):
+        if self.training_steps % self._target_update_interval == 0:
             polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
 
-            if (self.twin):
+            if self.twin:
                 polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
-        
+
         return entropy, zero_target
 
     def make_multipass_input(
@@ -339,11 +340,11 @@ class SACHybrid(SAC):
         action_parameters = torch.split(
             action_parameters, tuple(self.action_parameter_space)
         )[:, action]
-        
+
         action_parameters = self.make_multipass_input(
             observation, action_parameters
         )[-1]
-        
+
         scatter_offsets = torch.arange(batch_size, device=self.device)
         scatter_offsets *= self.num_action_parameters
 
@@ -353,7 +354,7 @@ class SACHybrid(SAC):
             action_parameters, 0, select_idxs
         )
         action_parameters = action_parameters.nonzero(as_tuple=True)
-        
+
         return action, q_val, action_parameters
 
     def step(
@@ -436,7 +437,7 @@ class SACHybrid(SAC):
             q_loss2 = self.q_loss_func(q_pred2, q_next)
 
             q_loss = (q_loss, q_loss2)
-    
+
         return q_loss
         
     def get_actor_loss(

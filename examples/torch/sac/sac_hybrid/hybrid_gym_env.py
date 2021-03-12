@@ -6,7 +6,6 @@ if(__name__ == "__main__"):
     import gym_goal
     import yaml
 
-    from gym.wrappers import RescaleAction
     from argparse import ArgumentParser, Namespace
     from functools import partial
     from pathlib import Path
