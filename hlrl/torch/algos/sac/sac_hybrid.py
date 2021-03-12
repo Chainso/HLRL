@@ -158,12 +158,12 @@ class SACHybrid(SAC):
             Returns the states and action parameters prepared for the multi-pass
             inputs.
         """
-        batch_size, state_size = states.shape
+        batch_size = states.shape[0]
 
         states = states.repeat_interleave(self.num_discrete_actions, dim=0)
 
         single_scatter_idxs = torch.arange(
-            self.num_action_parameters, device=self.device
+            self.num_discrete_actions, device=self.device
         )
         single_scatter_idxs = single_scatter_idxs.repeat_interleave(
             self.action_parameter_space, dim=0
@@ -173,13 +173,13 @@ class SACHybrid(SAC):
         )
 
         scatter_offsets = torch.arange(batch_size, device=self.device)
-        scatter_offsets *= self.num_action_parameters
+        scatter_offsets *= self.num_discrete_actions
         scatter_offsets = scatter_offsets.unsqueeze(-1)
 
         scatter_idxs = scatter_offsets + single_scatter_idxs
 
         parameter_cat = torch.zeros(
-            batch_size, state_size + self.num_discrete_actions,
+            batch_size * self.num_discrete_actions, self.num_action_parameters,
             device=self.device
         )
         parameter_cat = parameter_cat.scatter(
