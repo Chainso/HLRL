@@ -35,7 +35,8 @@ class SACHybrid(SAC):
             logger: Optional[Logger] = None
         ):
         """
-        Creates the soft actor-critic algorithm with the given parameters.
+        Creates the hybrid soft actor-critic algorithm with the given
+        parameters.
 
         Args:
             action_parameter_space: The action space of the continuous action
@@ -65,7 +66,7 @@ class SACHybrid(SAC):
         self.action_parameter_space = torch.tensor(
             action_parameter_space, device=device
         )
-        self.num_action_parameters = torch.prod(self.action_parameter_space)
+        self.num_action_parameters = torch.sum(self.action_parameter_space)
 
         self.discrete_action_space = torch.tensor(
             discrete_action_space, device=device
@@ -79,7 +80,7 @@ class SACHybrid(SAC):
         # Entropy tuning, starting at 1 due to auto-tuning
         self.discrete_temperature = 1
         self.discrete_target_entropy = 0.98 * torch.log(
-            torch.prod(discrete_action_space)
+            self.num_discrete_actions
         ).item()
         self.discrete_log_temp = nn.Parameter(
             torch.zeros(1), requires_grad=True
