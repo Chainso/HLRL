@@ -92,7 +92,6 @@ class GaussianPolicy(nn.Module):
         action = normal.rsample()
 
         log_prob = normal.log_prob(action)
-        log_prob = log_prob.sum(dim=-1, keepdim=True)
 
         return action, log_prob, mean
 
@@ -144,10 +143,7 @@ class TanhGaussianPolicy(GaussianPolicy):
         sample, log_prob, mean = super().forward(inp)
         action = torch.tanh(sample)
 
-        log_prob -= torch.sum(
-            torch.log(self.action_range * (1 - action.pow(2)) + epsilon),
-            dim=-1, keepdim=True
-        )
+        log_prob -= torch.log(self.action_range * (1 - action.pow(2)) + epsilon)
 
         action = action * self.action_range
         mean = torch.tanh(mean) * self.action_range

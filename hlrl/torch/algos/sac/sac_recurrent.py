@@ -26,7 +26,7 @@ class SACRecurrent(SAC):
             The action, Q-val, and new hidden state.
         """
         # Only going to update the hidden state using the policy hidden state
-        action, log_prob, mean, new_hidden = self.policy(
+        action, _, _, new_hidden = self.policy(
             observation, hidden_state
         )
 
@@ -98,12 +98,11 @@ class SACRecurrent(SAC):
         with torch.no_grad():
             # Using the entropy as the difference between Q and target, very
             # good heuristic for PER
-            updated_actions, new_log_pis, _, _ = self.policy(
-                states, hidden_states
-            )
-                                     
-            new_qs = self.temperature * new_log_pis
-            new_q_targ = torch.zeros_like(new_qs)
+            _, new_log_probs, _ = self.policy(states, hidden_states)
+            new_log_probs = new_log_probs.sum(-1, keepdim=True)
+
+            new_entropy = self.temperature * new_log_probs
+            zero_target = torch.zeros_like(new_entropy)
 
         # Update the target
         if (self.training_steps % self._target_update_interval == 0):
@@ -112,7 +111,7 @@ class SACRecurrent(SAC):
             if (self.twin):
                 polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
 
-        return new_qs, new_q_targ
+        return new_entropy, zero_target
 
     def get_critic_loss(
             self,
@@ -139,6 +138,8 @@ class SACRecurrent(SAC):
             next_actions, next_log_probs, _, _ = self.policy(
                 next_states, next_hiddens
             )
+            next_log_probs = next_log_probs.sum(-1, keepdim=True)
+
             q_targ_pred, _ = self.q_func_targ1(
                 next_states, next_actions, next_hiddens
             )
@@ -181,6 +182,7 @@ class SACRecurrent(SAC):
         hidden_states = rollouts["hidden_state"]
 
         pred_actions, pred_log_probs, _, _ = self.policy(states, hidden_states)
+        pred_log_probs = pred_log_probs.sum(-1, keepdim=True)
         
         p_q_pred, _ = self.q_func1(states, pred_actions, hidden_states)
 

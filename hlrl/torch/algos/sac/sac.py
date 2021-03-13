@@ -123,19 +123,20 @@ class SAC(TorchOffPolicyAlgo):
         with torch.no_grad():
             # Using the entropy as the difference between Q and target, very
             # good heuristic for PER
-            updated_actions, new_log_pis, _ = self.policy(states)
-   
-            new_qs = self.temperature * new_log_pis
-            new_q_targ = torch.zeros_like(new_qs)
+            _, new_log_probs, _ = self.policy(states)
+            new_log_probs = new_log_probs.sum(-1, keepdim=True)
+
+            new_entropy = self.temperature * new_log_probs
+            zero_target = torch.zeros_like(new_entropy)
 
         # Update the target
-        if (self.training_steps % self._target_update_interval == 0):
+        if self.training_steps % self._target_update_interval == 0:
             polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
 
-            if (self.twin):
+            if self.twin:
                 polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
 
-        return new_qs, new_q_targ
+        return new_entropy, zero_target
 
     def forward(
             self,
@@ -192,6 +193,8 @@ class SAC(TorchOffPolicyAlgo):
 
         with torch.no_grad():
             next_actions, next_log_probs, _ = self.policy(next_states)
+            next_log_probs = next_log_probs.sum(-1, keepdim=True)
+
             q_targ_pred = self.q_func_targ1(next_states, next_actions)
 
             if self.twin:
@@ -229,6 +232,7 @@ class SAC(TorchOffPolicyAlgo):
         states = rollouts["state"]
 
         pred_actions, pred_log_probs, _ = self.policy(states)
+        pred_log_probs = pred_log_probs.sum(-1, keepdim=True)
         
         p_q_pred = self.q_func1(states, pred_actions)
 
