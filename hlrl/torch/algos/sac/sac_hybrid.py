@@ -386,12 +386,12 @@ class SACHybrid(SAC):
                     next_states, next_action_params
                 )
 
-                q_targ_pred2, discrete_probs2 = self.get_q_values(
+                q_targ_pred2, discrete_dist2 = self.get_q_values(
                     self.q_func_targ2, next_ap_states, next_action_params
                 )
                 q_targ_pred = torch.min(q_targ_pred, q_targ_pred2)
 
-                discrete_probs = torch.min(discrete_probs, discrete_probs2)
+                discrete_probs = torch.min(discrete_probs, discrete_dist2.probs)
 
             q_entropy = self.get_entropy(next_log_probs, discrete_probs)
 
@@ -450,12 +450,12 @@ class SACHybrid(SAC):
                 states, pred_action_params
             )
 
-            p_q_pred2, discrete_probs2 = self.get_q_values(
+            p_q_pred2, discrete_dist2 = self.get_q_values(
                 self.q_func2, ap_states, pred_action_params
             )
             p_q_pred = torch.min(p_q_pred, p_q_pred2)
 
-            discrete_probs = torch.min(discrete_probs, discrete_probs2)
+            discrete_probs = torch.min(discrete_probs, discrete_dist2.probs)
 
         q_entropy = self.get_entropy(pred_log_probs, discrete_probs)
 
@@ -512,6 +512,7 @@ class SACHybrid(SAC):
         Returns:
             The updated Q-value and Q-value target.
         """
+        print("JID")
         if isinstance(is_weights, torch.Tensor):
             is_weights = is_weights.to(self.device)
 
