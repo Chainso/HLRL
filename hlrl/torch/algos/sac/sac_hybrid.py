@@ -67,12 +67,12 @@ class SACHybrid(SAC):
         self.action_parameter_space = torch.tensor(
             action_parameter_space, device=device
         )
-        self.num_action_parameters = torch.sum(self.action_parameter_space)
+        self.num_action_parameters = self.action_parameter_space.sum().item()
 
         self.discrete_action_space = torch.tensor(
             discrete_action_space, device=device
         )
-        self.num_discrete_actions = torch.prod(self.discrete_action_space)
+        self.num_discrete_actions = self.discrete_action_space.prod().item()
 
         # Make sure at least the first layer has zero bias so that gradients
         # between actions and parameters of the other actions stay 0
@@ -81,7 +81,7 @@ class SACHybrid(SAC):
         # Entropy tuning, starting at 1 due to auto-tuning
         self.discrete_temperature = 1
         self.discrete_target_entropy = 0.98 * torch.log(
-            self.num_discrete_actions.float()
+            self.discrete_action_space.prod().float()
         ).item()
         self.discrete_log_temp = nn.Parameter(
             torch.zeros(1), requires_grad=True
@@ -261,7 +261,7 @@ class SACHybrid(SAC):
             self,
             q_func: nn.Module,
             states: torch.Tensor,
-            action_paramaters: torch.Tensor
+            action_parameters: torch.Tensor
         ) -> Tuple[torch.Tensor, Distribution]:
         """
         Returns the Q-values for the Q-function on the multi-pass inputs.
@@ -274,8 +274,10 @@ class SACHybrid(SAC):
         Returns:
             The Q-values and their distribution.
         """
-        q_val = q_func(states, action_paramaters).view(
-            states.shape[0], self.num_discrete_actions
+        q_val = q_func(states, action_parameters)
+        q_val = q_val.view(
+            states.shape[0] // self.num_discrete_actions,
+            self.num_discrete_actions
         )
 
         probs = self.probs(q_val)
@@ -312,6 +314,7 @@ class SACHybrid(SAC):
         )
 
         action = dist.sample()
+        action = action.unsqueeze(-1)
 
         return action, q_val, action_parameters, cont_log_prob, dist.probs
 
@@ -328,32 +331,11 @@ class SACHybrid(SAC):
         Returns:
             The action, Q-value of the action and the action parameters.
         """
-        batch_size = observation.shape[0]
-
         action, q_val, action_parameters = self.get_action(
             observation, self.q_func1
         )[:3]
 
         q_val = q_val.gather(-1, action)
-
-        # Get the parameters for this specific action
-        action_parameters = torch.split(
-            action_parameters, tuple(self.action_parameter_space)
-        )[:, action]
-
-        action_parameters = self.make_multipass_input(
-            observation, action_parameters
-        )[-1]
-
-        scatter_offsets = torch.arange(batch_size, device=self.device)
-        scatter_offsets *= self.num_action_parameters
-
-        select_idxs = scatter_offsets + action.squeeze()
-
-        action_parameters = torch.index_select(
-            action_parameters, 0, select_idxs
-        )
-        action_parameters = action_parameters.nonzero(as_tuple=True)
 
         return action, q_val, action_parameters
 
