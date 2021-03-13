@@ -69,6 +69,11 @@ class SACHybrid(SAC):
         )
         self.num_action_parameters = self.action_parameter_space.sum().item()
 
+        self.action_parameter_offsets = torch.cat([
+            torch.zeros(1, device=self.action_parameter_space.device),
+            self.action_parameter_space
+        ]).cumsum(dim=0)
+
         self.discrete_action_space = torch.tensor(
             discrete_action_space, device=device
         )
@@ -101,22 +106,25 @@ class SACHybrid(SAC):
 
     def _step_optimizers(
             self,
-            states: torch.Tensor
+            rollouts: Dict[str, torch.Tensor]
         ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Assumes the gradients have been computed and updates the parameters of
         the network with the optimizers.
 
         Args:
-            states: The states of the batch.
+            rollouts: The (s, a, r, s', t) of training data for the network.
 
         Returns:
             The updated Q-values and target Q-values.
         """
+        states = rollouts["state"]
+
+        self.q_optim1.step()
+
         if self.twin:
             self.q_optim2.step()
 
-        self.q_optim1.step()
         self.p_optim.step()
         self.temp_optim.step()
         self.discrete_temp_optim.step()
@@ -201,7 +209,10 @@ class SACHybrid(SAC):
         Returns:
             The discrete portion of the temperature.
         """
-        return self.discrete_temperature * torch.log(discrete_probs)
+        return (
+            self.discrete_temperature *
+            torch.sum(discrete_probs * torch.log(discrete_probs))
+        )
 
     def get_continuous_entropy(
             self,
@@ -218,17 +229,21 @@ class SACHybrid(SAC):
         Returns:
             The continuous portion of the entropy.
         """
-        discrete_probs_t = discrete_probs.transpose(0, 1)
-
-        ap_log_probs = torch.split(
-            cont_log_prob, tuple(self.action_parameter_space)
-        )
-
         # Each discrete action can have a different number of action parameters
         # so can't contain them all in a single tensor
-        cont_temp = torch.zeros_like(cont_log_prob.shape[0], 1)
-        for discrete_prob, log_prob in zip(discrete_probs_t, ap_log_probs):
-            cont_temp += torch.sum(discrete_prob * log_prob)
+        cont_temp = torch.zeros(
+            cont_log_prob.shape[0], 1, device=cont_log_prob.device
+        )
+
+        for i in range(self.num_discrete_actions):
+            start, end = self.action_parameter_offsets[i:i + 2].long()
+
+            ap_param_log_prob = torch.sum(
+                cont_log_prob[:, start:end], dim=-1, keepdim=True
+            )
+            param_log_prob = discrete_probs[:, i:i + 1] * ap_param_log_prob
+
+            cont_temp += param_log_prob
 
         cont_temp = self.temperature * cont_temp
 
@@ -459,7 +474,8 @@ class SACHybrid(SAC):
 
         q_entropy = self.get_entropy(pred_log_probs, discrete_probs)
 
-        p_loss  = q_entropy - p_q_pred
+        p_loss = q_entropy - p_q_pred
+        p_loss = p_loss.sum(dim=-1)
 
         return p_loss, pred_log_probs, discrete_probs
 
@@ -512,7 +528,6 @@ class SACHybrid(SAC):
         Returns:
             The updated Q-value and Q-value target.
         """
-        print("JID")
         if isinstance(is_weights, torch.Tensor):
             is_weights = is_weights.to(self.device)
 
