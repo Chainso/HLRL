@@ -135,7 +135,10 @@ class OffPolicyTrainer():
                         self._start_training, algo=algo, args=args
                     )
 
+                    # Force CPU for now to avoid re-instantiating cuda in
+                    # subprocesses
                     algo.device = torch.device("cpu")
+                    algo = algo.to(algo.device)
 
                     for i in range(args.num_agents):
                         param_pipe = mp.Pipe(duplex=False)

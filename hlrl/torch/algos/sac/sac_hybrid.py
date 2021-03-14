@@ -64,18 +64,20 @@ class SACHybrid(SAC):
         )
 
         # All constants
-        self.action_parameter_space = torch.tensor(
-            action_parameter_space, device=device
+        self.action_parameter_space = nn.Parameter(
+            torch.tensor(action_parameter_space), requires_grad=False
         )
         self.num_action_parameters = self.action_parameter_space.sum().item()
 
-        self.action_parameter_offsets = torch.cat([
-            torch.zeros(1, device=self.action_parameter_space.device),
-            self.action_parameter_space
-        ]).cumsum(dim=0)
+        self.action_parameter_offsets = nn.Parameter(
+            torch.cat([
+                torch.zeros(1), self.action_parameter_space
+            ]).cumsum(dim=0),
+            requires_grad=False
+        )
 
-        self.discrete_action_space = torch.tensor(
-            discrete_action_space, device=device
+        self.discrete_action_space = nn.Parameter(
+            torch.tensor(discrete_action_space), requires_grad=False
         )
         self.num_discrete_actions = self.discrete_action_space.prod().item()
 
