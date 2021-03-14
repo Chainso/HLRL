@@ -209,10 +209,16 @@ class SACHybrid(SAC):
         Returns:
             The discrete portion of the temperature.
         """
-        return (
-            self.discrete_temperature *
-            torch.sum(discrete_probs * torch.log(discrete_probs))
+        # For numerical stability
+        zero_probs_epsilon = (discrete_probs == 0.0).float() * 1e-8
+        discrete_log_probs = torch.log(discrete_probs + zero_probs_epsilon)
+
+        entropy = torch.sum(
+            discrete_probs * discrete_log_probs, dim=-1, keepdim=True
         )
+        entropy = self.discrete_temperature * entropy
+
+        return entropy
 
     def get_continuous_entropy(
             self,
