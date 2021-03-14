@@ -11,14 +11,13 @@ class TorchRLAlgo(RLAlgo, nn.Module):
     """
     An abstract reinforcement learning algorithm.
     """
-    def __init__(self, device: str = "cpu", logger: Logger = None):
+    def __init__(self, device: str = "cpu", logger: Optional[Logger] = None):
         """
         Creates the reinforcement learning algorithm.
 
         Args:
-            device (str): The device of the tensors in the module.
-            logger (Logger, optional): The logger to log results while training
-                and evaluating.
+            device: The device of the tensors in the module.
+            logger: The logger to log results while training and evaluating.
         """
         RLAlgo.__init__(self, logger)
         nn.Module.__init__(self)
@@ -76,17 +75,15 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
     """
     The base class of an off-policy torch algorithm.
     """
-    def __init__(self, device: str = "cpu", logger: Logger = None):
+    def __init__(self, device: str = "cpu", logger: Optional[Logger] = None):
         """
         Creates the off-policy algorithm.
 
         Args:
-            device (str): The device of the tensors in the module.
-            logger (Logger, optional): The logger to log results while training
-                                       and evaluating.
+            device: The device of the tensors in the module.
+            logger: The logger to log results while training and evaluating.
         """
         super().__init__(device, logger)
-
 
     def train_from_buffer(
             self,
@@ -95,23 +92,28 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
             start_size: int,
             save_path: Optional[str] = None,
             save_interval: int = 10000
-        ):
+        ) -> None:
         """
         Starts training the network.
 
         Args:
-            experience_replay (ExperienceReplay): The experience replay buffer
-                                                  to sample experiences from.
-            batch_size (int): The batch size of the experiences to train on.
-            start_size (int): The amount of expreiences in the buffer before
-                              training is started.
-            save_path (Optional, str): The path to save the model to.
-            save_interval (int): The number of batches between saves.
+            experience_replay: The experience replay buffer  to sample
+                experiences from.
+            batch_size: The batch size of the experiences to train on.
+            start_size: The amount of expreiences in the buffer before training
+                is started.
+            save_path: The path to save the model to.
+            save_interval: The number of batches between saves.
         """
         if(batch_size <= len(experience_replay)
            and start_size <= len(experience_replay)):
             sample = experience_replay.sample(batch_size)
             rollouts, ids, is_weights = sample
+
+            # Make sure to change device if needed
+            rollouts = {
+                key: tens.to(self.device) for key, tens in rollouts.items()
+            }
 
             new_q, new_q_targ = self.train_batch(rollouts, is_weights)
 
