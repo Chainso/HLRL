@@ -68,51 +68,6 @@ class SACRecurrent(SAC):
             for tens in self.policy.reset_hidden_state()
         ]
 
-    def _step_optimizers(
-            self,
-            rollouts: Dict[str, torch.Tensor]
-        ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Assumes the gradients have been computed and updates the parameters of
-        the network with the optimizers.
-
-        Args:
-            rollouts: The (s, a, r, s', t) of training data for the network.
-
-        Returns:
-            The updated Q-values and target Q-values.
-        """
-        states = rollouts["state"]
-        hidden_states = rollouts["hidden_state"]
-
-        self.q_optim1.step()
-
-        if self.twin:
-            self.q_optim2.step()
-
-        self.p_optim.step()
-        self.temp_optim.step()
-
-        self.temperature = torch.exp(self.log_temp).item()
-
-        with torch.no_grad():
-            # Using the entropy as the difference between Q and target, very
-            # good heuristic for PER
-            _, new_log_probs, _ = self.policy(states, hidden_states)
-            new_log_probs = new_log_probs.sum(-1, keepdim=True)
-
-            new_entropy = self.temperature * new_log_probs
-            zero_target = torch.zeros_like(new_entropy)
-
-        # Update the target
-        if (self.training_steps % self._target_update_interval == 0):
-            polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
-
-            if (self.twin):
-                polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
-
-        return new_entropy, zero_target
-
     def get_critic_loss(
             self,
             rollouts: Dict[str, torch.Tensor]

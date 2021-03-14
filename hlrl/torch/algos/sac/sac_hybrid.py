@@ -21,8 +21,8 @@ class SACHybrid(SAC):
     """
     def __init__(
             self,
-            action_parameter_space: Tuple,
-            discrete_action_space: Tuple,
+            action_parameter_space: Tuple[int, ...],
+            discrete_action_space: Tuple[int, ...],
             q_func: nn.Module,
             policy: nn.Module,
             discount: float,
@@ -65,7 +65,7 @@ class SACHybrid(SAC):
 
         # All constants
         self.action_parameter_space = nn.Parameter(
-            torch.tensor(action_parameter_space), requires_grad=False
+            torch.LongTensor(action_parameter_space), requires_grad=False
         )
         self.num_action_parameters = self.action_parameter_space.sum().item()
 
@@ -77,7 +77,7 @@ class SACHybrid(SAC):
         )
 
         self.discrete_action_space = nn.Parameter(
-            torch.tensor(discrete_action_space), requires_grad=False
+            torch.LongTensor(discrete_action_space), requires_grad=False
         )
         self.num_discrete_actions = self.discrete_action_space.prod().item()
 
@@ -120,37 +120,10 @@ class SACHybrid(SAC):
         Returns:
             The updated Q-values and target Q-values.
         """
-        states = rollouts["state"]
-
-        self.q_optim1.step()
-
-        if self.twin:
-            self.q_optim2.step()
-
-        self.p_optim.step()
-        self.temp_optim.step()
         self.discrete_temp_optim.step()
-
-        self.temperature = torch.exp(self.log_temp).item()
         self.discrete_temperature = torch.exp(self.discrete_log_temp).item()
 
-        # Get the new q value to update the experience replay
-        with torch.no_grad():
-            cont_log_prob, discrete_probs = self.get_action(
-                states, self.q_func1
-            )[-2:]
-
-            entropy = self.get_entropy(cont_log_prob, discrete_probs)
-            zero_target = torch.zeros_like(entropy)
-
-        # Update the target
-        if self.training_steps % self._target_update_interval == 0:
-            polyak_average(self.q_func1, self.q_func_targ1, self._polyak)
-
-            if self.twin:
-                polyak_average(self.q_func2, self.q_func_targ2, self._polyak)
-
-        return entropy, zero_target
+        return super()._step_optimizers(rollouts)
 
     def make_multipass_input(
             self,
