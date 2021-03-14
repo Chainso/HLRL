@@ -70,14 +70,14 @@ class ApexLearner():
                 sample_start = time()
 
             sample = sample_queue.get()
-            rollouts, ids, is_weights = sample      
+            rollouts, ids, is_weights = sample
 
             if algo.logger is not None:
                 if train_start == 0:
                     train_start = time()
 
                 train_step_start = time()
-                
+
                 if train_step_start - sample_start > 0:
                     algo.logger["Train/Samples per Second"] = (
                         1 / (train_step_start - sample_start),
@@ -111,7 +111,7 @@ class ApexLearner():
 
             if (param_send_interval > 0
                 and training_step % param_send_interval == 0):
-                
+
                 for pipe in param_pipes:
                     pipe.send(algo.save_dict())
 
@@ -127,4 +127,3 @@ class ApexLearner():
                 sample_queue.get_nowait()
         except queue.Empty:
             pass
-

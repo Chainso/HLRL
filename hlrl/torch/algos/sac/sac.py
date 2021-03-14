@@ -279,6 +279,11 @@ class SAC(TorchOffPolicyAlgo):
         Returns:
             The updated Q-value and Q-value target.
         """
+        # Make sure to change device if needed
+        rollouts = {
+            key: tens.to(self.device) for key, tens in rollouts.items()
+        }
+
         if isinstance(is_weights, torch.Tensor):
             is_weights = is_weights.to(self.device)
 
