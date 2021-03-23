@@ -1,6 +1,9 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 
+from hlrl.torch.layers import SplitLayer
 class LinearPolicy(nn.Module):
     """
     A standard linear policy.
@@ -123,3 +126,61 @@ class LinearSAPolicy(LinearPolicy):
         """
         lin_in = torch.cat([state, actions], dim=-1)
         return super().forward(lin_in)
+
+class SplitLinearPolicy(LinearPolicy):
+    """
+    A policy starting with a split-linear layer.
+    """
+    def __init__(
+            self,
+            dense_features: int,
+            split_space: Tuple[int, ...],
+            out_features: int,
+            hidden_size: int,
+            num_layers: int,
+            activation_fn: nn.Module
+        ):
+        """
+        A policy that takes in both dense and split features.
+
+        Args:
+            dense_features: The number of dense input features.
+            split_space: The tuple space of the split input features.
+            out_features: The number of output features per split input.
+            hidden_size: The size of each hidden layer.
+            num_layers: The number of layers.
+            activation_fn: The activation function between each layer.
+        """
+        super().__init__(
+            hidden_size, out_features, hidden_size, num_layers - 1,
+            activation_fn
+        )
+
+        first_out_n = hidden_size if num_layers > 1 else out_features
+
+        self.split_layer = SplitLayer(dense_features, split_space, first_out_n)
+
+    def forward(
+            self,
+            dense_input: torch.Tensor,
+            split_input: torch.Tensor
+        ) -> torch.Tensor:
+        """
+        Does a forward pass on the concatenated and repeated dense input and
+        split inputs.
+
+        Args:
+            dense_input: The inputs for the dense features.
+            split_input: The inputs for the split features.
+
+        Returns:
+            The forward pass on the inputs.
+        """
+        batch_size = dense_input.shape[0]
+
+        split_forward = self.split_layer(dense_input, split_input)
+
+        linear = super().forward(split_forward)
+        linear = linear.view(batch_size, -1)
+
+        return linear
