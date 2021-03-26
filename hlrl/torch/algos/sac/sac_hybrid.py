@@ -579,7 +579,7 @@ class SACHybrid(SAC):
             self.logger["Train/Discrete Action Probability"] = (
                 torch.mean(torch.max(
                     pred_discrete_probs.detach(), dim=-1
-                )).item(),
+                ).values).item(),
                 self.training_steps
             )
 
