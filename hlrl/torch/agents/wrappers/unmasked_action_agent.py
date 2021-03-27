@@ -38,7 +38,7 @@ class UnmaskedActionAgent(MethodWrapper):
             )
 
         self.action_mask = action_mask
-        self.default_action = torch.tensor(default_action)
+        self.default_action = torch.tensor(default_action).to(self.algo.device)
 
         action_mask_idx = torch.tensor(action_mask).nonzero(as_tuple=False)
 
