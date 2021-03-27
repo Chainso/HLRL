@@ -38,7 +38,9 @@ class UnmaskedActionAgent(MethodWrapper):
             )
 
         self.action_mask = action_mask
-        self.default_action = torch.tensor(default_action).to(self.algo.device)
+
+        self.default_action = torch.FloatTensor(default_action)
+        self.default_action = self.default_action.to(self.algo.device)
 
         action_mask_idx = torch.tensor(action_mask).nonzero(as_tuple=False)
 
@@ -69,7 +71,7 @@ class UnmaskedActionAgent(MethodWrapper):
         expanded_default_action = self.default_action.expand(
             action.shape[:-1] + self.default_action.shape
         )
-
+        
         unmasked_action = expanded_default_action.scatter(
             -1, expanded_mask, action
         )
