@@ -17,7 +17,7 @@ from hlrl.core.agents import (
 from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.agents import (
     TorchRLAgent, SequenceInputAgent, ExperienceSequenceAgent,
-    TorchRecurrentAgent, TorchOffPolicyAgent
+    TorchRecurrentAgent, TorchOffPolicyAgent, UnmaskedActionAgent
 )
 from hlrl.torch.experience_replay import TorchPER, TorchPSER, TorchR2D2
 from hlrl.torch.distributed import TorchApexWorker
@@ -42,6 +42,13 @@ class OffPolicyTrainer():
                 models.
             render (bool): Render the environment.
             silent (bool): Will run without standard output from agents.
+            action_mask (Optional[Tuple[bool, ...]]): The action mask to mask or
+                unmask.
+            masked (Optional[bool]): If an action mask is given, should be True
+                if the returned agent actions are already masked.
+            default_action (Optional[Tuple[float, ...]]): If an action mask is
+                given and going from masked -> unmasked, this should be the
+                default values for the actions.
             decay (float): The gamma decay for the target Q-values.
             n_steps (int): The number of decay steps.
             num_agents (int): The number of agents to run concurrently, 0 is
@@ -166,6 +173,18 @@ class OffPolicyTrainer():
             agent_builder,
             partial(TorchRLAgent, batch_state=not args.vectorized)
         )
+        
+        if args.action_mask:
+            # TODO: Will have to add an action mask wrapper later
+            if args.masked:
+                agent_builder = compose(
+                    agent_builder,
+                    partial(
+                        UnmaskedActionAgent, action_mask=args.action_mask,
+                        default_action=args.default_action
+                    )
+                )
+
         agent_builder = compose(agent_builder, TorchOffPolicyAgent)
 
         if args.recurrent:

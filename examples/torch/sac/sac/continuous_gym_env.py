@@ -153,6 +153,14 @@ if(__name__ == "__main__"):
         "--silent", action="store_true",
         help="will run without standard output from agents"
     )
+    parser.add_argument(
+        "--action_mask", type=int, nargs="+", default=None,
+        help="the mask over available actions to take"
+    )
+    parser.add_argument(
+        "--default_action", type=float, default=None,
+        help="the default action values if a masked is used"
+    )
 
     # Experience Replay args
     parser.add_argument(
@@ -224,6 +232,16 @@ if(__name__ == "__main__"):
     env_builder = compose(env_builder, partial(RescaleAction, a=-1, b=1))
     env_builder = compose(env_builder, GymEnv)
     env = env_builder()
+
+    # Action masking
+    if args.action_mask and not args.default_action:
+        args.default_action = (0,) * len(args.action_mask)
+        args.masked = True
+
+        # Resize the action space to accomdate for the mask
+        env.action_space = (
+            env.action_space[0] - sum(args.action_mask), env.action_space[1:]
+        )
 
     # The algorithm logger
     algo_logger = (
