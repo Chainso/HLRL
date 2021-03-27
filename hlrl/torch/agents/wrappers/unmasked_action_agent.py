@@ -1,4 +1,4 @@
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import torch
 from hlrl.core.agents import RLAgent
@@ -13,7 +13,7 @@ class UnmaskedActionAgent(MethodWrapper):
             self,
             agent: RLAgent,
             action_mask: Tuple[bool, ...],
-            default_action: Tuple[float, ...]
+            default_action: Optional[Tuple[float, ...]]
         ):
         """
         Creates the unmasked action wrapper over the agent.
@@ -21,9 +21,12 @@ class UnmaskedActionAgent(MethodWrapper):
         Args:
             agent: The agent to wrap.
             action_mask: A mask that the given actions use.
-            default_action: The default values for the action.
+            default_action: The default values for the action, by default a
+                vector of zeros.
         """
         super().__init__(agent)
+
+        default_action = default_action or (0,) * len(action_mask)
 
         if len(action_mask) != len(default_action):
             error_format = (

@@ -239,9 +239,7 @@ if(__name__ == "__main__"):
         args.masked = True
 
         # Resize the action space to accomdate for the mask
-        env.action_space = (
-            env.action_space[0] - sum(args.action_mask), env.action_space[1:]
-        )
+        env.action_space = (sum(args.action_mask),) +  env.action_space[1:]
 
     # The algorithm logger
     algo_logger = (
