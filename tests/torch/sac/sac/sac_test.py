@@ -213,7 +213,7 @@ if(__name__ == "__main__"):
         help="the batch size of the training set"
     )
     parser.add_argument(
-        "--start_size", type=int, default=10000,
+        "--start_size", type=int, default=512,
         help="the size of the replay buffer before training"
     )
     parser.add_argument(
@@ -225,7 +225,7 @@ if(__name__ == "__main__"):
 		help="the number of episodes to play for if playing"
 	)
     parser.add_argument(
-        "--training_steps", type=int, default=20000,
+        "--training_steps", type=int, default=50000,
         help="the number of training steps to train for"
     )
 
@@ -274,10 +274,10 @@ if(__name__ == "__main__"):
         "--er_alpha", type=float, default=0.6, help="the alpha value for PER"
     )
     parser.add_argument(
-        "--er_beta", type=float, default=0, help="the alpha value for PER"
+        "--er_beta", type=float, default=0.4, help="the alpha value for PER"
     )
     parser.add_argument(
-        "--er_beta_increment", type=float, default=0,
+        "--er_beta_increment", type=float, default=1e-3,
 		help="the increment of the beta value on each sample for PER"
     )
     parser.add_argument(
