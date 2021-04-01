@@ -564,6 +564,12 @@ class SACHybrid(SAC):
             self.logger["Train/Policy Loss"] = (
                 policy_loss.detach().item(), self.training_steps
             )
+            self.logger["Train/Continuous Temperature Loss"] = (
+                continuous_temp_loss.detach().item(), self.training_steps
+            )
+            self.logger["Train/Discrete Temperature Loss"] = (
+                discrete_temp_loss.detach().item(), self.training_steps
+            )
             self.logger["Train/Temperature"] = (
                 self.temperature, self.training_steps
             )

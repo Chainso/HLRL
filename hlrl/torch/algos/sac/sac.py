@@ -324,6 +324,9 @@ class SAC(TorchOffPolicyAlgo):
             self.logger["Train/Policy Loss"] = (
                 policy_loss.detach().item(), self.training_steps
             )
+            self.logger["Train/Temperature Loss"] = (
+                temp_loss.detach().item(), self.training_steps
+            )
             self.logger["Train/Temperature"] = (
                 self.temperature, self.training_steps
             )
