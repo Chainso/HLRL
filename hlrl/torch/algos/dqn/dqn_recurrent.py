@@ -49,7 +49,7 @@ class DQNRecurrent(DQN):
 
         return act_qs, q_targ
 
-    def _step_optimizers(self,
+    def after_update(self,
             states: torch.FloatTensor,
             actions: torch.LongTensor,
             rewards: torch.FloatTensor,
@@ -58,8 +58,8 @@ class DQNRecurrent(DQN):
             hidden_states: Tuple[torch.FloatTensor, torch.FloatTensor]
         ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
-        Assumes the gradients have been computed and updates the parameters of
-        the network with the optimizers.
+        Recomputes the new losses and updates particular networks parameters
+        after a gradient update.
 
         Args:
             states: The states to recompute losses on.
@@ -72,7 +72,6 @@ class DQNRecurrent(DQN):
         Returns:
             A tuple of the newly computed Q-value, and its target.
         """
-        self.q_optim.step()
 
         # Get the new q value to update the experience replay
         if (self.training_steps % self._target_update_interval == 0):
@@ -185,7 +184,10 @@ class DQNRecurrent(DQN):
 
         q_loss = q_loss_func(q_val, q_target)
         q_loss = torch.mean(q_loss * is_weights)
+
+        self.q_optim.zero_grad()
         q_loss.backward()
+        self.q_optim.step()
 
         # Log the losses if a logger was given
         if(self.logger is not None):
@@ -193,7 +195,7 @@ class DQNRecurrent(DQN):
                 q_loss.detach().item(), self.training_steps
             )
 
-        new_qs, new_q_targ = self._step_optimizers(
+        new_qs, new_q_targ = self.after_update(
             states, actions, rewards, next_states, terminals, hidden_states
         )
 

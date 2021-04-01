@@ -106,13 +106,13 @@ class SACHybrid(SAC):
             [self.discrete_log_temp]
         )
 
-    def _step_optimizers(
+    def after_update(
             self,
             rollouts: Dict[str, torch.Tensor]
         ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Assumes the gradients have been computed and updates the parameters of
-        the network with the optimizers.
+        Recomputes the new losses and updates particular networks parameters
+        after a gradient update.
 
         Args:
             rollouts: The (s, a, r, s', t) of training data for the network.
@@ -120,10 +120,9 @@ class SACHybrid(SAC):
         Returns:
             The updated Q-values and target Q-values.
         """
-        self.discrete_temp_optim.step()
         self.discrete_temperature = torch.exp(self.discrete_log_temp).item()
 
-        return super()._step_optimizers(rollouts)
+        return super().after_update(rollouts)
 
     def make_multipass_input(
             self,
@@ -519,20 +518,18 @@ class SACHybrid(SAC):
 
         if self.twin:
             q_loss1, q_loss2 = self.get_critic_loss(rollouts)
+
             q_loss1 = torch.mean(q_loss1 * is_weights)
             q_loss2 = torch.mean(q_loss2 * is_weights)
 
-            self.q_optim1.zero_grad()
-            q_loss1.backward()
-
-            self.q_optim2.zero_grad()
-            q_loss2.backward()
+            q_loss = q_loss1 + q_loss2
         else:
             q_loss = self.get_critic_loss(rollouts)
             q_loss = torch.mean(q_loss * is_weights)
 
-            self.q_optim1.zero_grad()
-            q_loss.backward()
+        self.q_optim.zero_grad()
+        q_loss.backward()
+        self.q_optim.step()
 
         policy_loss, pred_log_probs, pred_discrete_probs = self.get_actor_loss(
             rollouts
@@ -541,6 +538,7 @@ class SACHybrid(SAC):
 
         self.p_optim.zero_grad()
         policy_loss.backward()
+        self.p_optim.step()
 
         continuous_temp_loss, discrete_temp_loss = self.get_entropy_loss(
             pred_log_probs, pred_discrete_probs
@@ -550,9 +548,11 @@ class SACHybrid(SAC):
 
         self.temp_optim.zero_grad()
         continuous_temp_loss.backward()
+        self.temp_optim.step()
 
         self.discrete_temp_optim.zero_grad()
         discrete_temp_loss.backward()
+        self.temp_optim.step()
 
         self.training_steps += 1
 
@@ -595,7 +595,7 @@ class SACHybrid(SAC):
                     q_loss2.detach().item(), self.training_steps
                 )
 
-        return self._step_optimizers(rollouts)
+        return self.after_update(rollouts)
 
     def load(
             self,
