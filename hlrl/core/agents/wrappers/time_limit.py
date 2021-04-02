@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 
@@ -40,7 +40,7 @@ class TimeLimitAgent(MethodWrapper):
 
     def transform_terminal(
             self,
-            terminal: int | bool | np.array,
+            terminal: Union[int, bool, np.array],
             info: Dict[str, Any]
         ) -> Any:
         """
@@ -53,6 +53,8 @@ class TimeLimitAgent(MethodWrapper):
         Returns:
             The transformed terminal.
         """
+        terminal = self.om.transform_terminal(terminal, info)
+
         truncated = info.get("TimeLimit.truncated")
         
         if self.max_steps is not None and self.current_step >= self.max_steps:

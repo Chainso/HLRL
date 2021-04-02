@@ -89,7 +89,7 @@ class TorchRLAgent(MethodWrapper):
         Returns:
             The transformed terminal.
         """
-        terminal = self.om.transform_terminal(terminal)
+        terminal = self.om.transform_terminal(terminal, info)
 
         if self.batch_state:
             terminal = [terminal]

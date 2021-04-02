@@ -12,7 +12,8 @@ from hlrl.core.logger import TensorboardLogger
 from hlrl.core.common.functional import compose, partial_iterator
 from hlrl.core.distributed import ApexRunner
 from hlrl.core.agents import (
-    OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent
+    OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent,
+    TimeLimitAgent
 )
 from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.agents import (
@@ -105,6 +106,7 @@ class OffPolicyTrainer():
         agent_builder = partial(
             OffPolicyAgent, algo=algo, render=args.render, silent=args.silent
         )
+        agent_builder = compose(agent_builder, TimeLimitAgent)
 
         if not args.play:
             # Experience replay
