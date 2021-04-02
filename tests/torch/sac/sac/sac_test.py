@@ -41,6 +41,7 @@ def train(
 
             ep_reward = 0
 
+            episode_step = 0
             while not env.terminal:
                 if logger is not None:
                     step_time = time()
@@ -50,17 +51,23 @@ def train(
                 action, q_val = algo.step(state)
                 env_action = action.squeeze().cpu().numpy()
 
-                next_state, reward, terminal, _ = env.step(env_action)
+                next_state, reward, terminal, info = env.step(env_action)
+
+                algo.env_steps += 1
+                step += 1
+                episode_step += 1
 
                 ep_reward += reward
 
                 reward = make_state([reward], recurrent)
+
+                terminal = terminal * (not info.get("TimeLimit.truncated"))
                 terminal = make_state([terminal], recurrent)
 
                 next_state = make_state(next_state, recurrent)
 
-                #next_q_val = algo.step(next_state)[1]
-                #target_q_val = reward + decay * next_q_val
+                next_q_val = algo.step(next_state)[1]
+                target_q_val = reward + decay * next_q_val
 
                 experience = {
                     "state": state,
@@ -69,11 +76,8 @@ def train(
                     "next_state": next_state,
                     "terminal": terminal,
                     "q_val": q_val,
-                    "target_q_val": torch.zeros_like(q_val)
+                    "target_q_val": target_q_val
                 }
-
-                algo.env_steps += 1
-                step += 1
 
                 experience_replay.calculate_and_add(experience)
 

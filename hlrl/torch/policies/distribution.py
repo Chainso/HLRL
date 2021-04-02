@@ -43,8 +43,6 @@ class GaussianPolicy(nn.Module):
         else:
             last_in_n = inp_n
 
-        last_in_n = hidden_size if num_layers > 1 else inp_n
-
         self.mean = nn.Linear(last_in_n, out_n)
         self.log_std = nn.Linear(last_in_n, out_n)
 
