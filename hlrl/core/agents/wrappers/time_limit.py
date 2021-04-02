@@ -60,6 +60,10 @@ class TimeLimitAgent(MethodWrapper):
         if self.max_steps is not None and self.current_step >= self.max_steps:
             info["TimeLimit.truncated"] = truncated or (1 - terminal)
 
+            # Make sure the set the environment terminal to reset properly
+            if info.get["TimeLimit.truncated"]:
+                self.env.terminal = True
+
         terminal *= not info.get("TimeLimit.truncated")
 
         return terminal
