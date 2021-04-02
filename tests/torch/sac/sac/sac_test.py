@@ -32,6 +32,7 @@ def train(
 
         ready_experiences = {}
 
+        step = 0
         for episode in range(1, num_episodes + 1):
             env.reset()
 
@@ -45,9 +46,10 @@ def train(
                     step_time = time()
 
                 state = make_state(env.state, recurrent)
-                action, q_val = algo.step(state)
 
+                action, q_val = algo.step(state)
                 env_action = action.squeeze().cpu().numpy()
+
                 next_state, reward, terminal, _ = env.step(env_action)
 
                 ep_reward += reward
@@ -57,9 +59,8 @@ def train(
 
                 next_state = make_state(next_state, recurrent)
 
-                next_q_val = algo.step(next_state)[1]
-
-                target_q_val = reward + decay * next_q_val
+                #next_q_val = algo.step(next_state)[1]
+                #target_q_val = reward + decay * next_q_val
 
                 experience = {
                     "state": state,
@@ -68,10 +69,11 @@ def train(
                     "next_state": next_state,
                     "terminal": terminal,
                     "q_val": q_val,
-                    "target_q_val": target_q_val
+                    "target_q_val": torch.zeros_like(q_val)
                 }
-                
+
                 algo.env_steps += 1
+                step += 1
 
                 experience_replay.calculate_and_add(experience)
 
@@ -101,7 +103,7 @@ def train(
                 )
 
             print("Episode {0}\t|\tStep {1}\t|\tReward: {2}".format(
-                algo.env_episodes, algo.env_steps, ep_reward
+                algo.env_episodes, algo.env_steps, ep_reward    
             ))
 
 
@@ -221,7 +223,7 @@ if(__name__ == "__main__"):
         help="the number of batches in between saves"
     )
     parser.add_argument(
-		"--episodes", type=int, default=100,
+		"--episodes", type=int, default=500,
 		help="the number of episodes to play for if playing"
 	)
     parser.add_argument(
@@ -271,7 +273,7 @@ if(__name__ == "__main__"):
 		help="the maximum amount of experiences in the replay buffer"
 	)
     parser.add_argument(
-        "--er_alpha", type=float, default=0.6, help="the alpha value for PER"
+        "--er_alpha", type=float, default=0, help="the alpha value for PER"
     )
     parser.add_argument(
         "--er_beta", type=float, default=0.4, help="the alpha value for PER"
