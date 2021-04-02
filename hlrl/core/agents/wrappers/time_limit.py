@@ -55,16 +55,16 @@ class TimeLimitAgent(MethodWrapper):
         """
         terminal = self.om.transform_terminal(terminal, info)
 
-        truncated = info.get("TimeLimit.truncated")
+        truncated = info.get("TimeLimit.truncated") or 0
         
         if self.max_steps is not None and self.current_step >= self.max_steps:
-            info["TimeLimit.truncated"] = truncated or (1 - terminal)
+            truncated = truncated or (1 - terminal)
+            info["TimeLimit.truncated"] = truncated
 
             # Make sure the set the environment terminal to reset properly
-            if info.get["TimeLimit.truncated"]:
-                self.env.terminal = True
+            self.env.terminal = True
 
-        terminal *= not info.get("TimeLimit.truncated")
+        terminal = terminal * (1 - truncated)
 
         return terminal
 

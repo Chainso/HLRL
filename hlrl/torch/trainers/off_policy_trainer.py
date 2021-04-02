@@ -42,6 +42,8 @@ class OffPolicyTrainer():
             experiment_path (str): The path to save experiment results and
                 models.
             render (bool): Render the environment.
+            steps_per_episode (Optional[int]): The number of steps in each
+                episode.
             silent (bool): Will run without standard output from agents.
             action_mask (Optional[Tuple[bool, ...]]): The action mask to mask or
                 unmask.
@@ -106,7 +108,14 @@ class OffPolicyTrainer():
         agent_builder = partial(
             OffPolicyAgent, algo=algo, render=args.render, silent=args.silent
         )
-        agent_builder = compose(agent_builder, TimeLimitAgent)
+
+        steps_per_episode = (
+            args.steps_per_episode if "steps_per_episode" in args else None
+        )
+        agent_builder = compose(
+            agent_builder,
+            partial(TimeLimitAgent, steps_per_episode=steps_per_episode)
+        )
 
         if not args.play:
             # Experience replay
