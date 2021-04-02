@@ -78,7 +78,17 @@ class TorchRLAgent(MethodWrapper):
 
         return self.make_tensor(reward)
 
-    def transform_terminal(self, terminal):
+    def transform_terminal(self, terminal: Any, info: Any) -> Any:
+        """
+        Transforms the terminal of an environment step.
+
+        Args:
+            terminal: The terminal value to transform.
+            info: Additional environment information for the step.
+
+        Returns:
+            The transformed terminal.
+        """
         terminal = self.om.transform_terminal(terminal)
 
         if self.batch_state:

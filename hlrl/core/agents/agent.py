@@ -167,13 +167,13 @@ class RLAgent():
         """
         return reward
 
-    def transform_terminal(self,
-                           terminal: Any) -> Any:
+    def transform_terminal(self, terminal: Any, info: Any) -> Any:
         """
         Transforms the terminal of an environment step.
 
         Args:
             terminal: The terminal value to transform.
+            info: Additional environment information for the step.
 
         Returns:
             The transformed terminal.
@@ -207,7 +207,7 @@ class RLAgent():
         """
         return reward
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Resets the agent.
         """
@@ -344,8 +344,7 @@ class RLAgent():
 
         return ready_experiences
 
-    def step(self,
-             with_next_step: bool = False) -> None:
+    def step(self, with_next_step: bool = False) -> None:
         """
         Takes 1 step in the agent's environment. Returns the experience
         dictionary. Resets the environment if the current state is a
@@ -370,14 +369,14 @@ class RLAgent():
         algo_step = self.transform_algo_step(algo_step)
 
         env_action = self.transform_action(algo_step["action"])
-        next_state, reward, terminal, _ = self.env.step(env_action)
+        next_state, reward, terminal, info = self.env.step(env_action)
 
         next_algo_inp = self.transform_next_state(next_state)
         next_state = next_algo_inp.pop("next_state")
         reward = self.transform_reward(
             state, algo_step, reward, terminal, next_state
         )
-        terminal = self.transform_terminal(terminal)
+        terminal = self.transform_terminal(terminal, info)
     
         experience = OrderedDict({
             "state": state,
