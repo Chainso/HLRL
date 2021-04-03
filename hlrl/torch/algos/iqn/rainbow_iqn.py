@@ -197,7 +197,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         return action, q_val
 
-    def train_batch(
+    def train_processed_batch(
             self,
             rollouts: Dict[str, torch.Tensor],
             is_weights: Union[int, torch.Tensor] = 1
@@ -301,7 +301,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Update the target
         if (self.training_steps % self.target_update_interval == 0):
-            polyak_average(self.q_func, self.target_q_func, self.polyak)
+            polyak_average(self.q_func, self.q_func_targ, self.polyak)
 
         self.training_steps += 1
 
@@ -337,7 +337,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         # Target network quantile values
         next_quantile_values, _ = self._calculate_quantile_values(
-            next_states, self.target_q_func
+            next_states, self.q_func_targ
         )
 
         # Use the greedy action to get target quantiles

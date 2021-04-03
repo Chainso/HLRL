@@ -164,9 +164,11 @@ class DQN(TorchOffPolicyAlgo):
 
         return action, q_val
 
-    def train_batch(self,
-                    rollouts: Dict[str, torch.Tensor],
-                    is_weights: Union[int, torch.FloatTensor] = 1):
+    def train_processed_batch(
+            self,
+            rollouts: Dict[str, torch.Tensor],
+            is_weights: Union[int, torch.FloatTensor] = 1
+        ):
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
@@ -175,10 +177,6 @@ class DQN(TorchOffPolicyAlgo):
             rollouts: The (s, a, r, s', t) of training data for the network.
             is_weights (numpy.array) : The importance sampling weights for PER.
         """
-        rollouts = {
-            key: value.to(self.device) for key, value in rollouts.items()
-        }
-
         # Get all the parameters from the rollouts
         states = rollouts["state"]
         actions = rollouts["action"]

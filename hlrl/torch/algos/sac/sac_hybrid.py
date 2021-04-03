@@ -498,7 +498,7 @@ class SACHybrid(SAC):
 
         return continuous_temp_loss, discrete_temp_loss
 
-    def train_batch(
+    def train_processed_batch(
             self,
             rollouts: Dict[str, torch.Tensor],
             is_weights: Union[int, torch.Tensor] = 1
@@ -515,13 +515,6 @@ class SACHybrid(SAC):
             The updated Q-value and Q-value target.
         """
         # Make sure to change device if needed
-        rollouts = {
-            key: tens.to(self.device) for key, tens in rollouts.items()
-        }
-
-        if isinstance(is_weights, torch.Tensor):
-            is_weights = is_weights.to(self.device)
-
         if self.twin:
             q_loss1, q_loss2 = self.get_critic_loss(rollouts)
 

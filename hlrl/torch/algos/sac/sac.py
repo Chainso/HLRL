@@ -255,10 +255,10 @@ class SAC(TorchOffPolicyAlgo):
 
         return temp_loss
 
-    def train_batch(
+    def train_processed_batch(
             self,
             rollouts: Dict[str, torch.Tensor],
-            is_weights: Union[int, torch.Tensor] = 1
+            is_weights: Union[int, torch.FloatTensor] = 1
         ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Trains the network for a batch of (state, action, reward, next_state,
@@ -272,13 +272,6 @@ class SAC(TorchOffPolicyAlgo):
             The updated Q-value and Q-value target.
         """
         # Make sure to change device if needed
-        rollouts = {
-            key: tens.to(self.device) for key, tens in rollouts.items()
-        }
-
-        if isinstance(is_weights, torch.Tensor):
-            is_weights = is_weights.to(self.device)
-
         if self.twin:
             q_loss1, q_loss2 = self.get_critic_loss(rollouts)
 

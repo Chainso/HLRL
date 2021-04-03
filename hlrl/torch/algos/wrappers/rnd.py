@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.core.algos import IntrinsicRewardAlgo
@@ -62,11 +62,15 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
 
         return rnd_loss
 
-    def train_batch(self, rollouts, *training_args):
+    def train_processed_batch(
+            self,
+            rollouts: Dict[str, Any],
+            *args: Any,
+            **kwargs: Any
+        ) -> Any:
         """
         Trains the RND network before training the batch on the algorithm.
         """
-
         next_states = rollouts["next_state"]
 
         rnd_loss = self._get_loss(next_states)
@@ -80,7 +84,7 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
                 rnd_loss.detach().item(), self.training_steps
             )
 
-        return self.om.train_batch(rollouts, *training_args)
+        return self.om.train_batch(rollouts, *args, **kwargs)
 
     def intrinsic_reward(self, state: Any, algo_step: Any, reward: Any,
         next_state: Any):

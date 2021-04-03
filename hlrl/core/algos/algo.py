@@ -35,12 +35,63 @@ class RLAlgo(ABC):
         self.env_steps = 0
 
     @abstractmethod
-    def train_batch(self, *train_args):
+    def create_optimizers(self) -> None:
+        """
+        Creates the optimizers for the algorithm, separate from the
+        intialization so that the model can be moved to a different device first
+        if needed.
+        """
+        raise NotImplementedError
+
+    def process_batch(
+            self,
+            rollouts: Dict[str, Any]
+        ) -> Dict[str, Any]:
+        """
+        Processes a batch to make it suitable for training.
+
+        Args:
+            rollouts: The training batch to process.
+            is_weights: The importance sample weights of the batch to process.
+
+        Returns:
+            The processed training batch.
+        """
+        return rollouts
+
+    def train_batch(
+            self,
+            rollouts: Dict[str, Any],
+            *args: Any,
+            **kwargs: Any
+        ) -> Any:
+        """
+        Processes a batch of rollouts then trains the network.
+
+        Args:
+            args: Positional training arguments.
+            kwargs: Keyword training arguments.
+
+        Returns:
+            The training return on the batch.
+        """
+        processed_batch = self.process_batch(rollouts, *args, **kwargs)
+        return self.train_processed_batch(*processed_batch)
+
+    @abstractmethod
+    def train_processed_batch(
+            self,
+            rollouts: Dict[str, Any],
+            *args: Any,
+            **kwargs: Any
+        ) -> Any:
         """
         Trains the network for a batch of rollouts.
 
         Args:
-            train_args (tuple) : The training arguments for the network.
+            rollouts: The training batch to process.
+            args: Positional training arguments.
+            kwargs: Keyword training arguments.
         """
         raise NotImplementedError
 

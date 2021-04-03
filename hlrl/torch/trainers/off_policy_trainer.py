@@ -112,9 +112,10 @@ class OffPolicyTrainer():
         steps_per_episode = (
             args.steps_per_episode if "steps_per_episode" in args else None
         )
+
         agent_builder = compose(
             agent_builder,
-            partial(TimeLimitAgent, steps_per_episode=steps_per_episode)
+            partial(TimeLimitAgent, max_steps=steps_per_episode)
         )
 
         if not args.play:
@@ -185,7 +186,7 @@ class OffPolicyTrainer():
             partial(TorchRLAgent, batch_state=not args.vectorized)
         )
         
-        if args.action_mask:
+        if "action_mask" in args and args.action_mask:
             # TODO: Will have to add an action mask wrapper later
             if args.masked:
                 agent_builder = compose(

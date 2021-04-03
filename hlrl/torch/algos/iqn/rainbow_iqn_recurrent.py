@@ -145,7 +145,7 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         return action, q_val, next_hiddens
 
-    def train_batch(
+    def train_processed_batch(
             self,
             rollouts: Dict[str, torch.Tensor],
             is_weights: Union[int, torch.Tensor] = 1

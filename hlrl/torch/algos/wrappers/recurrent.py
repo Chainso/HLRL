@@ -1,6 +1,7 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import torch
+import numpy as np
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.torch.algos.algo import TorchRLAlgo
@@ -100,19 +101,26 @@ class TorchRecurrentAlgo(MethodWrapper):
 
         return rollouts
 
-    def train_batch(self,
-                    rollouts: Dict[str, torch.Tensor],
-                    *training_args: Any) -> Any:
+    def process_batch(
+            self,
+            rollouts: Dict[str, Union[torch.Tensor, np.array]],
+            *args: Any,
+            **kwargs: Any
+        ) -> Dict[str, torch.Tensor]:
         """
-        Burns in the hidden states before training the batch.
+        Processes a batch to make it suitable for training.
 
         Args:
-            rollouts: The batch to train on.
-            training_args: The arguments to pass into the algorithm train batch.
-        
+            rollouts: The training batch to process.
+            args: Any positional arguments for the wrapped algorithm to process
+                the batch.
+            kwargs: Any keyword arguments for the wrapped algorithm to process
+                the batch.
+
         Returns:
-            The train batch return of the wrapped algorithm.
+            The processed training batch.
         """
+        rollouts, *rest = super().process_batch(rollouts)
         rollouts = self.burn_in_hidden_states(rollouts)
 
-        return self.om.train_batch(rollouts, *training_args)
+        return rollouts, *rest

@@ -1,7 +1,8 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 from hlrl.core.experience_replay import ExperienceReplay
 from hlrl.core.logger import Logger
@@ -24,13 +25,30 @@ class TorchRLAlgo(RLAlgo, nn.Module):
 
         self.device = torch.device(device)
 
-    def create_optimizers(self) -> None:
+    def process_batch(
+            self,
+            rollouts: Dict[str, Union[torch.Tensor, np.array]]
+        ) -> Dict[str, torch.Tensor]:
         """
-        Creates the optimizers for the algorithm, separate from the
-        intialization so that the model can be moved to a different device first
-        if needed.
+        Processes a batch to make it suitable for training.
+
+        Args:
+            rollouts: The training batch to process.
+
+        Returns:
+            The processed training batch.
         """
-        raise NotImplementedError
+        processed_rollouts = {}
+
+        for key, value in rollouts.items():
+            if isinstance(value, torch.Tensor):
+                processed_rollouts[key] = value.to(self.device)
+            else:
+                processed_rollouts[key] = torch.tensor(
+                    value, device=self.device
+                )
+
+        return processed_rollouts
 
     def save_dict(self) -> Dict[str, Any]:
         """
@@ -84,6 +102,30 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
             logger: The logger to log results while training and evaluating.
         """
         super().__init__(device, logger)
+
+    def process_batch(
+            self,
+            rollouts: Dict[str, Union[torch.Tensor, np.array]],
+            is_weights: Union[int, torch.Tensor, np.array] = 1
+        ) -> Dict[str, torch.Tensor]:
+        """
+        Processes a batch to make it suitable for training.
+
+        Args:
+            rollouts: The training batch to process.
+            is_weights: The importance sample weights of the batch to process.
+
+        Returns:
+            The processed training batch.
+        """
+        rollouts = super().process_batch(rollouts)
+
+        if isinstance(is_weights, torch.Tensor):
+            is_weights = is_weights.to(self.device)
+        elif isinstance(is_weights, np.ndarray):
+            is_weights = torch.tensor(is_weights, device=self.device)
+
+        return rollouts, is_weights
 
     def train_from_buffer(
             self,

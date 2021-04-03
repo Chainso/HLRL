@@ -157,9 +157,11 @@ class DQNRecurrent(DQN):
 
         return action, q_val, next_hidden_state
 
-    def train_batch(self,
-                    rollouts: Dict[str, torch.Tensor],
-                    is_weights: Union[int, torch.FloatTensor] = 1):
+    def train_processed_batch(
+            self,
+            rollouts: Dict[str, torch.Tensor],
+            is_weights: Union[int, torch.FloatTensor] = 1
+        ):
         """
         Trains the network for a batch of (state, action, reward, next_state,
         terminals) rollouts.
