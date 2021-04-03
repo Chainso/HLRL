@@ -91,7 +91,8 @@ class SACHybrid(SAC):
             self.discrete_action_space.prod().float()
         ).item()
         self.discrete_log_temp = nn.Parameter(
-            torch.zeros(1), requires_grad=True
+            torch.log(torch.ones(1) * self.discrete_temperature),
+            requires_grad=True
         )
 
         self.probs = nn.Softmax(-1)
@@ -552,7 +553,7 @@ class SACHybrid(SAC):
 
         self.discrete_temp_optim.zero_grad()
         discrete_temp_loss.backward()
-        self.temp_optim.step()
+        self.discrete_temp_optim.step()
 
         self.training_steps += 1
 

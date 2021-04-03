@@ -220,4 +220,6 @@ class MultiCategoricalPolicy(nn.Module):
         # Straight through gradient trick
         sample = sample + probs - probs.detach()
 
+        mean = torch.argmax(probs, dim=-1).values
+
         return sample, log_prob, None

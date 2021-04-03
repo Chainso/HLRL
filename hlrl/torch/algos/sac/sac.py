@@ -79,7 +79,9 @@ class SAC(TorchOffPolicyAlgo):
         # Entropy tuning, starting at 1 due to auto-tuning
         self.temperature = 1
         self.target_entropy = -torch.prod(torch.Tensor(action_space)).item()
-        self.log_temp = nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.log_temp = nn.Parameter(
+            torch.log(torch.ones(1) * self.temperature), requires_grad=True
+        )
 
     def create_optimizers(self) -> None:
         """
