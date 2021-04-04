@@ -83,11 +83,6 @@ class SACHybrid(SAC):
         self.policy.apply(initialize_bias(nn.init.zeros_))
 
         # Entropy tuning, starting at 1 due to auto-tuning
-        self.temperature = 0
-        self.log_temp = nn.Parameter(
-            torch.log(torch.ones(1) * self.temperature), requires_grad=False
-        )
-
         self.discrete_temperature = 1
         self.discrete_target_entropy = 0.98 * torch.log(
             self.discrete_action_space.prod().float()
@@ -474,11 +469,10 @@ class SACHybrid(SAC):
         continuous_temp_loss = torch.mean(continuous_temp_loss * is_weights)
         discrete_temp_loss = torch.mean(discrete_temp_loss * is_weights)
 
-        """
         self.temp_optim.zero_grad()
         continuous_temp_loss.backward()
         self.temp_optim.step()
-        """
+
         self.discrete_temp_optim.zero_grad()
         discrete_temp_loss.backward()
         self.discrete_temp_optim.step()
