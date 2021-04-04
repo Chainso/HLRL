@@ -57,7 +57,12 @@ class SplitLayer(nn.Linear):
         """
         linear_input = self.make_split_linear_input(dense_input, split_input)
 
-        return super().forward(linear_input)
+        linear_out = super().forward(linear_input)
+        linear_out = linear_out.view(
+            (*dense_input.shape[:-1], len(self.split_space))
+        )
+
+        return linear_out
 
     def make_split_linear_input(
             self,
@@ -120,4 +125,4 @@ class SplitLayer(nn.Linear):
             self.dense_features, self.split_space
         )
 
-        return linear_repr + " " + addition_repr
+        return linear_repr + " " + additional_repr
