@@ -39,6 +39,17 @@ class SplitLayer(nn.Linear):
             dense_features + self.split_features, out_features, *args, **kwargs
         )
 
+        # Some pre-processing to make creating the split inputs faster
+        self.single_scatter_idxs = torch.arange(
+            len(self.split_space)
+        )
+        self.single_scatter_idxs = self.single_scatter_idxs.repeat_interleave(
+            self.split_space, dim=0
+        )
+        self.single_scatter_idxs = nn.Parameter(
+            self.single_scatter_idxs, requires_grad=False
+        )
+
     def forward(
             self,
             dense_input: torch.Tensor,
@@ -87,13 +98,7 @@ class SplitLayer(nn.Linear):
             len(self.split_space), dim=0
         )
 
-        single_scatter_idxs = torch.arange(len(self.split_space), device=device)
-        single_scatter_idxs = single_scatter_idxs.repeat_interleave(
-            self.split_space, dim=0
-        )
-        single_scatter_idxs = single_scatter_idxs.unsqueeze(0).expand(
-            batch_size, -1
-        )
+        single_scatter_idxs = self.single_scatter_idxs.expand(split_input.shape)
 
         scatter_offsets = torch.arange(batch_size, device=device)
         scatter_offsets *= len(self.split_space)
