@@ -27,7 +27,7 @@ class TorchRLAlgo(RLAlgo, nn.Module):
 
     def process_batch(
             self,
-            rollouts: Dict[str, Union[torch.Tensor, np.array]]
+            rollouts: Dict[str, Union[torch.Tensor, np.ndarray]]
         ) -> Dict[str, torch.Tensor]:
         """
         Processes a batch to make it suitable for training.
@@ -105,8 +105,8 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
 
     def process_batch(
             self,
-            rollouts: Dict[str, Union[torch.Tensor, np.array]],
-            is_weights: Union[int, torch.Tensor, np.array] = 1
+            rollouts: Dict[str, Union[torch.Tensor, np.ndarray]],
+            is_weights: Union[int, torch.Tensor, np.ndarray] = 1
         ) -> Dict[str, torch.Tensor]:
         """
         Processes a batch to make it suitable for training.

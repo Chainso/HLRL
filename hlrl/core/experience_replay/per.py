@@ -47,7 +47,7 @@ class PER(ExperienceReplay):
         """
         return len(self.priorities)
 
-    def get_priority(self, error: np.array) -> np.array:
+    def get_priority(self, error: np.ndarray) -> np.ndarray:
         """
         Computes the priority for the given error.
 
@@ -59,7 +59,7 @@ class PER(ExperienceReplay):
         """
         return (error + self.epsilon) ** self.alpha
 
-    def get_error(self, q_val: np.array, q_target: np.array) -> np.array:
+    def get_error(self, q_val: np.ndarray, q_target: np.ndarray) -> np.ndarray:
         """
         Computes the error (absolute difference) between the Q-value plus the
         reward and the discounted Q-value of the next state.
@@ -119,7 +119,9 @@ class PER(ExperienceReplay):
     def sample(
             self,
             size: int
-        ) -> Tuple[Dict[str, np.array], Tuple[np.array, Tuple[Any]], np.array]:
+        ) -> Tuple[Dict[str, np.ndarray],
+                   Tuple[np.ndarray, Tuple[Any]],
+                   np.ndarray]:
         """
         Samples "size" number of experiences from the buffer.
 
@@ -166,7 +168,7 @@ class PER(ExperienceReplay):
     def update_priorities(
             self,
             ids: Tuple[Iterable[int], Iterable[Any]],
-            priorities: np.array
+            priorities: np.ndarray
         ) -> None:
         """
         Updates the priority of the experiences at the given indices.
@@ -182,8 +184,8 @@ class PER(ExperienceReplay):
     def calculate_and_update_priorities(
             self,
             ids: Tuple[Iterable[int], Iterable[Any]],
-            q_vals: np.array,
-            q_targets: np.array
+            q_vals: np.ndarray,
+            q_targets: np.ndarray
         ) -> None:
         """
         Updates the priority of the experiences at the given indices, using the
