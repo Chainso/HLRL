@@ -152,13 +152,15 @@ class SplitLinearPolicy(LinearPolicy):
             activation_fn: The activation function between each layer.
         """
         super().__init__(
-            hidden_size, out_features, hidden_size, num_layers - 1,
-            activation_fn
+            hidden_size // len(split_space), out_features, hidden_size,
+            num_layers - 1, activation_fn
         )
 
         first_out_n = hidden_size if num_layers > 1 else out_features
 
-        self.split_layer = SplitLayer(dense_features, split_space, first_out_n)
+        self.split_layer = SplitLayer(
+            dense_features, split_space, first_out_n // len(split_space)
+        )
 
     def forward(
             self,
@@ -176,11 +178,9 @@ class SplitLinearPolicy(LinearPolicy):
         Returns:
             The forward pass on the inputs.
         """
-        batch_size = dense_input.shape[0]
-
         split_forward = self.split_layer(dense_input, split_input)
 
         linear = super().forward(split_forward)
-        linear = linear.view(batch_size, -1)
+        linear = linear.view((*dense_input.shape[:-1], -1))
 
         return linear

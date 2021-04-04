@@ -32,7 +32,7 @@ class SplitLayer(nn.Linear):
             bias: The learnable bias of the layer.
         """
         self.dense_features = dense_features
-        self.split_space = split_space
+        self.split_space = torch.LongTensor(split_space)
         self.split_features = sum(split_space)
 
         super().__init__(
@@ -40,6 +40,8 @@ class SplitLayer(nn.Linear):
         )
 
         # Some pre-processing to make creating the split inputs faster
+        self.split_space = nn.Parameter(self.split_space, requires_grad=False)
+
         self.single_scatter_idxs = torch.arange(
             len(self.split_space)
         )
@@ -67,13 +69,7 @@ class SplitLayer(nn.Linear):
             The forward pass on the inputs.
         """
         linear_input = self.make_split_linear_input(dense_input, split_input)
-
-        linear_out = super().forward(linear_input)
-        linear_out = linear_out.view(
-            (*dense_input.shape[:-1], len(self.split_space))
-        )
-
-        return linear_out
+        return super().forward(linear_input)
 
     def make_split_linear_input(
             self,
@@ -127,7 +123,7 @@ class SplitLayer(nn.Linear):
         linear_repr = super().extra_repr()
 
         additional_repr = "dense_features={}, split_space={}".format(
-            self.dense_features, self.split_space
+            self.dense_features, tuple(self.split_space.tolist())
         )
 
         return linear_repr + " " + additional_repr

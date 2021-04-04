@@ -175,10 +175,10 @@ class SACHybrid(SAC):
         for i in range(self.num_discrete_actions):
             start, end = self.action_parameter_offsets[i:i + 2].long()
 
-            ap_param_log_prob = torch.sum(
+            param_log_prob = torch.sum(
                 cont_log_prob[:, start:end], dim=-1, keepdim=True
             )
-            param_log_prob = discrete_probs[:, i:i + 1] * ap_param_log_prob
+            param_log_prob = discrete_probs[:, i:i + 1] * param_log_prob
 
             cont_temp += param_log_prob
 
