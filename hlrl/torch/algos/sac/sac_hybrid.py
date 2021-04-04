@@ -13,11 +13,8 @@ from .sac import SAC
 class SACHybrid(SAC):
     """
     A mixture of the following:
-        Multi-Pass Q-Networks https://arxiv.org/pdf/1912.11077.pdf
         Discrete SAC https://arxiv.org/pdf/1910.07207.pdf
         Hybrid SAC https://arxiv.org/pdf/1912.11077.pdf
-
-    Using Hybrid SAC with the multi-pass architecture.
     """
     def __init__(
             self,
@@ -130,52 +127,6 @@ class SACHybrid(SAC):
 
         return super().after_update(rollouts)
 
-    def make_multipass_input(
-            self,
-            states: torch.Tensor,
-            action_parameters: torch.Tensor
-        ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Creates the multi-pass input for the Q-networks.
-
-        Args:
-            states: The states to create multi-pass inputs on.
-            action_parameters: The action parameters to pass to the Q-functions.
-
-        Returns:
-            Returns the states and action parameters prepared for the multi-pass
-            inputs.
-        """
-        batch_size = states.shape[0]
-
-        states = states.repeat_interleave(self.num_discrete_actions, dim=0)
-
-        single_scatter_idxs = torch.arange(
-            self.num_discrete_actions, device=self.device
-        )
-        single_scatter_idxs = single_scatter_idxs.repeat_interleave(
-            self.action_parameter_space, dim=0
-        )
-        single_scatter_idxs = single_scatter_idxs.unsqueeze(0).expand(
-            batch_size, -1
-        )
-
-        scatter_offsets = torch.arange(batch_size, device=self.device)
-        scatter_offsets *= self.num_discrete_actions
-        scatter_offsets = scatter_offsets.unsqueeze(-1)
-
-        scatter_idxs = scatter_offsets + single_scatter_idxs
-
-        parameter_cat = torch.zeros(
-            batch_size * self.num_discrete_actions, self.num_action_parameters,
-            device=self.device
-        )
-        parameter_cat = parameter_cat.scatter(
-            0, scatter_idxs, action_parameters
-        )
-
-        return states, parameter_cat
-
     def get_discrete_entropy(
             self,
             discrete_probs: torch.Tensor
@@ -276,10 +227,6 @@ class SACHybrid(SAC):
             The Q-values and their distribution.
         """
         q_val = q_func(states, action_parameters)
-        q_val = q_val.view(
-            states.shape[0] // self.num_discrete_actions,
-            self.num_discrete_actions
-        )
 
         probs = self.probs(q_val)
         dist = Categorical(probs)
@@ -306,13 +253,8 @@ class SACHybrid(SAC):
             discrete actions.
         """
         action_parameters, cont_log_prob, _ = self.policy(observation)
-        ap_observation, ap_action_parameters = self.make_multipass_input(
-            observation, action_parameters
-        )
 
-        q_val, dist = self.get_q_values(
-            q_func, ap_observation, ap_action_parameters
-        )
+        q_val, dist = self.get_q_values(q_func, observation, action_parameters)
 
         action = dist.sample()
         action = action.unsqueeze(-1)
@@ -383,12 +325,8 @@ class SACHybrid(SAC):
             ) = self.get_action(next_states, self.q_func_targ1)
 
             if self.twin:
-                next_ap_states, next_action_params = self.make_multipass_input(
-                    next_states, next_action_params
-                )
-
                 q_targ_pred2, discrete_dist2 = self.get_q_values(
-                    self.q_func_targ2, next_ap_states, next_action_params
+                    self.q_func_targ2, next_states, next_action_params
                 )
                 q_targ_pred = torch.min(q_targ_pred, q_targ_pred2)
 
@@ -401,20 +339,15 @@ class SACHybrid(SAC):
 
             q_next = rewards + (1 - terminals) * self._discount * q_targ
 
-
-        ap_states, pred_action_parameters = self.make_multipass_input(
-            states, action_parameters
-        )
-
         q_pred = self.get_q_values(
-            self.q_func1, ap_states, pred_action_parameters
+            self.q_func1, states, action_parameters
         )[0]
         q_pred = q_pred.gather(-1, actions)
         q_loss = self.q_loss_func(q_pred, q_next)
 
         if self.twin:
             q_pred2 = self.get_q_values(
-                self.q_func2, ap_states, pred_action_parameters
+                self.q_func2, states, action_parameters
             )[0]
             q_pred2 = q_pred2.gather(-1, actions)
             q_loss2 = self.q_loss_func(q_pred2, q_next)
@@ -447,12 +380,8 @@ class SACHybrid(SAC):
 
 
         if self.twin:
-            ap_states, pred_action_params = self.make_multipass_input(
-                states, pred_action_params
-            )
-
             p_q_pred2, discrete_dist2 = self.get_q_values(
-                self.q_func2, ap_states, pred_action_params
+                self.q_func2, states, pred_action_params
             )
             p_q_pred = torch.min(p_q_pred, p_q_pred2)
 
