@@ -29,6 +29,6 @@ class NoisyAlgo(MethodWrapper):
             if isinstance(module, NoisyLayer):
                 module.reset_noise()
 
-        training_ret = self.om.train_batch(*args, **kwargs)
+        training_ret = self.om.train_processed_batch(rollouts, *args, **kwargs)
 
         return training_ret

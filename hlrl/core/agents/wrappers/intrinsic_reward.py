@@ -23,12 +23,14 @@ class IntrinsicRewardAgent(MethodWrapper):
 
         self.intrinsic_reward = 0
 
-    def get_intrinsic_reward(self,
-                             state: Any,
-                             algo_step: OrderedDict[str, Any],
-                             reward: Any,
-                             terminal: Any,
-                             next_state: Any) -> Any:
+    def get_intrinsic_reward(
+            self,
+            state: Any,
+            algo_step: OrderedDict[str, Any],
+            reward: Any,
+            terminal: Any,
+            next_state: Any
+        ) -> Any:
         """
         Returns the intrinsic reward of an experience tuple.
 

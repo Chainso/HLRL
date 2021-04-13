@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, OrderedDict, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.core.algos import IntrinsicRewardAlgo
@@ -31,18 +31,14 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
 
     def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
         """
-        Reduces the inputs used to serialize and recreate the experience
-        sequence agent.
+        Reduces the inputs used to serialize and recreate the RND agent.
 
         Returns:
             A tuple of the class and input arguments.
         """
         return (
             type(self),
-            (
-                self.obj, self.rnd, self.rnd_target, self.rnd_optim_func,
-                self.rnd_loss_func
-            )
+            (self.obj, self.rnd, self.rnd_target, self.rnd_optim_func)
         )
 
     def create_optimizers(self):
@@ -84,18 +80,28 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
                 rnd_loss.detach().item(), self.training_steps
             )
 
-        return self.om.train_batch(rollouts, *args, **kwargs)
+        return self.om.train_processed_batch(rollouts, *args, **kwargs)
 
-    def intrinsic_reward(self, state: Any, algo_step: Any, reward: Any,
-        next_state: Any):
+    def intrinsic_reward(
+            self,
+            state: Any,
+            algo_step: OrderedDict[str, Any],
+            reward: Any,
+            terminal: Any,
+            next_state: Any
+        ) -> Any:
         """
         Computes the RND loss of the next states
 
         Args:
-            state (Any): The state of the environment.
-            action (Any): The last action taken in the environment.
-            reward (Any): The external reward to add to.
-            next_state (Any): The new state of the environment.
+            state: The state of the environment.
+            algo_step: The transformed algorithm step of the state.
+            reward: The reward from the environment.
+            terminal: If the next state is a terminal state.
+            next_state: The new state of the environment.
+
+        Returns:
+            The RND intrinsic reward on the transition.
         """
         with torch.no_grad():
             return self._get_loss(next_state).item()
