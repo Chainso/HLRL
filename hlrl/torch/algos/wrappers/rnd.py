@@ -1,11 +1,12 @@
 import torch
 
 from torch import nn
-from typing import Any, Callable, Dict, OrderedDict, Tuple
+from typing import Any, Callable, Dict, Optional, OrderedDict, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.core.algos import IntrinsicRewardAlgo
 from hlrl.torch.algos import TorchRLAlgo
+from hlrl.torch.utils.contexts import evaluate
 
 class RND(MethodWrapper, IntrinsicRewardAlgo):
     """
@@ -17,7 +18,8 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
             algo: TorchRLAlgo,
             rnd_network: nn.Module,
             rnd_target: nn.Module,
-            rnd_optim: Callable[[Tuple[torch.Tensor]], torch.optim.Optimizer]
+            rnd_optim: Callable[[Tuple[torch.Tensor]], torch.optim.Optimizer],
+            normalization_layer: Optional[nn.Module] = None
         ):
         """
         Creates the wrapper to use RND exploration with the algorithm.
@@ -27,6 +29,8 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
             rnd_network: The RND network.
             rnd_target: The RND target network
             rnd_optim: The function to create the optimizer for RND.
+            normalization_layer: The layer before the RND networks for state
+                normalization.
         """
         super().__init__(algo)
 
@@ -34,9 +38,10 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
         if rnd_network is not None and rnd_target is not None:
             self.rnd = rnd_network
             self.rnd_target = rnd_target
-
             self.rnd_optim_func = rnd_optim
+
             self.rnd_loss_func = nn.MSELoss()
+            self.normalization_layer = normalization_layer
 
     def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
         """
@@ -56,6 +61,7 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
         """
         Returns the loss of the RND network on the given states.
         """
+        states = self.normalization_layer(states)
         rnd_pred = self.rnd(states)
 
         with torch.no_grad():
@@ -111,4 +117,5 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
             The RND intrinsic reward on the transition.
         """
         with torch.no_grad():
-            return self._get_loss(next_state).item()
+            with evaluate(self.normalization_layer):
+                return self._get_loss(next_state).item()

@@ -289,7 +289,9 @@ if(__name__ == "__main__"):
             args.num_layers, activation_fn
         )
 
-        algo = RND(algo, rnd_network, rnd_target, optim)
+        normalization_layer = nn.BatchNorm1d(env.state_space[0], affine=False)
+
+        algo = RND(algo, rnd_network, rnd_target, optim, normalization_layer)
 
     if args.load_path is not None:
         algo.load(args.load_path)
