@@ -10,7 +10,7 @@ from hlrl.torch.utils.contexts import evaluate
 
 class RND(MethodWrapper, IntrinsicRewardAlgo):
     """
-    The Random Network Distillation Algorithm
+    The Random Network Distillation Algorithm.
     https://arxiv.org/abs/1810.12894
     """
     def __init__(
