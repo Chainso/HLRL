@@ -1,33 +1,42 @@
 import torch
 
 from torch import nn
-from typing import Any, Dict, OrderedDict, Tuple
+from typing import Any, Callable, Dict, OrderedDict, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.core.algos import IntrinsicRewardAlgo
+from hlrl.torch.algos import TorchRLAlgo
 
 class RND(MethodWrapper, IntrinsicRewardAlgo):
     """
     The Random Network Distillation Algorithm
     https://arxiv.org/abs/1810.12894
     """
-    def __init__(self, algo, rnd_network, rnd_target, rnd_optim):
+    def __init__(
+            self,
+            algo: TorchRLAlgo,
+            rnd_network: nn.Module,
+            rnd_target: nn.Module,
+            rnd_optim: Callable[[Tuple[torch.Tensor]], torch.optim.Optimizer]
+        ):
         """
         Creates the wrapper to use RND exploration with the algorithm.
 
         Args:
-            algo (TorchRLAlgo): The algorithm to wrap.
-            rnd_network (torch.nn.Module): The RND network.
-            rnd_target (torch.nn.Module): The RND target network
-            rnd_optim (callable): The function to create the optimizer for RND.
+            algo: The algorithm to wrap.
+            rnd_network: The RND network.
+            rnd_target: The RND target network
+            rnd_optim: The function to create the optimizer for RND.
         """
         super().__init__(algo)
 
-        self.rnd = rnd_network
-        self.rnd_target = rnd_target
+        # Done this way to fix pickling issues with torch
+        if rnd_network is not None and rnd_target is not None:
+            self.rnd = rnd_network
+            self.rnd_target = rnd_target
 
-        self.rnd_optim_func = rnd_optim
-        self.rnd_loss_func = nn.MSELoss()
+            self.rnd_optim_func = rnd_optim
+            self.rnd_loss_func = nn.MSELoss()
 
     def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
         """
@@ -36,10 +45,8 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
         Returns:
             A tuple of the class and input arguments.
         """
-        return (
-            type(self),
-            (self.obj, self.rnd, self.rnd_target, self.rnd_optim_func)
-        )
+        # All tensors should be saved in torch state dict
+        return (type(self), (self.obj, None, None, None))
 
     def create_optimizers(self):
         self.om.create_optimizers()
