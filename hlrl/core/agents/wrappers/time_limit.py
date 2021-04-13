@@ -40,7 +40,7 @@ class TimeLimitAgent(MethodWrapper):
 
     def transform_terminal(
             self,
-            terminal: Union[int, bool, np.array],
+            terminal: Union[int, bool, np.ndarray],
             info: Dict[str, Any]
         ) -> Any:
         """

@@ -10,7 +10,7 @@ class TorchPER(PER):
     A Prioritized Experience Replay implementation using torch tensors
     https://arxiv.org/abs/1511.05952
     """
-    def get_priority(self, error: torch.Tensor) -> np.array:
+    def get_priority(self, error: torch.Tensor) -> np.ndarray:
         """
         Computes the priority for the given error.
 
@@ -44,7 +44,7 @@ class TorchPER(PER):
             self,
             size: int
         ) -> Tuple[Dict[str, torch.Tensor],
-                   Tuple[np.array, Tuple[Any]],
+                   Tuple[np.ndarray, Tuple[Any]],
                    torch.Tensor]:
         """
         Samples "size" number of experiences from the buffer.

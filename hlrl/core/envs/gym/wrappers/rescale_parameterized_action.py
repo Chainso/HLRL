@@ -58,11 +58,11 @@ class RescaleParameterizedAction(ActionWrapper):
 
     def _transform_box_action(
             self,
-            action: np.array,
+            action: np.ndarray,
             space: Space,
             low: float,
             high: float
-        ) -> np.array:
+        ) -> np.ndarray:
         """
         Transforms a box action to the proper bounds.
 

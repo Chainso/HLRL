@@ -103,7 +103,7 @@ class TorchRecurrentAlgo(MethodWrapper):
 
     def process_batch(
             self,
-            rollouts: Dict[str, Union[torch.Tensor, np.array]],
+            rollouts: Dict[str, Union[torch.Tensor, np.ndarray]],
             *args: Any,
             **kwargs: Any
         ) -> Dict[str, torch.Tensor]:
