@@ -1,7 +1,7 @@
 
 from .noisy import NoisyAlgo
-from .normalize_reward import NormalizeRewardAlgo
+from .normalize_return import NormalizeReturnAlgo
 from .recurrent import TorchRecurrentAlgo
 from .rnd import RND
 
-__all__ = ["NoisyAlgo", "NormalizeRewardAlgo", "TorchRecurrentAlgo", "RND"]
+__all__ = ["NoisyAlgo", "NormalizeReturnAlgo", "TorchRecurrentAlgo", "RND"]

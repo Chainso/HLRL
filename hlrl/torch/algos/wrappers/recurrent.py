@@ -30,15 +30,6 @@ class TorchRecurrentAlgo(MethodWrapper):
         self.burn_in_length = burn_in_length
         self.n_steps = n_steps
 
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Reduces the inputs used to serialize and recreate the recurrent agent.
-
-        Returns:
-            A tuple of the class and input arguments.
-        """
-        return (type(self), (self.obj, self.burn_in_length, self.n_steps))
-
     def burn_in_hidden_states(self,
             rollouts: Dict[str, torch.Tensor]
         ) -> Dict[str, torch.Tensor]:

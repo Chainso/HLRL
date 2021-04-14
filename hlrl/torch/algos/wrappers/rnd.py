@@ -34,24 +34,12 @@ class RND(MethodWrapper, IntrinsicRewardAlgo):
         """
         super().__init__(algo)
 
-        # Done this way to fix pickling issues with torch
-        if rnd_network is not None and rnd_target is not None:
-            self.rnd = rnd_network
-            self.rnd_target = rnd_target
-            self.rnd_optim_func = rnd_optim
+        self.rnd = rnd_network
+        self.rnd_target = rnd_target
+        self.rnd_optim_func = rnd_optim
 
-            self.rnd_loss_func = nn.MSELoss()
-            self.normalization_layer = normalization_layer
-
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Reduces the inputs used to serialize and recreate the RND agent.
-
-        Returns:
-            A tuple of the class and input arguments.
-        """
-        # All tensors should be saved in torch state dict
-        return (type(self), (self.obj, None, None, None))
+        self.rnd_loss_func = nn.MSELoss()
+        self.normalization_layer = normalization_layer
 
     def create_optimizers(self):
         self.om.create_optimizers()

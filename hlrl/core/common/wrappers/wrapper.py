@@ -76,14 +76,6 @@ class MethodWrapper():
         if name != "obj" and name != "om":
             setattr(self.obj, name, value)
 
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Returns a serialzed version of the wrapper on the object.
-
-        Returns:
-            The serialized wrapper.
-        """
-        return (type(self), (self.obj,))
 
     def __repr__(self) -> str:
         """

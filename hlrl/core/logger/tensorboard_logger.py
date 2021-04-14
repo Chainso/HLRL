@@ -1,4 +1,4 @@
-from typing import Any, Tuple
+from typing import Any, Iterable, Tuple, Union
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -19,7 +19,7 @@ class TensorboardLogger(Logger):
         super().__init__(self._add_val)
 
         self._logs_path = logs_path
-        self._tensorboard = SummaryWriter(logs_path)
+        self.writer = SummaryWriter(logs_path)
 
     def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
         """
@@ -30,9 +30,16 @@ class TensorboardLogger(Logger):
         """
         return (type(self), (self._logs_path,))
 
-    # Make sure to deal with single values and tuple values
-    def _add_val(self, key, val):
-        if(type(val) == tuple):
-            self._tensorboard.add_scalar(key, *val)
-        else:
-            self._tensorboard.add_scalar(key, val, 1)
+    def _add_val(self, key: str, val: Union[Any, Tuple[Any, int]]) -> None:
+        """
+        Adds a value or value-step pair to the writer to the graph with the key.
+
+        Args:
+            key: The key of the graph to add the value to.
+            val: The value or value-step pair to add.
+        """
+        # Try to unpack values, otherwise just use default 1
+        try:
+            self.writer.add_scalar(key, *val)
+        except:
+            self.writer.add_scalar(key, val, 1)

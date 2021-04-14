@@ -24,15 +24,6 @@ class TorchRLAgent(MethodWrapper):
         
         self.batch_state = batch_state
 
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Reduces the inputs used to serialize and recreate the torch agent.
-
-        Returns:
-            A tuple of the class and input arguments.
-        """
-        return (type(self), (self.obj, self.batch_state))
-
     def make_tensor(self, data):
         """
         Creates a float tensor of the data of batch size 1.

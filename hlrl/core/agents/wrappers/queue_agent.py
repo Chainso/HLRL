@@ -35,18 +35,6 @@ class QueueAgent(MethodWrapper):
         self.experience_replay = experience_replay
         self.param_pipe = param_pipe
 
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Returns a serialzed version of the queue agent wrapper on the object.
-
-        Returns:
-            The serialized wrapper.
-        """
-        return (
-            type(self),
-            (self.obj, self.id, self.experience_replay, self.param_pipe)
-        )
-
     def receive_parameters(self) -> None:
         """
         Checks to see if a new set of model parameters are available, and

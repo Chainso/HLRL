@@ -22,15 +22,6 @@ class TimeLimitAgent(MethodWrapper):
         self.max_steps = max_steps
         self.current_step = 0
 
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Reduces the inputs used to serialize and recreate the time limit agent.
-
-        Returns:
-            A tuple of the class and input arguments.
-        """
-        return (type(self), (self.obj, self.max_steps))
-
     def reset(self) -> None:
         """
         Resets the current step of the agent.

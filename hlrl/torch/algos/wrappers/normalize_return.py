@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.torch.algos import TorchRLAlgo
 from hlrl.torch.utils.contexts import evaluate, training
 
-class NormalizeRewardAlgo(MethodWrapper):
+class NormalizeReturnAlgo(MethodWrapper):
     """
     A wrapper to normalize rewards for the algorithm.
     """
@@ -21,7 +21,10 @@ class NormalizeRewardAlgo(MethodWrapper):
         """
         super().__init__(algo)
 
-        self.reward_norm = nn.BatchNorm1d(1, affine=False)
+        if not hasattr(self, "reward_norm"):
+            self.reward_norm = nn.BatchNorm1d(
+                1, affine=False, track_running_stats=True
+            )
 
     def process_batch(
             self,

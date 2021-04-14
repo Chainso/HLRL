@@ -56,16 +56,6 @@ class ExperienceSequenceAgent(MethodWrapper):
         self.sequence_experiences = {}
         self.num_experiences = 0
 
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Reduces the inputs used to serialize and recreate the experience
-        sequence agent.
-
-        Returns:
-            A tuple of the class and input arguments.
-        """
-        return (type(self), (self.obj, self.sequence_length, self.overlap))
-
     def reset(self):
         """
         Clears the ready experience buffer in addition to the regular reset.

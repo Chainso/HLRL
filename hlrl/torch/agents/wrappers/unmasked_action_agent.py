@@ -47,16 +47,6 @@ class UnmaskedActionAgent(MethodWrapper):
         self.action_indices = action_mask_idx.transpose(0, 1)
         self.action_indices = self.action_indices.to(self.algo.device)
 
-    def __reduce__(self) -> Tuple[type, Tuple[Any, ...]]:
-        """
-        Reduces the inputs used to serialize and recreate the unmasked action
-        agent.
-
-        Returns:
-            A tuple of the class and input arguments.
-        """
-        return (type(self), (self.obj, self.action_mask, self.default_action))
-
     def transform_action(self, action: torch.Tensor):
         """
         Expands the action to it's unmasked form.
