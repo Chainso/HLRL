@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -21,7 +21,7 @@ class NormalizeRewardAlgo(MethodWrapper):
         """
         super().__init__(algo)
 
-        self.reward_norm = nn.BatchNorm1d(1)
+        self.reward_norm = nn.BatchNorm1d(1, affine=False)
 
     def process_batch(
             self,
@@ -46,3 +46,33 @@ class NormalizeRewardAlgo(MethodWrapper):
         with evaluating(self.reward_norm):
             rollouts["reward"] = self.reward_norm(rewards)
             return self.om.process_batch(rollouts)
+
+    def train_processed_batch(
+            self,
+            rollouts: Dict[str, Any],
+            *args: Any,
+            **kwargs: Any
+        ) -> Any:
+        """
+        Adds logs for the reward normalization to the batch training.
+
+        Args:
+            rollouts: The training batch to process.
+            args: Positional training arguments.
+            kwargs: Keyword training arguments.
+
+        Returns:
+            The underlying algorithm's training procedure.
+        """
+        train_ret = self.om.train_processed_batch(rollouts, *args, **kwargs)
+
+        # Log running mean and std
+        if self.logger is not None:
+            self.logger["Train/Reward Mean"] = (
+                self.reward_norm.running_mean, self.training_steps
+            )
+            self.logger["Train/Reward Std"] = (
+                torch.sqrt(self.reward_norm.running_var), self.training_steps
+            )
+
+        return train_ret

@@ -14,7 +14,9 @@ if(__name__ == "__main__"):
     from hlrl.core.common.functional import compose
     from hlrl.torch.trainers import OffPolicyTrainer
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.torch.algos import SAC, SACRecurrent, RND, TorchRecurrentAlgo
+    from hlrl.torch.algos import (
+        SAC, SACRecurrent, RND, TorchRecurrentAlgo, NormalizeRewardAlgo
+    )
     from hlrl.torch.policies import (
         LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy,
         LSTMSAPolicy, LSTMGaussianPolicy
@@ -305,6 +307,8 @@ if(__name__ == "__main__"):
         normalization_layer = nn.BatchNorm1d(env.state_space[0], affine=False)
 
         algo = RND(algo, rnd_network, rnd_target, optim, normalization_layer)
+
+    algo = NormalizeRewardAlgo(algo)
 
     if args.load_path is not None:
         algo.load(args.load_path)
