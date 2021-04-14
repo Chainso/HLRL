@@ -43,8 +43,7 @@ class NormalizeReturnAlgo(MethodWrapper):
 
         # First do the batch norm on training to update running stats, then use
         # eval for the actual batch
-        with training(self.reward_norm):
-            self.reward_norm(rewards)
+        self.reward_norm(rewards)
 
         with evaluate(self.reward_norm):
             rollouts["reward"] = self.reward_norm(rewards)
