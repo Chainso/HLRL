@@ -45,14 +45,13 @@ class RLAlgo(ABC):
 
     def process_batch(
             self,
-            rollouts: Dict[str, Any]
+            rollouts: Dict[str, Any],
         ) -> Dict[str, Any]:
         """
         Processes a batch to make it suitable for training.
 
         Args:
             rollouts: The training batch to process.
-            is_weights: The importance sample weights of the batch to process.
 
         Returns:
             The processed training batch.
@@ -75,7 +74,7 @@ class RLAlgo(ABC):
         Returns:
             The training return on the batch.
         """
-        processed_batch = self.process_batch(rollouts, *args, **kwargs)
+        processed_batch = self.process_batch(rollouts)
         return self.train_processed_batch(*processed_batch)
 
     @abstractmethod

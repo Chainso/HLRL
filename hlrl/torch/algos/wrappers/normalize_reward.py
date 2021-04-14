@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.torch.algos import TorchRLAlgo
-from hlrl.torch.utils.contexts import evaluating, training
+from hlrl.torch.utils.contexts import evaluate, training
 
 class NormalizeRewardAlgo(MethodWrapper):
     """
@@ -43,7 +43,7 @@ class NormalizeRewardAlgo(MethodWrapper):
         with training(self.reward_norm):
             self.reward_norm(rewards)
 
-        with evaluating(self.reward_norm):
+        with evaluate(self.reward_norm):
             rollouts["reward"] = self.reward_norm(rewards)
             return self.om.process_batch(rollouts)
 
