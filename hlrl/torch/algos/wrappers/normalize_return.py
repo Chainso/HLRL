@@ -70,10 +70,10 @@ class NormalizeReturnAlgo(MethodWrapper):
 
         # Log running mean and std
         if self.logger is not None:
-            self.logger["Train/Reward Mean"] = (
+            self.logger["Train/Return Mean"] = (
                 self.reward_norm.running_mean, self.training_steps
             )
-            self.logger["Train/Reward Std"] = (
+            self.logger["Train/Return Std"] = (
                 torch.sqrt(self.reward_norm.running_var), self.training_steps
             )
 
