@@ -14,7 +14,9 @@ if(__name__ == "__main__"):
     from hlrl.core.common.functional import compose
     from hlrl.torch.trainers import OffPolicyTrainer
     from hlrl.core.envs.gym import GymEnv
-    from hlrl.torch.algos import SAC, SACRecurrent, RND, TorchRecurrentAlgo
+    from hlrl.torch.algos import (
+        SAC, SACRecurrent, RND, TorchRecurrentAlgo, NormalizeReturnAlgo
+    )
     from hlrl.torch.policies import (
         LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy,
         LSTMSAPolicy, LSTMGaussianPolicy
@@ -98,6 +100,10 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "--twin", type=bool, default=True,
         help="true if SAC should use twin Q-networks"
+    )
+    parser.add_argument(
+        "--normalize_return", action="store_true",
+        help="if the returns from the environment should be normalized"
     )
 
     # Training/Playing args
@@ -305,6 +311,9 @@ if(__name__ == "__main__"):
         normalization_layer = nn.BatchNorm1d(env.state_space[0], affine=False)
 
         algo = RND(algo, rnd_network, rnd_target, optim, normalization_layer)
+
+    if args.normalize_return:
+        algo = NormalizeReturnAlgo(algo)
 
     if args.load_path is not None:
         algo.load(args.load_path)

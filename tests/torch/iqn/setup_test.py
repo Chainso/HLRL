@@ -90,6 +90,9 @@ def setup_test(args, env):
             optim, args.device, algo_logger
         )
 
+    if args.normalize_return:
+        algo = NormalizeReturnAlgo(algo)
+
     if args.load_path is not None:
         algo.load(args.load_path)
 
