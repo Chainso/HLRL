@@ -21,10 +21,9 @@ class NormalizeReturnAlgo(MethodWrapper):
         """
         super().__init__(algo)
 
-        if not hasattr(self, "reward_norm"):
-            self.reward_norm = nn.BatchNorm1d(
-                1, affine=False, track_running_stats=True
-            )
+        self.reward_norm = nn.BatchNorm1d(
+            1, affine=False, track_running_stats=True
+        )
 
     def process_batch(
             self,
@@ -45,6 +44,7 @@ class NormalizeReturnAlgo(MethodWrapper):
         Returns:
             The processed training batch with normalized rewards.
         """
+        rollouts, *rest = self.om.process_batch(rollouts, *args, **kwargs)
         rewards = rollouts["reward"]
 
         # First do the batch norm on training to update running stats, then use
@@ -53,7 +53,8 @@ class NormalizeReturnAlgo(MethodWrapper):
 
         with evaluate(self.reward_norm):
             rollouts["reward"] = self.reward_norm(rewards)
-            return self.om.process_batch(rollouts, *args, **kwargs)
+
+        return rollouts, *rest
 
     def train_processed_batch(
             self,
