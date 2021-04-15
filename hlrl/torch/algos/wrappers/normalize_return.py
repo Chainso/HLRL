@@ -28,13 +28,19 @@ class NormalizeReturnAlgo(MethodWrapper):
 
     def process_batch(
             self,
-            rollouts: Dict[str, torch.Tensor]
+            rollouts: Dict[str, torch.Tensor],
+            *args: Any,
+            **kwargs: Any
         ) -> Dict[str, torch.Tensor]:
         """
         Processes and normalizes the reward for a batch.
 
         Args:
             rollouts: The training batch with rewards to normalize.
+            args: Any positional arguments for the wrapped algorithm to process
+                the batch.
+            kwargs: Any keyword arguments for the wrapped algorithm to process
+                the batch.
 
         Returns:
             The processed training batch with normalized rewards.
@@ -47,7 +53,7 @@ class NormalizeReturnAlgo(MethodWrapper):
 
         with evaluate(self.reward_norm):
             rollouts["reward"] = self.reward_norm(rewards)
-            return self.om.process_batch(rollouts)
+            return self.om.process_batch(rollouts, *args, **kwargs)
 
     def train_processed_batch(
             self,

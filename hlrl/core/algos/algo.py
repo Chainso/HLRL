@@ -74,7 +74,7 @@ class RLAlgo(ABC):
         Returns:
             The training return on the batch.
         """
-        processed_batch = self.process_batch(rollouts)
+        processed_batch = self.process_batch(rollouts, *args, **kwargs)
         return self.train_processed_batch(*processed_batch)
 
     @abstractmethod

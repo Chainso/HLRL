@@ -111,7 +111,7 @@ class TorchRecurrentAlgo(MethodWrapper):
         Returns:
             The processed training batch.
         """
-        rollouts, *rest = self.om.process_batch(rollouts)
+        rollouts, *rest = self.om.process_batch(rollouts, *args, **kwargs)
         rollouts = self.burn_in_hidden_states(rollouts)
 
         return rollouts, *rest
