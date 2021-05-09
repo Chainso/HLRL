@@ -102,6 +102,10 @@ if __name__ == "__main__":
 		"--lr", type=float, default=3e-4,
 		help="the learning rate"
 	)
+    parser.add_argument(
+        "--normalize_return", action="store_true",
+        help="if the returns from the environment should be normalized"
+    )
 
     # Training/Playing args
     parser.add_argument(
