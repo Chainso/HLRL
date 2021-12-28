@@ -285,7 +285,6 @@ class SACHybrid(SAC):
         )[:3]
 
         q_val = q_val.gather(-1, action)
-
         return action, q_val, action_parameters
 
     def step(
