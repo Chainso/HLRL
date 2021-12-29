@@ -14,4 +14,4 @@ class DiscreteShaped(Discrete):
         """
         super().__init__(n)
 
-        self.shape = (n,)
+        self._shape = (n,)

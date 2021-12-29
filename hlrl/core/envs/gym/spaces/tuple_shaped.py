@@ -17,7 +17,7 @@ class TupleShaped(Tuple):
         """
         super().__init__(spaces)
 
-        self.shape = tuple(space.shape for space in spaces)
+        self._shape = tuple(space.shape for space in spaces)
 
 class FlattenedTupleShaped(TupleShaped):
     """
@@ -32,4 +32,4 @@ class FlattenedTupleShaped(TupleShaped):
         """
         super().__init__(spaces)
 
-        self.shape = sum(self.shape, tuple())
+        self._shape = sum(self.shape, tuple())
