@@ -1,11 +1,10 @@
 import math
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Tuple, Union
 
 import torch
 import torch.nn as nn
 
 from hlrl.torch.common import polyak_average
-from hlrl.core.logger import Logger
 
 from .rainbow_iqn import RainbowIQN
 
@@ -266,7 +265,7 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         # Update the target
         if (self.training_steps % self.target_update_interval == 0):
-            polyak_average(self.q_func, self.target_q_func, self.polyak)
+            polyak_average(self.q_func, self.q_func_targ, self.polyak)
 
         self.training_steps += 1
 
@@ -311,7 +310,7 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         # Target network quantile values
         next_quantile_values = self._calculate_quantile_values(
-            next_states, self.target_q_func, next_hidden_states
+            next_states, self.q_func_targ, next_hidden_states
         )[0]
 
         # Use the greedy action to get target quantiles
