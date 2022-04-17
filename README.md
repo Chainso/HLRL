@@ -100,6 +100,7 @@ Flexible algorithms can be used with any base algorithm that supports it. Wrappe
 | [Ape-X](https://arxiv.org/abs/1803.00933) | ✔️ | ❌ | N/A | Ape-X for multi-core machines with a single model shared across agents |
 | [R2D2](https://openreview.net/forum?id=r1lyTjAqYX) | ✔️ | ❌ | N/A | R2D2 with hidden state storing and burning in |
 
+<br />
 
 ## TODO
 
