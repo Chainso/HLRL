@@ -261,9 +261,9 @@ if(__name__ == "__main__"):
         )
 
         algo = SACRecurrent(
-            env.action_space, qfunc, policy, args.discount ** args.n_steps,
-            args.polyak, args.target_update_interval, optim, optim, optim,
-            args.twin, args.device, algo_logger
+            env.action_space, qfunc, policy, args.discount, args.polyak,
+            args.target_update_interval, optim, optim, optim, args.twin,
+            args.device, algo_logger
         )
 
         algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
@@ -279,9 +279,9 @@ if(__name__ == "__main__"):
         )
 
         algo = SACHybrid(
-            env.action_space, qfunc, policy, args.discount ** args.n_steps,
-            args.polyak, args.target_update_interval, optim, optim, optim,
-            args.twin, args.device, algo_logger
+            env.action_space, qfunc, policy, args.discount, args.polyak,
+            args.target_update_interval, optim, optim, optim, args.twin,
+            args.device, algo_logger
         )
 
     if args.exploration == "rnd":

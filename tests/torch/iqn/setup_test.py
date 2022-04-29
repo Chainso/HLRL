@@ -68,9 +68,9 @@ def setup_test(args, env):
 
         algo = RainbowIQNRecurrent(
             autoencoder_out_n, autoencoder, qfunc,
-            args.discount ** args.n_steps, args.polyak, args.n_quantiles,
-            args.embedding_dim, args.huber_threshold,
-            args.target_update_interval, optim, optim, args.device, algo_logger
+            args.discount, args.polyak, args.n_quantiles, args.embedding_dim,
+            args.huber_threshold, args.target_update_interval, optim, optim,
+            args.device, algo_logger
         )
 
         algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
@@ -84,10 +84,9 @@ def setup_test(args, env):
             autoencoder = nn.Sequential(autoencoder, activation_fn())
 
         algo = RainbowIQN(
-            args.hidden_size, autoencoder, qfunc, args.discount ** args.n_steps,
-            args.polyak, args.n_quantiles, args.embedding_dim,
-            args.huber_threshold, args.target_update_interval, optim,
-            optim, args.device, algo_logger
+            args.hidden_size, autoencoder, qfunc, args.discount, args.polyak,
+            args.n_quantiles, args.embedding_dim, args.huber_threshold,
+            args.target_update_interval, optim, optim, args.device, algo_logger
         )
 
     if args.normalize_return:

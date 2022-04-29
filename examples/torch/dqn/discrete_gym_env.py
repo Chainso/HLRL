@@ -240,8 +240,8 @@ if __name__ == "__main__":
         )
 
         algo = DQNRecurrent(
-            qfunc, args.discount ** args.n_steps, args.polyak,
-            args.target_update_interval, optim, args.device, algo_logger
+            qfunc, args.discount, args.polyak, args.target_update_interval,
+            optim, args.device, algo_logger
         )
 
         algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
@@ -252,8 +252,8 @@ if __name__ == "__main__":
         )
 
         algo = DQN(
-            qfunc, args.discount ** args.n_steps, args.polyak,
-            args.target_update_interval, optim, args.device, algo_logger
+            qfunc, args.discount, args.polyak, args.target_update_interval,
+            optim, args.device, algo_logger
         )
 
     if args.exploration == "rnd":

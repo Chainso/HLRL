@@ -60,7 +60,6 @@ class TorchRecurrentAlgo(MethodWrapper):
         hidden_states = rollouts["hidden_state"]
 
         burn_in_states = states
-        burn_in_next_states = next_states
         new_hiddens = hidden_states
 
         if self.burn_in_length > 0:    
@@ -83,7 +82,7 @@ class TorchRecurrentAlgo(MethodWrapper):
         rollouts["terminal"] = terminals[:, self.burn_in_length:].contiguous()
 
         with torch.no_grad():
-            first_burned_in = rollouts["state"][:, :self.n_steps].contiguous()
+            first_burned_in = rollouts["state"][:, :1].contiguous()
             *_, next_hiddens = self.forward(
                 first_burned_in, new_hiddens
             )
