@@ -19,8 +19,8 @@ if(__name__ == "__main__"):
         SACHybrid, RND, TorchRecurrentAlgo, NormalizeReturnAlgo
     )
     from hlrl.torch.policies import (
-        LinearPolicy, LinearSAPolicy, TanhGaussianPolicy, LSTMPolicy,
-        LSTMSAPolicy, LSTMGaussianPolicy
+        LinearPolicy, LinearCatPolicy, TanhGaussianPolicy, LSTMPolicy,
+        LSTMCatPolicy, LSTMGaussianPolicy
     )
 
     mp.set_start_method("spawn")
@@ -248,8 +248,8 @@ if(__name__ == "__main__"):
         num_lin_before = 1 if args.num_layers > 1 else 0
         num_lin_after = max(args.num_layers - 2, 1)
 
-        qfunc = LSTMSAPolicy(
-            env.state_space[0], env.action_space[0], 1, args.hidden_size,
+        qfunc = LSTMCatPolicy(
+            (env.state_space[0], env.action_space[0]), 1, args.hidden_size,
             num_lin_before, args.hidden_size, 1, args.hidden_size,
             num_lin_after, activation_fn
         )
@@ -268,8 +268,8 @@ if(__name__ == "__main__"):
 
         algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
     else:
-        qfunc = LinearSAPolicy(
-            env.state_space[0], env.action_space[0], 1, args.hidden_size,
+        qfunc = LinearCatPolicy(
+            (env.state_space[0], env.action_space[0]), 1, args.hidden_size,
             args.num_layers, activation_fn
         )
 

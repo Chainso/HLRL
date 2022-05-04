@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -125,28 +125,28 @@ class LSTMPolicy(nn.Module):
         return reset_hidden
 
 
-class LSTMSAPolicy(LSTMPolicy):
+class LSTMCatPolicy(LSTMPolicy):
     """
-    A LSTM policy that takes state-action inputs.
+    A LSTM policy that takes multiple inputs to be concatenated.
     """
-    def __init__(self,
-        inp_n: int,
-        act_n: int,
-        out_n: int,
-        lin_before_hidden_size: int,
-        lin_before_num_layers: int,
-        lstm_hidden_size: int,
-        lstm_num_layers: int,
-        lin_after_hidden_size: int,
-        lin_after_num_layers: int,
-        activation_fn: nn.Module):
+    def __init__(
+            self,
+            input_sizes: Tuple[int, ...],
+            out_n: int,
+            lin_before_hidden_size: int,
+            lin_before_num_layers: int,
+            lstm_hidden_size: int,
+            lstm_num_layers: int,
+            lin_after_hidden_size: int,
+            lin_after_num_layers: int,
+            activation_fn: nn.Module
+        ):
         """
-        Creates the LSTM policy using state-action inputs, with a linear policy
+        Creates the LSTM policy using multiple inputs, with a linear policy
         before and after it. The LSTM is batch major.
 
         Args:
-            inp_n: The number of input units.
-            act_n: The number of input nodes for the action.
+            input_sizes: The sizes of the network inputs to concatenate.
             out_n: The number of output units.
             lin_before_hidden_size: The number of hidden units in the linear
                 network before the LSTM.
@@ -159,26 +159,27 @@ class LSTMSAPolicy(LSTMPolicy):
             activation_fn: The activation function for each layer.
         """
         super().__init__(
-            inp_n + act_n, out_n, lin_before_hidden_size, lin_before_num_layers,
-            lstm_hidden_size, lstm_num_layers, lin_after_hidden_size,
-            lin_after_num_layers, activation_fn
+            sum(input_sizes), out_n, lin_before_hidden_size,
+            lin_before_num_layers, lstm_hidden_size, lstm_num_layers,
+            lin_after_hidden_size, lin_after_num_layers, activation_fn
         )
 
     def forward(
             self,
-            states: torch.Tensor,
-            actions: torch.Tensor,
-            hidden_states: Tuple[torch.Tensor, torch.Tensor]
+            *inputs: Tuple[Union[torch.Tensor,
+                                 Tuple[torch.Tensor, torch.Tensor]]]
         ) -> torch.Tensor:
         """
         Returns the output along with the new hidden states.
 
         Args:
-            states: The states for the network input.
-            actions: The actions for the network input.
-            hidden_states: The hidden states of the LSTM.
+            inputs: The inputs to concatenate and the hidden states of the LSTM.
+
+        Returns:
+            The LSTM output on the inputs.
         """
-        lin_in = torch.cat([states, actions], dim=-1)
+        *inputs, hidden_states = inputs
+        lin_in = torch.cat(inputs, dim=-1)
         return super().forward(lin_in, hidden_states)
 
 class LSTMGaussianPolicy(LSTMPolicy):

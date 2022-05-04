@@ -80,51 +80,46 @@ class LinearPolicy(nn.Module):
         """
         return self.linear(inp)
 
-class LinearSAPolicy(LinearPolicy):
+class LinearCatPolicy(LinearPolicy):
     """
-    A linear policy that takes state-action inputs (e.g. continuous Q-policy)
+    A linear policy that takes multiple inputs and concatenates them.
     """
     def __init__(
             self,
-            state_n: int,
-            act_n: int,
+            input_sizes: Tuple[int, ...],
             out_n: int,
             hidden_size: int,
             num_layers: int,
             activation_fn: nn.Module
         ):
         """
-        A policy that takes in a state and action, appending the action to the
-        state.
+        A policy that takes in a multiple inputs.
 
         Args:
-            state_n: The number of input nodes for the state.
-            act_n: The number of input nodes for the action.
+            input_sizes: The sizes of the network inputs to concatenate.
             out_n: The number of output nodes.
             hidden_size: The size of each hidden layer.
             num_layers: The number of layers.
             activation_fn: The activation function between each layer.
         """
         super().__init__(
-            state_n + act_n, out_n, hidden_size, num_layers, activation_fn
+            sum(input_sizes), out_n, hidden_size, num_layers, activation_fn
         )
 
     def forward(
             self,
-            state: torch.Tensor,
-            actions: torch.Tensor
+            *inputs: torch.Tensor
         ) -> torch.Tensor:
         """
         Returns the policy output for the input.
 
         Args:
-            state: The state of the transition.
-            actions: The action to take at that state.
+            inputs: The inputs to concatenate.
 
         Returns:
             The network output on the input.
         """
-        lin_in = torch.cat([state, actions], dim=-1)
+        lin_in = torch.cat(inputs, dim=-1)
         return super().forward(lin_in)
 
 class SplitLinearPolicy(LinearPolicy):
