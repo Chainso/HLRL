@@ -4,6 +4,9 @@ if __name__ == "__main__":
     import torch.multiprocessing as mp
     import gymnasium as gym
     import yaml
+    import numpy as np
+    import random
+
 
     from argparse import ArgumentParser, Namespace
     from functools import partial
@@ -182,6 +185,11 @@ if __name__ == "__main__":
         help="if recurrent, factor of max priority to mean priority for R2D2"
     )
 
+    # Reproducibility
+    parser.add_argument(
+        "--seed", type=int, default=154, help="the random seed"
+    )
+
     args = parser.parse_args()
 
     if args.config_file is not None:
@@ -198,6 +206,10 @@ if __name__ == "__main__":
 
             args = {**args, **config_dict, **given_args}
             args = Namespace(**args)
+
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
 
     logs_path = None
     save_path = None
