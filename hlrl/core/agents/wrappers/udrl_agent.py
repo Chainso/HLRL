@@ -107,7 +107,7 @@ class RewardHorizonAgent(UDRLAgent):
         """
         _, time_horizon = self.command
 
-        if time_horizon == 1:
+        if time_horizon == 0:
             while experiences:
                 experience = self.get_buffer_experience(experiences, decay)
                  
