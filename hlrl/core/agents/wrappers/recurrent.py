@@ -1,5 +1,3 @@
-import torch
-
 from typing import Any, Tuple, OrderedDict
 
 from hlrl.core.common.wrappers import MethodWrapper

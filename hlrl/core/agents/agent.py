@@ -1,6 +1,5 @@
 # Fixes self-type reference (RLAgent) for typing annotations
 from __future__ import annotations
-from abc import abstractmethod
 from collections import deque
 from typing import Any, Callable, Dict, List, Optional, Tuple, OrderedDict
 from time import time
@@ -237,7 +236,7 @@ class RLAgent():
             decay: float
         ) -> Any:
         """
-        Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples
+        Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples.
 
         Args:
             experiences: The experiences containing rewards.

@@ -1,10 +1,8 @@
 from typing import Dict, Tuple, Union
 
 import torch
-import torch.nn as nn
 
 from .sac import SAC
-from hlrl.torch.common import polyak_average
 
 class SACRecurrent(SAC):
     """

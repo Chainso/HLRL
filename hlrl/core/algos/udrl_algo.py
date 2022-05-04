@@ -1,18 +1,20 @@
 from abc import ABC, abstractmethod
 from typing import Any, OrderedDict, NoReturn
 
-class IntrinsicRewardAlgo(ABC):
+class UDRLAlgo(ABC):
     """
-    A generic instrinsic reward algorithm.
+    A UDRL algorithm.
     """
     @abstractmethod
-    def intrinsic_reward(self,
-                         state: Any,
-                         algo_step: OrderedDict[str, Any],
-                         reward: Any,
-                         next_state: Any) -> NoReturn:
+    def choose_command(
+            self,
+            state: Any,
+            algo_step: OrderedDict[str, Any],
+            reward: Any,
+            next_state: Any
+        ) -> NoReturn:
         """
-        Computes the intrinsic reward of the states.
+        Chooses a command for the agent.
 
         Args:
             state: The state of the environment.
