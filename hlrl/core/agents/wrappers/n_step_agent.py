@@ -65,7 +65,8 @@ class NStepAgent(MethodWrapper):
 
             experience["next_value"] = algo_step["value"]
         else:
-            experience["next_value"] = 0
+            # Sets 0 for multiple types instead of just int
+            experience["next_value"] = experience["value"] * 0
 
     def prepare_experiences(
             self,

@@ -264,7 +264,7 @@ class OffPolicyTrainer():
                 agent.train(
                     1,
                     args.n_steps + 1,
-                    args.batch_size,
+                    1,
                     experience_replay,
                     args.batch_size,
                     args.start_size,

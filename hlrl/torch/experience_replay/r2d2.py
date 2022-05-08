@@ -1,6 +1,7 @@
-from typing import Dict
+from typing import Any, Dict, Tuple
 
 import torch
+import numpy as np
 
 from .per import TorchPER
 
@@ -59,3 +60,45 @@ class TorchR2D2(TorchPER):
         )
 
         return error
+
+    def sample(
+            self,
+            size: int
+        ) -> Tuple[Dict[str, torch.Tensor],
+                   Tuple[np.ndarray, Tuple[Any]],
+                   torch.Tensor]:
+        """
+        Samples "size" number of experiences from the buffer.
+
+        Args:
+            size: The number of experiences to sample.
+        
+        Returns:
+            A sample of the size given from the replay buffer along with the
+            identifier to update the priorities of the experiences and the
+            importance sampling weights.
+        """
+        priorities = self.priorities.get_leaves() / self.priorities.sum()
+        priorities /= priorities.sum()
+
+        indices = np.random.choice(len(priorities), size, p = priorities)
+
+        ids = self.ids[indices]
+        ids = tuple(zip(indices, ids))
+
+        batch = {}
+        device = "cpu"
+
+        for key in self.experiences:
+            batch[key] = self.experiences[key][indices].tolist()
+            device = batch[key][0].device
+
+        probabilities = priorities[indices]
+
+        is_weights = np.power(len(self) * probabilities, -self.beta)
+        is_weights /= is_weights.max()
+        is_weights = torch.from_numpy(is_weights).to(device)
+
+        self.beta = np.min([1.0, self.beta + self.beta_increment])
+
+        return batch, ids, is_weights

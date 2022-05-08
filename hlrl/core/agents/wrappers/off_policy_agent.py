@@ -50,9 +50,9 @@ class OffPolicyAgent(NStepAgent):
         # Use the last experience for the next Q-value to calculate the target
         # Q-values
         next_return = 0
-        n_step_idx = len(experiences) - 1
+        n_step_idx = len(experiences) - 2
 
-        for t in reversed(range(len(experiences) - 1)):
+        for t in reversed(range(n_step_idx)):
             # "next_value" supplies the bootstrap if the environment terminated
             # early but the agent didn't
             non_terminal = (

@@ -1,3 +1,4 @@
+from concurrent.futures import process
 from typing import Any, Dict, Optional, Union
 
 import torch
@@ -38,17 +39,13 @@ class TorchRLAlgo(RLAlgo, nn.Module):
         Returns:
             The processed training batch.
         """
-        processed_rollouts = {}
-
         for key, value in rollouts.items():
             if isinstance(value, torch.Tensor):
-                processed_rollouts[key] = value.to(self.device)
-            else:
-                processed_rollouts[key] = torch.tensor(
-                    value, device=self.device
-                )
+                rollouts[key] = value.to(self.device)
+            elif isinstance(value, np.ndarray):
+                rollouts[key] = torch.tensor(value, device=self.device)
 
-        return processed_rollouts
+        return rollouts
 
     def save_dict(self) -> Dict[str, Any]:
         """
@@ -151,11 +148,6 @@ class TorchOffPolicyAlgo(TorchRLAlgo):
            and start_size <= len(experience_replay)):
             sample = experience_replay.sample(batch_size)
             rollouts, ids, is_weights = sample
-
-            # Make sure to change device if needed
-            rollouts = {
-                key: tens.to(self.device) for key, tens in rollouts.items()
-            }
 
             new_q, new_q_targ = self.train_batch(rollouts, is_weights)
 

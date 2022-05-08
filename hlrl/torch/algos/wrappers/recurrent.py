@@ -38,10 +38,6 @@ class TorchRecurrentAlgo(MethodWrapper):
         Returns:
             The training batch with the hidden states burned in.
         """
-        rollouts = {
-            key: value.to(self.device) for key, value in rollouts.items()
-        }
-
         # Switch from (batch size, 2, num layers, hidden size) to
         # (2, num layers, batch size, hidden size)
         rollouts["hidden_state"] = (

@@ -1,10 +1,9 @@
 import torch
-import numpy as np
 
 from typing import Any, Dict, List, Tuple
 
 from hlrl.core.common.wrappers import MethodWrapper
-from hlrl.torch.agents import TorchRLAgent
+from hlrl.torch.agents.wrappers import TorchRLAgent
 
 class SequenceInputAgent(MethodWrapper):
     """
@@ -99,8 +98,17 @@ class ExperienceSequenceAgent(MethodWrapper):
                             len(experience[key]), device=experience[key].device
                         )
 
-                for i in range(len(experience[key])):
-                    self.sequence_experiences[key][i].append(experience[key][i])
+
+                if key == "hidden_state":
+                    for i in range(len(experience[key][0])):
+                        self.sequence_experiences[key][i].append(
+                            experience[key][:, i]
+                        )
+                else:
+                    for i in range(len(experience[key])):
+                        self.sequence_experiences[key][i].append(
+                            experience[key][i]
+                        )
 
             for i in range(len(self.sequence_starts)):
                 terminal = (
@@ -117,16 +125,16 @@ class ExperienceSequenceAgent(MethodWrapper):
                     for key in self.sequence_experiences:
                         if key == "hidden_state":
                             # Only need the first hidden state
-                            prepared_sequence[key].append(
-                                self.sequence_experiences[key][i][0].permute(
-                                    2, 0, 1, 3
+                            prepared_sequence[key] = (
+                                self.sequence_experiences[key][i][0].unsqueeze(
+                                    0
                                 )
                             )
                         else:
                             # Stack to sequence dimension
-                            prepared_sequence[key].append(torch.stack(
+                            prepared_sequence[key] = torch.stack(
                                 self.sequence_experiences[key][i], dim=1
-                            ))
+                            )
 
                     prepared_sequence["sequence_start"] = (
                         self.sequence_starts[i].unsqueeze(0)
@@ -146,45 +154,3 @@ class ExperienceSequenceAgent(MethodWrapper):
                     prepared_sequences.append(prepared_sequence)
 
         return prepared_sequences
-
-    def add_to_buffer(
-            self,
-            ready_experiences: Dict[str, List[Any]],
-            experiences: Tuple[Dict[str, Any], ...]
-        ) -> None:
-        """
-        Prepares the oldest experiences from experiences and transfers it to
-        ready experiences.
-
-        Args:
-            ready_experiences: The buffer of experiences that can be trained on.
-            experiences: The experiences containing rewards.
-        """
-        experiences = self.prepare_experiences(experiences)
-
-        if self.num_experiences == self.sequence_length:
-            # Concatenate experiences first
-            for key in self.sequence_experiences:
-                if key not in ready_experiences:
-                    ready_experiences[key] = []
-
-                if key == "hidden_state":
-                    # Only need the first hidden state
-                    ready_experiences[key].append(
-                        self.sequence_experiences[key][0].permute(
-                            2, 0, 1, 3
-                        )
-                    )
-                else:
-                    # Concatenate to sequence dimension
-                    ready_experiences[key].append(torch.cat(
-                        self.sequence_experiences[key], dim=1
-                    ))
-
-            # Remove the first sequence and keep the rest
-            self.num_experiences -= self.overlap
-
-            for key in self.sequence_experiences:
-                self.sequence_experiences[key] = (
-                    self.sequence_experiences[key][-self.overlap:]
-                )
