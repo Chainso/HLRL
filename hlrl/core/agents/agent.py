@@ -1,7 +1,7 @@
 # Fixes self-type reference (RLAgent) for typing annotations
 from __future__ import annotations
 from collections import deque
-from typing import Any, Callable, Dict, List, Optional, Tuple, OrderedDict
+from typing import Any, Callable, Deque, Dict, List, Optional, Tuple, OrderedDict
 from time import time
 
 from hlrl.core.envs import Env
@@ -93,8 +93,10 @@ class RLAgent():
             ("state", state),
         ))
 
-    def transform_next_state(self,
-                             next_state: Any) -> OrderedDict[str, Any]:
+    def transform_next_state(
+            self,
+            next_state: Any
+        ) -> OrderedDict[str, Any]:
         """
         Transforms the next observation of an environment to a dictionary.
         
@@ -125,25 +127,6 @@ class RLAgent():
         return OrderedDict((
             ("action", algo_step[0]),
         ))
-
-    def transform_next_algo_step(
-        self,
-        next_algo_step: Tuple[Any, ...]) -> OrderedDict[str, Any]:
-        """
-        Transforms the next algorithm step on the observation to a dictionary.
-        
-        Args:
-            next_algo_step: The outputs of the algorithm on the next input
-                state.
-
-        Returns:
-            An ordered dictionary of the next algorithm outputs, prefixed with
-            "next_"
-        """
-        transed_nas = self.transform_algo_step(next_algo_step)
-        transed_nas = self._add_prefix(transed_nas, "next_")
-
-        return transed_nas
 
     def transform_reward(self,
                          state: Any,
@@ -179,6 +162,21 @@ class RLAgent():
         """
         return terminal
 
+    def get_agent_terminal(self, env_terminal: Any, info: Any) -> Any:
+        """
+        Checks to see if the agent has terminated in the environment. An agent
+        may not be terminated when an environment terminates in the case of
+        time limits or other external factors.
+
+        Args:
+            env_terminal: The environment terminal value.
+            info: Additional environment information for the step.
+
+        Returns:
+            True if the agent is in a terminal state
+        """
+        return env_terminal
+
     def transform_action(self,
                          action: Any) -> Any:
         """
@@ -193,8 +191,10 @@ class RLAgent():
         """
         return action
 
-    def reward_to_float(self,
-                        reward: float) -> float:
+    def reward_to_float(
+            self,
+            reward: float
+        ) -> float:
         """
         Converts the reward to a single float value.
 
@@ -230,92 +230,74 @@ class RLAgent():
         # The simplest agent doesn't need to do anything
         return ready_experiences
 
-    def n_step_decay(
+    def prepare_experiences(
             self,
-            experiences: Tuple[Dict[str, Any], ...],
-            decay: float
+            experiences: Deque[Dict[str, Any]],
         ) -> Any:
         """
-        Perform n-step decay on experiences of ((s, a, r, ...), ...) tuples.
+        Perpares the experiences to add to the buffer.
 
         Args:
-            experiences: The experiences containing rewards.
-            decay: The decay constant.
+            experiences: The experiences to add.
 
         Returns:
-            The decayed reward.
+            The prepared experiences to add to the replay buffer.
         """
-        # Want to check for terminals as well since envs may auto reset
-        decayed_experience = experiences.popleft()
+        prep_experiences = tuple(experiences)
+        experiences.clear()
 
-        reward = decayed_experience["reward"]
-        terminal_mask = 1 - decayed_experience["terminal"]
+        return prep_experiences
 
-        for i, experience in enumerate(experiences, start=1):
-            reward += terminal_mask * (decay ** i) * experience["reward"]
-            terminal_mask *= 1 - experience["terminal"]
-
-        experiences.appendleft(decayed_experience)
-
-        return reward
-
-    def get_buffer_experience(
+    def clean_experiences(
             self,
-            experiences: List[Dict[str, Any]],
-            decay: float
-        ) -> Any:
+            experiences: Tuple[Dict[str, Any], ...]
+        ):
         """
-        Perpares the experience to add to the buffer.
+        Cleans prepared experiences to be added to the buffer by removing
+        extra information and keeping only the data that is required for
+        learning.
 
         Args:
-            experiences: The experiences containing rewards.
-            decay: The decay constant.
+            experiences: The prepared experiences to clean.
 
         Returns:
-            The oldest stored experience.
+            The prepared experiences with the bare minimum data needed.
         """
-        decayed_reward = self.n_step_decay(experiences, decay)
+        for experience in experiences:
+            del experience["env_terminal"]
 
-        experience = experiences.popleft()
-        experience["reward"] = decayed_reward
+        return experiences
 
-        # Correct for n_step
-        if len(experiences) > 0:
-            for key in experience:
-                if key.startswith("next_"):
-                    experience[key] = experiences[-1][key]
-
-            experience["terminal"] = experiences[-1]["terminal"]
-
-        return experience
-
-    def add_to_buffer(self,
-                      ready_experiences: Dict[str, List[Any]],
-                      experiences: List[Dict[str, Any]],
-                      decay: float) -> None:
+    def add_to_buffer(
+            self,
+            ready_experiences: Dict[str, List[Any]],
+            experiences: List[Dict[str, Any]]
+        ) -> None:
         """
-        Prepares the oldest experiences from experiences and transfers it to
-        ready experiences.
+        Prepares the experiences to be ready to add to the training buffer.
 
         Args:
             ready_experiences: The buffer of experiences that can be trained on.
-            experiences: The experiences containing rewards.
-            decay: The decay constant.
+            experiences: The experiences to prepare.
         """
-        experience = self.get_buffer_experience(experiences, decay)
+        experiences = self.prepare_experiences(experiences)
+        experiences = self.clean_experiences(experiences)
 
-        for key in experience:
-            if key not in ready_experiences:
-                ready_experiences[key] = []
+        for experience in experiences:
+            for key in experience:
+                if key not in ready_experiences:
+                    ready_experiences[key] = []
 
-            ready_experiences[key].append(experience[key])
+                ready_experiences[key].append(experience[key])
 
-    def train_step(self,
-                   ready_experiences: Dict[str, List[Any]],
-                   batch_size: int,
-                   learner: Any,
-                   *learner_args: Any,
-                   **learner_kwargs: Any) -> Dict[str, List[Any]]:
+    def train_step(
+            self,
+            ready_experiences: Dict[str, List[Any]],
+            batch_size: int,
+            learner: Any,
+            *learner_args: Any,
+            **learner_kwargs: Any
+        ) -> Dict[str, List[Any]]:
         """
         Trains on the ready experiences.
 
@@ -343,7 +325,7 @@ class RLAgent():
 
         return ready_experiences
 
-    def step(self, with_next_step: bool = False) -> None:
+    def step(self) -> None:
         """
         Takes 1 step in the agent's environment. Returns the experience
         dictionary. Resets the environment if the current state is a
@@ -354,7 +336,7 @@ class RLAgent():
                 well.
         """
         if self.env.terminal:
-            self.reset()
+            self.reset() 
             self.env.reset()
 
         if self.render:
@@ -362,42 +344,56 @@ class RLAgent():
 
         state = self.env.state
         algo_inp = self.transform_state(state)
-        state = algo_inp.pop("state")
+        state = algo_inp["state"]
 
-        algo_step = self.algo.step(state, *algo_inp.values())
+        algo_step = self.algo.step(*algo_inp.values())
         algo_step = self.transform_algo_step(algo_step)
 
         env_action = self.transform_action(algo_step["action"])
         next_state, reward, terminal, truncated, info = self.env.step(env_action)
 
         next_algo_inp = self.transform_next_state(next_state)
-        next_state = next_algo_inp.pop("next_state")
+        next_state = next_algo_inp["next_state"]
+
         reward = self.transform_reward(
-            state, algo_step, reward, terminal, next_state
+            state, algo_step, reward, env_terminal, next_state
         )
+
+        terminal = self.get_agent_terminal(env_terminal, info)
         terminal = self.transform_terminal(terminal, info)
+        env_terminal = self.transform_terminal(env_terminal, info)
     
         experience = OrderedDict({
-            "state": state,
             **algo_inp,
             **algo_step,
             "reward": reward,
-            "next_state": next_state,
             **next_algo_inp,
-            "terminal": terminal
+            "terminal": terminal,
+            "env_terminal": env_terminal
         })
 
-        if with_next_step:
-            next_algo_step = self.algo.step(next_state, *next_algo_inp.values())
-            next_algo_step = self.transform_next_algo_step(next_algo_step)
+        return experience, next_algo_inp
 
-            experience.update(next_algo_step)
+    def after_step(
+            self,
+            experience: Dict[str, Any],
+            next_algo_inp: OrderedDict[str, Any]
+        ) -> None:
+        """
+        Performs updates after a step experience has been generated.
 
-        return experience
+        Args:
+            experience: The experience generated by the step.
+            next_algo_inp: The inputs to the algorithm to process the next
+                state.
+        """
+        pass
 
-    def play(self,
-             num_episodes: int = 0,
-             num_steps: int = 0) -> None:
+    def play(
+            self,
+            num_episodes: int = 0,
+            num_steps: int = 0
+        ) -> None:
         """
         Resets and plays the environment with the algorithm. Returns the average
         reward per episode. Will prioritize the inputted number of episodes to
@@ -428,8 +424,10 @@ class RLAgent():
             
             while (not self.env.terminal
                    and (using_episodes or step < num_steps)):
-                reward = self.step()["reward"]
-                reward = self.reward_to_float(reward)
+                experience, next_algo_inp = self.step()
+                self.after_step(experience, next_algo_inp)
+
+                reward = self.reward_to_float(experience["reward"])
 
                 ep_reward += reward
                 step += 1
@@ -455,24 +453,24 @@ class RLAgent():
             print("--------------------------------")
             print("Average Reward:", avg_reward)
 
-    def train(self,
-              num_episodes: int,
-              batch_size: int,
-              decay: float,
-              n_steps: int,
-              learner: Any,
-              *learner_args: Any,
-              exit_condition: Optional[Callable[[], bool]] = None,
-              **learner_kwargs: Any) -> None:
+    def train(
+            self,
+            training_steps: int,
+            ministep_size: int,
+            batch_size: int,
+            learner: Any,
+            *learner_args: Any,
+            exit_condition: Optional[Callable[[], bool]] = None,
+            **learner_kwargs: Any
+        ) -> None:
         """
-        Trains the algorithm for the number of episodes specified on the
-        environment.
+        Trains the algorithm for the number of training steps specified.
 
         Args:
-            num_episodes: The number of episodes to train for.
+            training_steps: The number of steps to train for.
+            ministep_size: The number of steps to take before adding experiences
+                to the buffer.
             batch_size: The number of ready experiences to train on at a time.
-            decay: The decay of the next.
-            n_steps: The number of steps.
             learner: Any object responsible for the training of the algorithm.
             *learner_args: Any positional arguments for the learner.
             exit_condition: An alternative exit condition to num episodes which
@@ -482,74 +480,72 @@ class RLAgent():
         if self.logger is not None:
             agent_train_start_time = time()
 
-        ready_experiences = {}
+        ready_experiences: Dict[str, List[Any]] = {}
+        experiences: Deque[Dict[str, Any]] = deque(maxlen=ministep_size)
 
+        step = 0
         episode = 0
+        episode_reward = 0
 
-        while (episode < num_episodes
+        self.reset()
+        self.env.reset()
+
+        if self.logger is not None:
+            episode_time = time()
+
+        while (step < training_steps
                or (exit_condition is not None and not exit_condition())):
             if self.logger is not None:
-                episode_time = time()
+                step_time = time()
 
-            self.reset()
-            self.env.reset()
+            experience, next_algo_inp = self.step()
+            self.after_step(experience, next_algo_inp)
 
-            ep_reward = 0
-            experiences = deque(maxlen=n_steps)
+            episode_reward += self.reward_to_float(experience["reward"])
 
-            while (not self.env.done
-                   and (exit_condition is None or not exit_condition())):
-                if self.logger is not None:
-                    step_time = time()
+            experiences.append(experience)
 
-                experience = self.step(True)
-                ep_reward += self.reward_to_float(experience["reward"])
-
-                experiences.append(experience)
- 
-                self.algo.env_steps += 1
-
-                if len(experiences) == n_steps:
-                    # Do n-step decay and add to the buffer
-                    self.add_to_buffer(ready_experiences, experiences, decay)
+            if len(experiences) == ministep_size:
+                self.add_to_buffer(ready_experiences, experiences)
 
                 ready_experiences = self.train_step(
                     ready_experiences, batch_size, learner, *learner_args,
                     **learner_kwargs
                 )
 
-                if self.logger is not None:
-                    self.logger["Train/Agent Steps per Second"] = (
-                        1 / (time() - step_time), self.algo.env_steps
-                    )
-
-            episode += 1
-
-            # Add the rest to the buffer
-            while len(experiences) > 0:
-                self.add_to_buffer(ready_experiences, experiences, decay)
-
-                ready_experiences = self.train_step(
-                    ready_experiences, batch_size, learner, *learner_args,
-                    **learner_kwargs
-                )
-
-            self.algo.env_episodes += 1
+            self.algo.env_steps += 1
+            step += 1
 
             if self.logger is not None:
-                self.logger["Train/Episode Reward"] = (
-                    ep_reward, self.algo.env_episodes
+                self.logger["Train/Agent Steps per Second"] = (
+                    1 / (time() - step_time), self.algo.env_steps
                 )
 
-                self.logger["Train/Episode Reward over Wall Time (s)"] = (
-                    ep_reward, time() - agent_train_start_time
-                )
+            if self.env.terminal:
+                episode += 1
+                self.algo.env_episodes += 1
 
-                self.logger["Train/Agent Episodes per Second"] = (
-                    1 / (time() - episode_time), self.algo.env_episodes
-                )
+                if self.logger is not None:
+                    self.logger["Train/Episode Reward"] = (
+                        episode_reward, self.algo.env_episodes
+                    )
 
-            if not self.silent:
-                print("Episode {0}\t|\tStep {1}\t|\tReward: {2}".format(
-                    self.algo.env_episodes, self.algo.env_steps, ep_reward
-                ))
+                    self.logger["Train/Episode Reward over Wall Time (s)"] = (
+                        episode_reward, time() - agent_train_start_time
+                    )
+
+                    self.logger["Train/Agent Episodes per Second"] = (
+                        1 / (time() - episode_time), self.algo.env_episodes
+                    )
+
+                if not self.silent:
+                    print("Episode {0}\t|\tStep {1}\t|\tReward: {2}".format(
+                        self.algo.env_episodes, self.algo.env_steps,
+                        episode_reward
+                    ))
+
+                episode_reward = 0
+                episode_time = time()
+
+                self.reset()
+                self.env.reset()

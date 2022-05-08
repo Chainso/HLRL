@@ -69,10 +69,9 @@ class RewardHorizonAgent(UDRLAgent):
         """
         return self.om.n_step_decay(experiences, 1)
 
-    def get_buffer_experience(
+    def prepare_experiences(
             self,
-            experiences: List[Dict[str, Any]],
-            decay: float
+            experiences: List[Dict[str, Any]]
         ) -> Any:
         """
         Perpares the experience to add to the buffer.
@@ -85,7 +84,7 @@ class RewardHorizonAgent(UDRLAgent):
             The oldest stored experience.
         """
         single_step_reward = experiences[0]["reward"]
-        experience = self.om.get_buffer_experience(experiences, decay)
+        experience = self.om.prepare_experiences(experiences)
         experience["single_reward"] = single_step_reward
 
         return experience
@@ -109,7 +108,7 @@ class RewardHorizonAgent(UDRLAgent):
 
         if time_horizon == 0:
             while experiences:
-                experience = self.get_buffer_experience(experiences, decay)
+                experience = self.prepare_experiences(experiences, decay)
                  
                 # Only keep time horizon for experience
                 experience["command"] = experience["command"][1:]

@@ -12,7 +12,7 @@ from hlrl.core.logger import TensorboardLogger
 from hlrl.core.common.functional import compose, partial_iterator
 from hlrl.core.distributed import ApexRunner
 from hlrl.core.agents import (
-    OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent,
+    RLAgent, OffPolicyAgent, IntrinsicRewardAgent, MunchausenAgent, QueueAgent,
     TimeLimitAgent
 )
 from hlrl.torch.algos import TorchRLAlgo
@@ -106,7 +106,11 @@ class OffPolicyTrainer():
 
         # Create agent class
         agent_builder = partial(
-            OffPolicyAgent, algo=algo, render=args.render, silent=args.silent
+            RLAgent, algo=algo, render=args.render, silent=args.silent
+        )
+        agent_builder = compose(
+            agent_builder,
+            partial(OffPolicyAgent, decay=args.discount)
         )
 
         steps_per_episode = (
@@ -255,10 +259,18 @@ class OffPolicyTrainer():
 
                 agent = agent_builder(env=env_builder(), logger=agent_logger)
 
+                end_steps = algo.training_steps + args.training_steps
+
                 agent.train(
-                    args.episodes, 1, args.discount, args.n_steps,
-                    experience_replay, args.batch_size, args.start_size,
-                    save_path, args.save_interval
+                    1,
+                    args.n_steps + 1,
+                    args.batch_size,
+                    experience_replay,
+                    args.batch_size,
+                    args.start_size,
+                    save_path,
+                    args.save_interval,
+                    exit_condition=lambda: algo.training_steps >= end_steps
                 )
 
             # Multiple processes
@@ -305,11 +317,12 @@ class OffPolicyTrainer():
                     )
 
                     agent_train_args.append((
-                        1, args.local_batch_size, args.discount, args.n_steps,
-                        agent_queue, queue_barrier
+                        1, args.n_steps + 1, args.local_batch_size,
+                        agent_queue
                     ))
                     agent_train_kwargs.append({
-                        "exit_condition": done_event.is_set
+                        "exit_condition": done_event.is_set,
+                        "queue_barrier": queue_barrier
                     })
 
                 runner = ApexRunner(done_event)

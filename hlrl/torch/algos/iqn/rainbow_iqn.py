@@ -219,6 +219,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
+        n_steps = rollouts["n_steps"]
 
         # Tile parameters for the quantiles
         actions = actions.repeat(self.n_quantiles, 1)
@@ -228,7 +229,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
 
         with torch.no_grad():
             target_quantile_values = self._calculate_q_target(
-                rewards, next_states, terminal_mask
+                rewards, next_states, terminal_mask, n_steps
             )
             target_quantile_values = target_quantile_values.transpose(0, 1)
 
@@ -295,7 +296,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
             _, new_q_val = self.step(states)
 
             new_quantile_values_target = self._calculate_q_target(
-                rewards, next_states, terminal_mask
+                rewards, next_states, terminal_mask, n_steps
             )
             new_q_target = torch.mean(new_quantile_values_target, dim=0)
 
@@ -317,7 +318,8 @@ class RainbowIQN(TorchOffPolicyAlgo):
             self,
             rewards: torch.FloatTensor,
             next_states: torch.FloatTensor,
-            terminal_mask: torch.Tensor
+            terminal_mask: torch.Tensor,
+            n_steps: torch.LongTensor
         ) -> torch.FloatTensor:
         """
         Calculates the target Q-value, assumes tensors have been tiled for the
@@ -327,6 +329,7 @@ class RainbowIQN(TorchOffPolicyAlgo):
             rewards: The rewards of the batch.
             next_states: The next states of the batch.
             terminal_mask: A mask to remove terminal Q-value predictions.
+            n_steps: The number of steps used to calculate returns.
 
         Returns:
             The target Q-value.
@@ -344,7 +347,8 @@ class RainbowIQN(TorchOffPolicyAlgo):
         next_quantile_values = next_quantile_values.gather(-1, next_actions)
 
         target_quantile_values = (
-            rewards + terminal_mask * self.discount * next_quantile_values
+            rewards
+            + terminal_mask * (self.discount ** n_steps) * next_quantile_values
         )
         
         target_quantile_values = target_quantile_values.view(

@@ -1,8 +1,8 @@
 import queue
 from multiprocessing import Barrier, Pipe, Queue
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 
-from hlrl.core.agents import OffPolicyAgent
+from hlrl.core.agents.wrappers import OffPolicyAgent
 from hlrl.core.experience_replay import PER
 from hlrl.core.common.wrappers import MethodWrapper
 
@@ -99,33 +99,21 @@ class QueueAgent(MethodWrapper):
 
     def train(
             self,
-            num_episodes: int,
-            batch_size: int,
-            decay: float,
-            n_steps: int,
-            experience_queue: Queue,
-            queue_barrier: Barrier,
-            exit_condition: Optional[Callable[[], bool]] = None
+            *args: Any,
+            queue_barrier: Optional[Barrier] = None,
+            **kwargs: Any
         ) -> None:
         """
         Trains the algorithm for the number of episodes specified on the
         environment.
 
         Args:
-            num_episodes: The number of episodes to train for.
-            batch_size: The number of ready experiences to train on at a time.
-            decay: The decay of the next.
-            n_steps: The number of steps.
-            experience_queue: The queue to send experiences to.
-            queue_barrier: A barrier to use when all queue tasks are complete on
-                all processes.
-            exit_condition: An alternative exit condition to num episodes which
-                will be used if given.
+            args: The positional arguments for the underlying agent.
+            kwargs: The keyword arguments for the underlying agent.
+            queue_barrier: The barrier to wait on before exiting.
         """
-        self.om.train(
-            num_episodes, batch_size, decay, n_steps, experience_queue,
-            exit_condition=exit_condition
-        )
+        self.om.train(*args, **kwargs)
         
         # Wait for all processes to finish using queues
-        queue_barrier.wait()
+        if queue_barrier:
+            queue_barrier.wait()

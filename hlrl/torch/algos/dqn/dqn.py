@@ -55,12 +55,14 @@ class DQN(TorchOffPolicyAlgo):
         """
         self.q_optim = self.q_optim_func(self.q_func.parameters())
 
-    def calculate_q_and_target(self,
+    def calculate_q_and_target(
+            self,
             states: torch.FloatTensor,
             actions: torch.LongTensor,
             rewards: torch.FloatTensor,
             next_states: torch.FloatTensor,
-            terminals: torch.LongTensor
+            terminals: torch.LongTensor,
+            n_steps: torch.LongTensor
         ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Computes the Q-val and target Q-value of the batch.
@@ -71,6 +73,7 @@ class DQN(TorchOffPolicyAlgo):
             rewards: The rewards of the batch.
             next_states: The next states of the batch.
             terminals: The terminal states of the batch.
+            n_steps: The number of steps used to calculate each return.
 
         Returns:
             A tuple of the computed Q-value, and its target.
@@ -81,16 +84,21 @@ class DQN(TorchOffPolicyAlgo):
         with torch.no_grad():
             next_qs = self.q_func_targ(next_states)
             next_q_max = next_qs.max(dim=-1, keepdim=True).values
-            q_targ = rewards + (1 - terminals) * self._discount * next_q_max
+            q_targ = (
+                rewards
+                + (1 - terminals) * (self._discount ** n_steps) * next_q_max
+            )
 
         return act_qs, q_targ
 
-    def after_update(self,
+    def after_update(
+            self,
             states: torch.FloatTensor,
             actions: torch.LongTensor,
             rewards: torch.FloatTensor,
             next_states: torch.FloatTensor,
-            terminals: torch.LongTensor
+            terminals: torch.LongTensor,
+            n_steps: torch.LongTensor
         ) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """
         Recomputes the new losses and updates particular networks parameters
@@ -102,6 +110,7 @@ class DQN(TorchOffPolicyAlgo):
             rewards: The rewards of the batch.
             next_states: The next states of the batch.
             terminals: The terminal states of the batch.
+            n_steps: torch.LongTensor
 
         Returns:
             A tuple of the newly computed Q-value, and its target.
@@ -112,7 +121,7 @@ class DQN(TorchOffPolicyAlgo):
 
         with torch.no_grad():
             return self.calculate_q_and_target(
-                states, actions, rewards, next_states, terminals
+                states, actions, rewards, next_states, terminals, n_steps
             )
 
     def forward(self, observation: torch.FloatTensor, greedy: bool = False):
@@ -183,11 +192,12 @@ class DQN(TorchOffPolicyAlgo):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
+        n_steps = rollouts["n_steps"]
 
         q_loss_func = nn.SmoothL1Loss(reduction='none')
 
         q_val, q_target = self.calculate_q_and_target(
-            states, actions, rewards, next_states, terminals
+            states, actions, rewards, next_states, terminals, n_steps
         )
 
         q_loss = q_loss_func(q_val, q_target)
@@ -204,7 +214,7 @@ class DQN(TorchOffPolicyAlgo):
             )
 
         new_qs, new_q_targ = self.after_update(
-            states, actions, rewards, next_states, terminals
+            states, actions, rewards, next_states, terminals, n_steps
         )
 
         self.training_steps += 1

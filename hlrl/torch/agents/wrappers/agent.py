@@ -1,6 +1,7 @@
 import torch
+import numpy as np
 
-from typing import Any, Dict, List, OrderedDict, Tuple
+from typing import Any, Dict, List, OrderedDict
 
 from hlrl.core.agents import RLAgent
 from hlrl.core.common.wrappers import MethodWrapper
@@ -24,14 +25,16 @@ class TorchRLAgent(MethodWrapper):
         
         self.batch_state = batch_state
 
-    def make_tensor(self, data):
+    def make_tensor(self, data, dtype=torch.float32):
         """
         Creates a float tensor of the data of batch size 1.
         """
         if self.batch_state:
             data = [data]
 
-        return torch.FloatTensor(data).to(self.algo.device)
+        return torch.tensor(
+            np.array(data), dtype=dtype, device=self.algo.device
+        )
 
     def transform_state(self, state):
         state_dict = self.om.transform_state(state)
@@ -85,7 +88,7 @@ class TorchRLAgent(MethodWrapper):
         if self.batch_state:
             terminal = [terminal]
 
-        return self.make_tensor(terminal)
+        return self.make_tensor(terminal, torch.long)
 
     def transform_action(self, action):
         return self.om.transform_action(action).squeeze().cpu().numpy()

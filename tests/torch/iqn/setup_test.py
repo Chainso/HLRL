@@ -73,7 +73,7 @@ def setup_test(args, env):
             args.device, algo_logger
         )
 
-        algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length)
     else:
         autoencoder = LinearPolicy(
             env.state_space[0], autoencoder_out_n, args.hidden_size,

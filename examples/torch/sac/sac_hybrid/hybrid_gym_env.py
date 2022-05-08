@@ -266,7 +266,7 @@ if(__name__ == "__main__"):
             args.device, algo_logger
         )
 
-        algo = TorchRecurrentAlgo(algo, args.burn_in_length, args.n_steps)
+        algo = TorchRecurrentAlgo(algo, args.burn_in_length)
     else:
         qfunc = LinearCatPolicy(
             (env.state_space[0], env.action_space[0]), 1, args.hidden_size,

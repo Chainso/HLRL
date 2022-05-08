@@ -29,22 +29,22 @@ class TimeLimitAgent(MethodWrapper):
         self.current_step = 0
         self.om.reset()
 
-    def transform_terminal(
+    def get_agent_terminal(
             self,
-            terminal: Union[int, bool, np.ndarray],
+            env_terminal: Union[int, bool, np.ndarray],
             info: Dict[str, Any]
         ) -> Any:
         """
-        Transforms the terminal of an environment step.
+        Checks to see if the environment has terminated due to time limits.
 
         Args:
-            terminal: The terminal value to transform.
+            env_terminal: The environment terminal value.
             info: Additional environment information for the step.
 
         Returns:
-            The transformed terminal.
+            True if the agent terminated due to time limits.
         """
-        terminal = self.om.transform_terminal(terminal, info)
+        terminal = self.om.get_agent_terminal(env_terminal, info)
 
         truncated = info.get("TimeLimit.truncated") or 0
         

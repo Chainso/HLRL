@@ -13,8 +13,7 @@ class TorchRecurrentAlgo(MethodWrapper):
     def __init__(
             self,
             algo: TorchRLAlgo,
-            burn_in_length: int = 0,
-            n_steps: int = 1
+            burn_in_length: int = 0
         ):
         """
         Creates the recurrent algorithm wrapper on the underlying algorithm.
@@ -22,13 +21,10 @@ class TorchRecurrentAlgo(MethodWrapper):
         Args:
             algo: The algorithm to wrap.
             burn_in_length: The number of states to burn in the hidden state.
-            n_steps: The number of steps between the state and next states
-                (needed to get the next hidden states properly)
         """
         super().__init__(algo)
 
         self.burn_in_length = burn_in_length
-        self.n_steps = n_steps
 
     def burn_in_hidden_states(self,
             rollouts: Dict[str, torch.Tensor]
@@ -58,6 +54,7 @@ class TorchRecurrentAlgo(MethodWrapper):
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
         hidden_states = rollouts["hidden_state"]
+        n_steps = rollouts["n_steps"]
 
         burn_in_states = states
         new_hiddens = hidden_states
@@ -80,9 +77,10 @@ class TorchRecurrentAlgo(MethodWrapper):
             :, self.burn_in_length:
         ].contiguous()
         rollouts["terminal"] = terminals[:, self.burn_in_length:].contiguous()
+        rollouts["n_steps"] = n_steps[:, self.burn_in_length:].contiguous()
 
         with torch.no_grad():
-            first_burned_in = rollouts["state"][:, :1].contiguous()
+            first_burned_in = rollouts["state"][:, :n_steps].contiguous()
             *_, next_hiddens = self.forward(
                 first_burned_in, new_hiddens
             )

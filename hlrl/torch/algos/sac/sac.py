@@ -182,6 +182,7 @@ class SAC(TorchOffPolicyAlgo):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
+        n_steps = rollouts["n_steps"]
 
         with torch.no_grad():
             next_actions, next_log_probs, _ = self.policy(next_states)
@@ -194,7 +195,9 @@ class SAC(TorchOffPolicyAlgo):
                 q_targ_pred = torch.min(q_targ_pred, q_targ_pred2)
 
             q_targ = q_targ_pred - self.temperature * next_log_probs
-            q_next = rewards + (1 - terminals) * self._discount * q_targ
+            q_next = (
+                rewards + (1 - terminals) * (self._discount ** n_steps) * q_targ
+            )
 
         q_pred = self.q_func1(states, actions)
         q_loss = self.q_loss_func(q_pred, q_next)
