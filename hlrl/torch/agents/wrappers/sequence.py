@@ -1,6 +1,8 @@
-import torch
-
 from typing import Any, Dict, List, Tuple
+
+import torch
+from torch import nn
+from torch.nn.utils import rnn
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.torch.agents.wrappers import TorchRLAgent
@@ -72,7 +74,7 @@ class ExperienceSequenceAgent(MethodWrapper):
     def prepare_experiences(
             self,
             experiences: Tuple[Dict[str, Any], ...],
-        ) -> Any:
+        ) -> List[Dict[str, torch.Tensor]]:
         """
         Perpares the experiences to add to the buffer.
 
@@ -122,23 +124,32 @@ class ExperienceSequenceAgent(MethodWrapper):
                     # Create a experience sequence up until the terminal or end
                     prepared_sequence = {}
 
+                    prepared_sequence["sequence_start"] = (
+                        self.sequence_starts[i].view(1, 1)
+                    )
+                    prepared_sequence["sequence_length"] = torch.tensor([
+                        len(self.sequence_experiences["terminal"][i])
+                    ]).view(1, 1)
+
                     for key in self.sequence_experiences:
-                        if key == "hidden_state":
+                        if "hidden_state" in key:
                             # Only need the first hidden state
                             prepared_sequence[key] = (
-                                self.sequence_experiences[key][i][0].unsqueeze(
-                                    0
-                                )
+                                self.sequence_experiences[key][i][0].unsqueeze(0)
                             )
                         else:
                             # Stack to sequence dimension
-                            prepared_sequence[key] = torch.stack(
-                                self.sequence_experiences[key][i], dim=1
+                            seq_tens = torch.cat(
+                                self.sequence_experiences[key][i]
+                            )
+                            padding = (
+                                [0] * 2 * (len(seq_tens.shape) - 1)
+                                + [0, self.sequence_length - seq_tens.shape[0]]
                             )
 
-                    prepared_sequence["sequence_start"] = (
-                        self.sequence_starts[i].unsqueeze(0)
-                    )
+                            prepared_sequence[key] = nn.functional.pad(
+                                seq_tens, padding
+                            ).unsqueeze(0)
 
                     removal_start = seq_len if terminal else -self.overlap
 

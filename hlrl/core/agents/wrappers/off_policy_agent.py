@@ -18,7 +18,7 @@ class OffPolicyAgent(NStepAgent):
 
         Args:
             ready_experiences: The experiences to be trained on.
-        
+
         Returns:
             A tuple of the dictionary of each field necessary for training,
             the Q-values and target Q-values of the experiences.
@@ -27,10 +27,14 @@ class OffPolicyAgent(NStepAgent):
         vals = ready_experiences.pop("value")
         target_vals = ready_experiences.pop("target_value")
 
-        batch = tuple(
-            dict(zip(ready_experiences, experience))
-            for experience in zip(*ready_experiences.values())
-        )
+        batch = []
+
+        for i in range(len(vals)):
+            batch.append({})
+
+        for key in ready_experiences:
+            for i in range(len(batch)):
+                batch[i][key] = ready_experiences[key][i]
 
         return batch, vals, target_vals
 
@@ -45,7 +49,7 @@ class OffPolicyAgent(NStepAgent):
             experiences: The experiences containing rewards.
 
         Returns:
-            The oldest stored experience.
+            The prepared experiences.
         """
         # Use the last experience for the next Q-value to calculate the target
         # Q-values
@@ -115,7 +119,8 @@ class OffPolicyAgent(NStepAgent):
             The ready experiences that were not added to the replay buffer.
         """
         # Get length of a random key
-        keys = list(ready_experiences)
+        keys = list(ready_experiences.keys())
+
         if len(keys) > 0:
             key = keys[0]
             if len(ready_experiences[key]) == batch_size:
@@ -126,8 +131,7 @@ class OffPolicyAgent(NStepAgent):
                 errors = experience_replay.get_error(q_vals, target_q_vals)
                 priorities = experience_replay.get_priority(errors)
 
-                for i in range(len(experiences_to_add)):
-                    experience = experiences_to_add[i]
+                for i, experience in enumerate(experiences_to_add):
                     priority = priorities[i]
 
                     experience["id"] = (self.algo.env_steps, i)

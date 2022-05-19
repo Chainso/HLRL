@@ -90,7 +90,7 @@ class TorchR2D2(TorchPER):
         device = "cpu"
 
         for key in self.experiences:
-            batch[key] = self.experiences[key][indices].tolist()
+            batch[key] = torch.cat(self.experiences[key][indices].tolist())
             device = batch[key][0].device
 
         probabilities = priorities[indices]

@@ -1,7 +1,9 @@
-from typing import Any, Dict, Tuple, Union
+from msilib import sequence
+from typing import Any, Dict, Union
 
 import torch
 import numpy as np
+from torch.nn.utils import rnn
 
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.torch.algos.algo import TorchRLAlgo
@@ -45,23 +47,49 @@ class TorchRecurrentAlgo(MethodWrapper):
         )
 
         states = rollouts["state"]
-        actions = rollouts["action"]
-        rewards = rollouts["reward"]
-        next_states = rollouts["next_state"]
-        terminals = rollouts["terminal"]
         hidden_states = rollouts["hidden_state"]
-        n_steps = rollouts["n_steps"]
+        sequence_lengths = rollouts["sequence_length"].squeeze(-1)
+        sequence_starts = rollouts["sequence_start"].squeeze(-1)
 
-        burn_in_states = states
-        new_hiddens = hidden_states
-
-        if self.burn_in_length > 0:    
+        # Need to unpad, split between burn in and sequence, repad then burn in
+        # states
+        if self.burn_in_length > 0:
             with torch.no_grad():
-                burn_in_states = states[:, :self.burn_in_length].contiguous()
+                states = rnn.unpad_sequence(
+                    states, sequence_lengths, batch_first=True
+                )
+
+                burn_in_states = [
+                    states[i][:sequence_starts[i]]
+                    for i in range(states.shape[0])
+                ]
+                seq_states = [
+                    states[i][sequence_starts[i]:]
+                    for i in range(states.shape[0])
+                ]
+
+                burn_in_states = rnn.pack_sequence(
+                    burn_in_states, enforce_sorted=False
+                )
+                seq_states = rnn.pack_sequence(seq_states, enforce_sorted=False)
 
                 *_, new_hiddens = self.forward(
                     burn_in_states, hidden_states
                 )
+
+                rollouts["state"] = seq_states
+                other_sequence_fields = set(
+                    "state", "action", "reward", "next_state", "terminal",
+                    "n_steps"
+                )
+
+        actions = rollouts["action"]
+        rewards = rollouts["reward"]
+        next_states = rollouts["next_state"]
+        terminals = rollouts["terminal"]
+        n_steps = rollouts["n_steps"]
+
+        burn_in_states = states
 
 
         rollouts["hidden_state"] = [nh for nh in new_hiddens]
