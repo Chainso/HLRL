@@ -97,7 +97,7 @@ class ExperienceSequenceAgent(MethodWrapper):
 
                     if self.sequence_starts is None:
                         self.sequence_starts = torch.zeros(
-                            len(experience[key]), device=experience[key].device
+                            len(experience[key]), dtype=torch.long
                         )
 
 
@@ -124,20 +124,22 @@ class ExperienceSequenceAgent(MethodWrapper):
                     # Create a experience sequence up until the terminal or end
                     prepared_sequence = {}
 
-                    prepared_sequence["sequence_start"] = (
-                        self.sequence_starts[i].view(1, 1)
-                    )
+                    prepared_sequence["sequence_start"] = self.sequence_starts[
+                        i
+                    ].clone().view(1)
                     prepared_sequence["sequence_length"] = torch.tensor([
                         len(self.sequence_experiences["terminal"][i])
-                    ]).view(1, 1)
+                    ]).view(1)
 
                     for key in self.sequence_experiences:
                         if "hidden_state" in key:
                             # Only need the first hidden state
                             prepared_sequence[key] = (
-                                self.sequence_experiences[key][i][0].unsqueeze(0)
+                                self.sequence_experiences[key][i][0].unsqueeze(
+                                    0
+                                )
                             )
-                        else:
+                        elif "state" == key:
                             # Stack to sequence dimension
                             seq_tens = torch.cat(
                                 self.sequence_experiences[key][i]
@@ -145,6 +147,24 @@ class ExperienceSequenceAgent(MethodWrapper):
                             padding = (
                                 [0] * 2 * (len(seq_tens.shape) - 1)
                                 + [0, self.sequence_length - seq_tens.shape[0]]
+                            )
+
+                            prepared_sequence[key] = nn.functional.pad(
+                                seq_tens, padding
+                            ).unsqueeze(0)
+                        else:
+                            # For all other tensors, only need the main sequence
+                            # Not the burn in portion
+                            seq_tens = torch.cat(
+                                self.sequence_experiences[key][i][self.sequence_starts[i]:]
+                            )
+                            padding = (
+                                [0] * 2 * (len(seq_tens.shape) - 1)
+                                + [
+                                    0,
+                                    self.sequence_length - self.overlap
+                                    - seq_tens.shape[0]
+                                ]
                             )
 
                             prepared_sequence[key] = nn.functional.pad(

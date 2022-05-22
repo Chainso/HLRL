@@ -546,6 +546,6 @@ class RLAgent():
 
                 episode_reward = 0
                 episode_time = time()
-
+                print("Terminal, resetting")
                 self.reset()
                 self.env.reset()

@@ -71,7 +71,8 @@ class GaussianPolicy(nn.Module):
 
     def forward(
             self,
-            inp: torch.Tensor
+            inp: torch.Tensor,
+            deterministic: bool = False
         ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a sample of the policy on the input with the mean and log
@@ -79,6 +80,7 @@ class GaussianPolicy(nn.Module):
 
         Args:
             inp: The input tensor to put through the network.
+            deterministic: If the means should be used rather than a sample.
 
         Returns:
             A gaussian distribution of the network.
@@ -87,7 +89,11 @@ class GaussianPolicy(nn.Module):
         std = log_std.exp()
 
         normal = Normal(mean, std)
-        action = normal.rsample()
+
+        if deterministic:
+            action = normal.mean
+        else:
+            action = normal.rsample()
 
         log_prob = normal.log_prob(action)
 
@@ -123,7 +129,9 @@ class TanhGaussianPolicy(GaussianPolicy):
 
     def forward(
             self,
-            inp: torch.Tensor, epsilon: int = 1e-4
+            inp: torch.Tensor,
+            deterministic: bool = False,
+            epsilon: int = 1e-4
         ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a sample of the policy on the input with the mean and log
@@ -131,6 +139,7 @@ class TanhGaussianPolicy(GaussianPolicy):
 
         Args:
             inp: The input tensor to put through the network.
+            deterministic: If the means should be used rather than a sample.
             epsilon: The value to add to the standard deviation to prevent
                 division by zero.
 

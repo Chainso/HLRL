@@ -1,10 +1,10 @@
-from msilib import sequence
 from typing import Any, Dict, Union
 
 import torch
 import numpy as np
-from torch.nn.utils import rnn
+from torch.nn.utils.rnn import pad_sequence
 
+from hlrl.torch.utils.rnn import unpad_sequence
 from hlrl.core.common.wrappers import MethodWrapper
 from hlrl.torch.algos.algo import TorchRLAlgo
 
@@ -48,68 +48,74 @@ class TorchRecurrentAlgo(MethodWrapper):
 
         states = rollouts["state"]
         hidden_states = rollouts["hidden_state"]
-        sequence_lengths = rollouts["sequence_length"].squeeze(-1)
-        sequence_starts = rollouts["sequence_start"].squeeze(-1)
+        n_steps = rollouts["n_steps"]
+
+        rollouts["sequence_length"] = rollouts["sequence_length"].to("cpu")
+        rollouts["sequence_start"] = rollouts["sequence_start"].to("cpu")
+
+        sequence_lengths = rollouts["sequence_length"]
+        sequence_starts = rollouts["sequence_start"]
 
         # Need to unpad, split between burn in and sequence, repad then burn in
         # states
         if self.burn_in_length > 0:
             with torch.no_grad():
-                states = rnn.unpad_sequence(
+                states = unpad_sequence(
                     states, sequence_lengths, batch_first=True
                 )
 
+                burn_in = sequence_starts > 0
+
                 burn_in_states = [
                     states[i][:sequence_starts[i]]
-                    for i in range(states.shape[0])
+                    for i in range(len(states))
+                    if burn_in[i]
                 ]
                 seq_states = [
                     states[i][sequence_starts[i]:]
-                    for i in range(states.shape[0])
+                    for i in range(len(states))
                 ]
 
-                burn_in_states = rnn.pack_sequence(
-                    burn_in_states, enforce_sorted=False
-                )
-                seq_states = rnn.pack_sequence(seq_states, enforce_sorted=False)
+                burn_seq_starts = sequence_starts[burn_in]
+                burn_hidden = hidden_states[:, :, burn_in]
+
+                burn_in_states = pad_sequence(burn_in_states, batch_first=True)
+                seq_states = pad_sequence(seq_states, batch_first=True)
 
                 *_, new_hiddens = self.forward(
-                    burn_in_states, hidden_states
+                    burn_in_states, burn_hidden, lengths=burn_seq_starts
                 )
+
+                burned_in_hidden = torch.zeros_like(hidden_states)
+                burned_in_hidden[:, :, burn_in] = torch.stack(
+                    new_hiddens, dim=0
+                )
+                burned_in_hidden[:, :, ~burn_in] = hidden_states[
+                    :, :, ~burn_in
+                ]
 
                 rollouts["state"] = seq_states
-                other_sequence_fields = set(
-                    "state", "action", "reward", "next_state", "terminal",
-                    "n_steps"
-                )
-
-        actions = rollouts["action"]
-        rewards = rollouts["reward"]
-        next_states = rollouts["next_state"]
-        terminals = rollouts["terminal"]
-        n_steps = rollouts["n_steps"]
-
-        burn_in_states = states
-
-
-        rollouts["hidden_state"] = [nh for nh in new_hiddens]
-
-        rollouts["state"] = states[:, self.burn_in_length:].contiguous()
-        rollouts["action"] = actions[:, self.burn_in_length:].contiguous()
-        rollouts["reward"] = rewards[:, self.burn_in_length:].contiguous()
-        rollouts["next_state"] = next_states[
-            :, self.burn_in_length:
-        ].contiguous()
-        rollouts["terminal"] = terminals[:, self.burn_in_length:].contiguous()
-        rollouts["n_steps"] = n_steps[:, self.burn_in_length:].contiguous()
+                rollouts["hidden_state"] = [nh for nh in burned_in_hidden]
 
         with torch.no_grad():
-            first_burned_in = rollouts["state"][:, :n_steps].contiguous()
+            n_step_next = [
+                rollouts["state"][i][:n_steps[i, 0, 0]]
+                for i in range(len(states))
+            ]
+            n_step_next = pad_sequence(n_step_next, batch_first=True)
+
             *_, next_hiddens = self.forward(
-                first_burned_in, new_hiddens
+                n_step_next, rollouts["hidden_state"],
+                lengths=n_steps[:, 0, 0].to("cpu")
             )
 
         rollouts["next_hidden_state"] = [nh for nh in next_hiddens]
+        rollouts["sequence_length"] = sequence_lengths - sequence_starts
+
+        seq_range = torch.arange(rollouts["state"].shape[1]).unsqueeze(0)
+        rollouts["sequence_mask"] = (
+            seq_range < sequence_lengths.unsqueeze(-1)
+        ).unsqueeze(-1).to(rollouts["state"].device)
 
         return rollouts
 

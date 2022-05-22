@@ -2,6 +2,7 @@ from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from .linear import LinearPolicy
 from .distribution import GaussianPolicy, TanhGaussianPolicy
@@ -71,7 +72,8 @@ class LSTMPolicy(nn.Module):
     def forward(
             self,
             states: torch.Tensor,
-            hidden_states: Tuple[torch.Tensor, torch.Tensor]
+            hidden_states: Tuple[torch.Tensor, torch.Tensor],
+            lengths: Optional[torch.Tensor] = None
         ) -> torch.Tensor:
         """
         Takes in the input with the batch dimension being first and returns the
@@ -80,6 +82,7 @@ class LSTMPolicy(nn.Module):
         Args:
             states: The states for the network input.
             hidden_states: The hidden states of the LSTM.
+            lengths: The lengths of each sequence for a padded sequence.
         """
         # Input size is (batch size, sequence length, ...)
         # For hidden states its (batch size, ...) since going 1 step at a time
@@ -94,7 +97,16 @@ class LSTMPolicy(nn.Module):
             batch_size, sequence_length, *lin_before.shape[1:]
         )
         hidden_states = [hs for hs in hidden_states]
-        lstm_out, new_hiddens = self.lstm(lstm_in, hidden_states)
+
+        if lengths is None:
+            lstm_out, new_hiddens = self.lstm(lstm_in, hidden_states)
+        else:
+            packed = pack_padded_sequence(
+                lstm_in, lengths, batch_first=True, enforce_sorted=False
+            )
+
+            lstm_out, new_hiddens = self.lstm(packed, hidden_states)
+            lstm_out, _ = pad_packed_sequence(lstm_out, batch_first=True)
     
         lstm_out = lstm_out.contiguous().view(
             batch_size * sequence_length, *lstm_out.shape[2:]
@@ -167,20 +179,22 @@ class LSTMCatPolicy(LSTMPolicy):
     def forward(
             self,
             *inputs: Tuple[Union[torch.Tensor,
-                                 Tuple[torch.Tensor, torch.Tensor]]]
+                                 Tuple[torch.Tensor, torch.Tensor]]],
+            lengths: Optional[torch.Tensor] = None
         ) -> torch.Tensor:
         """
         Returns the output along with the new hidden states.
 
         Args:
             inputs: The inputs to concatenate and the hidden states of the LSTM.
+            lengths: The lengths of each sequence for a padded sequence.
 
         Returns:
             The LSTM output on the inputs.
         """
         *inputs, hidden_states = inputs
         lin_in = torch.cat(inputs, dim=-1)
-        return super().forward(lin_in, hidden_states)
+        return super().forward(lin_in, hidden_states, lengths)
 
 class LSTMGaussianPolicy(LSTMPolicy):
     """
@@ -244,7 +258,8 @@ class LSTMGaussianPolicy(LSTMPolicy):
     def forward(
             self,
             states: torch.Tensor,
-            hidden_states: Tuple[torch.Tensor, torch.Tensor]
+            hidden_states: Tuple[torch.Tensor, torch.Tensor],
+            lengths: Optional[torch.Tensor] = None
         ) -> torch.Tensor:
         """
         Returns the output along with the new hidden states.
@@ -252,9 +267,10 @@ class LSTMGaussianPolicy(LSTMPolicy):
         Args:
             states: The states for the network input.
             hidden_states: The hidden states of the LSTM.
+            lengths: The lengths of each sequence for a padded sequence.
         """
         batch_size, sequence_length = states.shape[:2]
-        gauss_in, new_hidden = super().forward(states, hidden_states)
+        gauss_in, new_hidden = super().forward(states, hidden_states, lengths)
 
         gauss_in = gauss_in.view(
             batch_size * sequence_length, *gauss_in.shape[2:]

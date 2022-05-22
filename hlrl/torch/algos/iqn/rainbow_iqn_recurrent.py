@@ -28,6 +28,8 @@ class RainbowIQNRecurrent(RainbowIQN):
             observation: torch.Tensor,
             q_func: nn.Module,
             hidden_states: Any,
+            *recurrent_args: Any,
+            **recurrent_kwargs: Any
         ) -> Tuple[torch.Tensor, torch.Tensor, Any]:
         """
         Calculates the quantile distribtion for the observations.
@@ -36,12 +38,18 @@ class RainbowIQNRecurrent(RainbowIQN):
             observation: A batch of observations from the environment.
             q_func: The Q-function to use to calculte the quantiles.
             hidden_states: The recurrent hidden state.
+            recurrent_args: Any addition positional arguments for the recurrent
+                network.
+            recurrent_kwargs: Any additional keyword arguments for the recurrent
+                network.
 
         Returns:
             A tuple of sampled quantiles and the quantile distribution, and the
             next hidden state.
         """
-        latent, next_hiddens = self.autoencoder(observation, hidden_states)
+        latent, next_hiddens = self.autoencoder(
+            observation, hidden_states, *recurrent_args, **recurrent_kwargs
+        )
 
         # Tile the feature dimension to the quantile dimension size
         latent_tiled = latent.repeat(self.n_quantiles, 1, 1)
@@ -75,21 +83,28 @@ class RainbowIQNRecurrent(RainbowIQN):
             self,
             observation: torch.FloatTensor,
             hidden_states: Any,
-            greedy: bool = False
+            *recurrent_args: Any,
+            greedy: bool = False,
+            **recurrent_kwargs: Any
         ) -> Tuple[torch.FloatTensor, torch.FloatTensor, Any]:
         """
         Get the model output for a batch of observations
 
         Args:
             observation: A batch of observations from the environment.
-            greedy: If true, always returns the action with the highest Q-value.
             hidden_states: The hidden state for the observation.
+            recurrent_args: Any addition positional arguments for the recurrent
+                network.
+            greedy: If true, always returns the action with the highest Q-value.
+            recurrent_kwargs: Any additional keyword arguments for the recurrent
+                network.
 
         Returns:
             The action, Q-value and next hidden state
         """
         quantile_values, _, next_hiddens = self._calculate_quantile_values(
-            observation, self.q_func, hidden_states
+            observation, self.q_func, hidden_states, *recurrent_args,
+            **recurrent_kwargs
         )
 
         quantile_values = quantile_values.view(
@@ -125,6 +140,9 @@ class RainbowIQNRecurrent(RainbowIQN):
             self,
             observation: torch.FloatTensor,
             hidden_states: Any,
+            *recurrent_args: Any,
+            greedy: bool = False,
+            **recurrent_kwargs: Any
         ) -> Tuple[torch.FloatTensor, torch.FloatTensor, Any]:
         """
         Get the model action for a single observation of gameplay.
@@ -132,12 +150,20 @@ class RainbowIQNRecurrent(RainbowIQN):
         Args:
             observation: A single observation from the environment.
             hidden_states: The hidden states for the observation.
+            recurrent_args: Any addition positional arguments for the recurrent
+                network.
+            greedy: If true, always returns the action with the highest Q-value.
+            recurrent_kwargs: Any additional keyword arguments for the recurrent
+                network.
 
         Returns:
             The action, Q-value of the action and next hidden states.
         """
         with torch.no_grad():
-            action, q_val, next_hiddens  = self(observation, hidden_states)
+            action, q_val, next_hiddens  = self(
+                observation, hidden_states, *recurrent_args, greedy=greedy,
+                **recurrent_kwargs
+            )
 
         q_val = q_val.gather(-1, action)
         #log_probs = torch.clamp(torch.log(probs.gather(-1, action)), -1, 0)
@@ -169,6 +195,8 @@ class RainbowIQNRecurrent(RainbowIQN):
         terminals = rollouts["terminal"]
         hidden_states = rollouts["hidden_state"]
         next_hiddens = rollouts["next_hidden_state"]
+        sequence_lengths = rollouts["sequence_lengths"]
+        sequence_mask = rollouts["sequence_mask"]
 
         # Tile parameters for the quantiles
         actions = actions.repeat(self.n_quantiles, 1, 1)
@@ -183,7 +211,8 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         with torch.no_grad():
             target_quantile_values = self._calculate_q_target(
-                rewards, next_states, terminal_mask, next_hiddens
+                rewards, next_states, terminal_mask, next_hiddens,
+                lengths=sequence_lengths
             )
             target_quantile_values = target_quantile_values.view(
                 self.n_quantiles, next_states.shape[0] * next_states.shape[1], 1
@@ -191,7 +220,7 @@ class RainbowIQNRecurrent(RainbowIQN):
             target_quantile_values = target_quantile_values.transpose(0, 1)
 
         quantile_values, quantiles, _ = self._calculate_quantile_values(
-            states, self.q_func, hidden_states
+            states, self.q_func, hidden_states, lengths=sequence_lengths
         )
         quantile_values = quantile_values.gather(-1, actions)
         quantile_values = quantile_values.view(
@@ -239,6 +268,7 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         # Importance sampling weights
         qr_loss = qr_loss.view(states.shape[0], states.shape[1], -1)
+        qr_loss = qr_loss * sequence_mask
         qr_loss = qr_loss * is_weights
         qr_loss = qr_loss.mean()
 
@@ -256,7 +286,8 @@ class RainbowIQNRecurrent(RainbowIQN):
             _, new_q_val, new_next_hiddens = self.step(states, hidden_states)
 
             new_quantile_values_target = self._calculate_q_target(
-                rewards, next_states, terminal_mask, new_next_hiddens
+                rewards, next_states, terminal_mask, new_next_hiddens,
+                lengths=sequence_lengths
             )
             new_quantile_values_target = new_quantile_values_target.view(
                 self.n_quantiles, next_states.shape[0], next_states.shape[1], 1
@@ -282,7 +313,8 @@ class RainbowIQNRecurrent(RainbowIQN):
             rewards: torch.FloatTensor,
             next_states: torch.FloatTensor,
             terminal_mask: torch.Tensor,
-            next_hidden_states: Tuple[torch.FloatTensor, torch.FloatTensor]
+            next_hidden_states: Tuple[torch.FloatTensor, torch.FloatTensor],
+            sequence_lengths: torch.Tensor
         ) -> torch.FloatTensor:
         """
         Calculates the target Q-value, assumes tensors have been tiled for the
@@ -293,6 +325,7 @@ class RainbowIQNRecurrent(RainbowIQN):
             next_states: The next states of the batch.
             terminal_mask: A mask to remove terminal Q-value predictions.
             next_hidden_states: The hidden states of the next states.
+            sequence_lengths: The length of the sequences.
 
         Returns:
             The target Q-value.
@@ -302,7 +335,10 @@ class RainbowIQNRecurrent(RainbowIQN):
         )
 
         # Get the online actions of the next states
-        next_actions = self(next_states, next_hidden_states, True)[0]
+        next_actions = self(
+            next_states, next_hidden_states, greedy=True,
+            lengths=sequence_lengths
+        )[0]
         next_actions = next_actions.repeat(self.n_quantiles, 1, 1)
         next_actions = next_actions.view(
             next_actions.shape[0] * next_actions.shape[1], -1
@@ -310,7 +346,8 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         # Target network quantile values
         next_quantile_values = self._calculate_quantile_values(
-            next_states, self.q_func_targ, next_hidden_states
+            next_states, self.q_func_targ, next_hidden_states,
+            lengths=sequence_lengths
         )[0]
 
         # Use the greedy action to get target quantiles

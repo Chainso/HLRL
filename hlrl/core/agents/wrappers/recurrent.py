@@ -47,6 +47,8 @@ class RecurrentAgent(MethodWrapper):
         transed_algo_step = self.om.transform_algo_step(algo_step[:-1])
         transed_algo_step["next_hidden_state"] = algo_step[-1]
 
+        self.set_hidden_state(algo_step[-1])
+
         return transed_algo_step
 
     def after_step(
