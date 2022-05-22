@@ -118,7 +118,7 @@ class LSTMPolicy(nn.Module):
             batch_size: The batch size of the reset hidden state.
         """
         zero_state = torch.zeros(
-            batch_size, self.lstm_num_layers, self.lstm_out_n
+            self.lstm_num_layers, batch_size, self.lstm_out_n
         )
         reset_hidden = (zero_state, zero_state.clone())
 
