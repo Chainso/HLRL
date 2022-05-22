@@ -193,6 +193,7 @@ class RainbowIQNRecurrent(RainbowIQN):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
+        n_steps = rollouts["n_steps"]
         hidden_states = rollouts["hidden_state"]
         next_hiddens = rollouts["next_hidden_state"]
         sequence_lengths = rollouts["sequence_lengths"]
@@ -211,7 +212,7 @@ class RainbowIQNRecurrent(RainbowIQN):
 
         with torch.no_grad():
             target_quantile_values = self._calculate_q_target(
-                rewards, next_states, terminal_mask, next_hiddens,
+                rewards, next_states, terminal_mask, n_steps, next_hiddens,
                 lengths=sequence_lengths
             )
             target_quantile_values = target_quantile_values.view(
@@ -286,7 +287,7 @@ class RainbowIQNRecurrent(RainbowIQN):
             _, new_q_val, new_next_hiddens = self.step(states, hidden_states)
 
             new_quantile_values_target = self._calculate_q_target(
-                rewards, next_states, terminal_mask, new_next_hiddens,
+                rewards, next_states, terminal_mask, n_steps, new_next_hiddens,
                 lengths=sequence_lengths
             )
             new_quantile_values_target = new_quantile_values_target.view(
@@ -313,6 +314,7 @@ class RainbowIQNRecurrent(RainbowIQN):
             rewards: torch.FloatTensor,
             next_states: torch.FloatTensor,
             terminal_mask: torch.Tensor,
+            n_steps: torch.LongTensor,
             next_hidden_states: Tuple[torch.FloatTensor, torch.FloatTensor],
             sequence_lengths: torch.Tensor
         ) -> torch.FloatTensor:
@@ -324,6 +326,7 @@ class RainbowIQNRecurrent(RainbowIQN):
             rewards: The rewards of the batch.
             next_states: The next states of the batch.
             terminal_mask: A mask to remove terminal Q-value predictions.
+            n_steps: The number of steps used to calculate returns.
             next_hidden_states: The hidden states of the next states.
             sequence_lengths: The length of the sequences.
 
@@ -354,7 +357,8 @@ class RainbowIQNRecurrent(RainbowIQN):
         next_quantile_values = next_quantile_values.gather(-1, next_actions)
 
         target_quantile_values = (
-            rewards + terminal_mask * self.discount * next_quantile_values
+            rewards
+            + terminal_mask * (self.discount ** n_steps) * next_quantile_values
         )
 
         return target_quantile_values

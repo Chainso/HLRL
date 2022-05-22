@@ -101,6 +101,7 @@ class SACRecurrent(SAC):
         rewards = rollouts["reward"]
         next_states = rollouts["next_state"]
         terminals = rollouts["terminal"]
+        n_steps = rollouts["n_steps"]
         hidden_states = rollouts["hidden_state"]
         next_hiddens = rollouts["next_hidden_state"]
         sequence_lengths = rollouts["sequence_length"]
@@ -125,7 +126,9 @@ class SACRecurrent(SAC):
                 q_targ_pred = torch.min(q_targ_pred, q_targ_pred2)
 
             q_targ = q_targ_pred - self.temperature * next_log_probs
-            q_next = rewards + (1 - terminals) * self._discount * q_targ
+            q_next = (
+                rewards + (1 - terminals) * (self._discount ** n_steps) * q_targ
+            )
 
         q_pred, _ = self.q_func1(
             states, actions, hidden_states, lengths=sequence_lengths
