@@ -290,10 +290,12 @@ class RLAgent():
 
         return experience
 
-    def add_to_buffer(self,
-                      ready_experiences: Dict[str, List[Any]],
-                      experiences: List[Dict[str, Any]],
-                      decay: float) -> None:
+    def add_to_buffer(
+            self,
+            ready_experiences: Dict[str, List[Any]],
+            experiences: List[Dict[str, Any]],
+            decay: float
+        ) -> None:
         """
         Prepares the oldest experiences from experiences and transfers it to
         ready experiences.
@@ -311,12 +313,14 @@ class RLAgent():
 
             ready_experiences[key].append(experience[key])
 
-    def train_step(self,
-                   ready_experiences: Dict[str, List[Any]],
-                   batch_size: int,
-                   learner: Any,
-                   *learner_args: Any,
-                   **learner_kwargs: Any) -> Dict[str, List[Any]]:
+    def train_step(
+            self,   
+            ready_experiences: Dict[str, List[Any]],
+            batch_size: int,
+            learner: Any,
+            *learner_args: Any,
+            **learner_kwargs: Any
+        ) -> Dict[str, List[Any]]:
         """
         Trains on the ready experiences.
 
@@ -457,15 +461,17 @@ class RLAgent():
             print("--------------------------------")
             print("Average Reward:", avg_reward)
 
-    def train(self,
-              num_episodes: int,
-              batch_size: int,
-              decay: float,
-              n_steps: int,
-              learner: Any,
-              *learner_args: Any,
-              exit_condition: Optional[Callable[[], bool]] = None,
-              **learner_kwargs: Any) -> None:
+    def train(
+            self,
+            num_episodes: int,
+            batch_size: int,
+            decay: float,
+            n_steps: int,
+            learner: Any,
+            *learner_args: Any,
+            exit_condition: Optional[Callable[[], bool]] = None,
+            **learner_kwargs: Any
+        ) -> None:
         """
         Trains the algorithm for the number of episodes specified on the
         environment.
