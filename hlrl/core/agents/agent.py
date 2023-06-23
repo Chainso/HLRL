@@ -369,7 +369,7 @@ class RLAgent():
         algo_step = self.transform_algo_step(algo_step)
 
         env_action = self.transform_action(algo_step["action"])
-        next_state, reward, terminal, info = self.env.step(env_action)
+        next_state, reward, terminal, truncated, info = self.env.step(env_action)
 
         next_algo_inp = self.transform_next_state(next_state)
         next_state = next_algo_inp.pop("next_state")
@@ -498,7 +498,7 @@ class RLAgent():
             ep_reward = 0
             experiences = deque(maxlen=n_steps)
 
-            while (not self.env.terminal
+            while (not self.env.done
                    and (exit_condition is None or not exit_condition())):
                 if self.logger is not None:
                     step_time = time()

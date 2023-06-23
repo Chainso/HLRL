@@ -2,10 +2,10 @@ if(__name__ == "__main__"):
     import torch
     import torch.nn as nn
     import torch.multiprocessing as mp
-    import gym
+    import gymnasium as gym
     import yaml
 
-    from gym.wrappers import RescaleAction
+    from gymnasium.wrappers import RescaleAction
     from argparse import ArgumentParser, Namespace
     from functools import partial
     from pathlib import Path
@@ -26,7 +26,7 @@ if(__name__ == "__main__"):
 
     # The hyperparameters as command line arguments
     parser = ArgumentParser(
-        description="Twin Q-Function SAC example on the Pendulum-v0 "
+        description="Twin Q-Function SAC example on the Pendulum-v1 "
             + "environment."
     )
 
@@ -50,16 +50,16 @@ if(__name__ == "__main__"):
         help="render the environment"
     )
     parser.add_argument(
-        "-e", "--env", default="Pendulum-v0",
+        "-e", "--env", default="Pendulum-v1",
         help="the gym environment to train on"
     )
 
     # Model args
     parser.add_argument(
-		"--device", type=str, 
+        "--device", type=str, 
         default="cuda" if torch.cuda.is_available() else "cpu",
-		help="the device (cpu/gpu) to train and play on"
-	)
+        help="the device (cpu/gpu) to train and play on"
+    )
     parser.add_argument(
         "--hidden_size", type=int, default=256,
         help="the size of each hidden layer"
@@ -124,9 +124,9 @@ if(__name__ == "__main__"):
         help="the number of batches in between saves"
     )
     parser.add_argument(
-		"--episodes", type=int, default=100,
-		help="the number of episodes to play for if playing"
-	)
+        "--episodes", type=int, default=100,
+        help="the number of episodes to play for if playing"
+    )
     parser.add_argument(
         "--training_steps", type=int, default=20000,
         help="the number of training steps to train for"
@@ -170,9 +170,9 @@ if(__name__ == "__main__"):
 
     # Experience Replay args
     parser.add_argument(
-		"--er_capacity", type=int, default=50000,
-		help="the maximum amount of experiences in the replay buffer"
-	)
+        "--er_capacity", type=int, default=50000,
+        help="the maximum amount of experiences in the replay buffer"
+    )
     parser.add_argument(
         "--er_alpha", type=float, default=0.6, help="the alpha value for PER"
     )
@@ -181,7 +181,7 @@ if(__name__ == "__main__"):
     )
     parser.add_argument(
         "--er_beta_increment", type=float, default=1e-3,
-		help="the increment of the beta value on each sample for PER"
+        help="the increment of the beta value on each sample for PER"
     )
     parser.add_argument(
         "--er_epsilon", type=float, default=1e-4,
@@ -234,8 +234,8 @@ if(__name__ == "__main__"):
 
     # Initialize the environment, and rescale for Tanh policy
     args.vectorized = False
-    env_builder = partial(gym.make, args.env)
-    env_builder = compose(env_builder, partial(RescaleAction, a=-1, b=1))
+    env_builder = partial(gym.make, args.env, render_mode="human" if args.render else None)
+    env_builder = compose(env_builder, partial(RescaleAction, min_action=-1, max_action=1))
     env_builder = compose(env_builder, GymEnv)
     env = env_builder()
 

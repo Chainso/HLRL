@@ -14,9 +14,8 @@ class Env(ABC):
             state (object): The current state of the environment.
             reward (float): The reward of the last action taken in the
                             environment.
-
             terminal (bool): True if the current state is a terminal state.
-
+            truncated (bool): True if the current episode was truncated.
             info (object): Any additional information of the environment.
         """
         # The current information for the environment
@@ -25,7 +24,15 @@ class Env(ABC):
         self.state = None
         self.reward = 0
         self.terminal = False
+        self.truncated = False
         self.info = None
+
+    @property
+    def done(self):
+        """
+        Returns True if the environment episode is finished.
+        """
+        return self.terminal or self.truncated
 
     @abstractmethod
     def step(self, action):

@@ -1,5 +1,5 @@
 import numpy as np
-from gym import ActionWrapper, Env, Space, spaces
+from gymnasium import ActionWrapper, Env, Space, spaces
 
 from hlrl.core.envs.gym.spaces import FlattenedTupleShaped, TupleShaped
 

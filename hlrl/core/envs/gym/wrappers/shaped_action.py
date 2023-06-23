@@ -1,4 +1,4 @@
-from gym import ActionWrapper, Env, spaces
+from gymnasium import ActionWrapper, Env, spaces
 
 from hlrl.core.envs.gym.spaces import (
     DiscreteShaped, FlattenedTupleShaped, TupleShaped

@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 
 from hlrl.core.envs.env import Env
 from hlrl.core.envs.gym.wrappers import ShapedActionWrapper
@@ -28,10 +28,10 @@ class GymEnv(Env):
         Args:
             action (object): The action to take in the environment.
         """
-        (self.state, self.reward, self.terminal,
+        (self.state, self.reward, self.terminal, self.truncated,
             self.info) = self.env.step(action)
 
-        return self.state, self.reward, self.terminal, self.info
+        return self.state, self.reward, self.terminal, self.truncated, self.info
 
     def sample_action(self):
         return self.env.action_space.sample()
@@ -46,9 +46,11 @@ class GymEnv(Env):
         """
         Resets the environment.
         """
-        self.state = self.env.reset()
+        self.state, self.info = self.env.reset()
         self.reward = 0
 
         self.terminal = False
+        self.truncated = False
 
         return self.state
+

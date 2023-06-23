@@ -114,10 +114,10 @@ def train(
 if(__name__ == "__main__"):
     import torch.nn as nn
     import torch.multiprocessing as mp
-    import gym
+    import gymnasium as gym
     import yaml
 
-    from gym.wrappers import RescaleAction
+    from gymnasium.wrappers import RescaleAction
     from argparse import ArgumentParser, Namespace
     from functools import partial
     from pathlib import Path

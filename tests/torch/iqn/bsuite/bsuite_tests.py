@@ -3,7 +3,7 @@ from hlrl.torch.trainers import OffPolicyTrainer
 
 if __name__ == "__main__":
     import torch.multiprocessing as mp
-    import gym
+    import gymnasium as gym
     
     from bsuite import sweep, load_and_record_to_csv
     from bsuite.utils import gym_wrapper

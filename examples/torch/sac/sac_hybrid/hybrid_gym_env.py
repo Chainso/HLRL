@@ -2,7 +2,7 @@ if(__name__ == "__main__"):
     import torch
     import torch.nn as nn
     import torch.multiprocessing as mp
-    import gym
+    import gymnasium as gym
     import gym_goal
     import yaml
 

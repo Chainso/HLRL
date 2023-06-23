@@ -36,7 +36,7 @@ class PER(ExperienceReplay):
 
         self.experiences = {}
         self.priorities = BinarySumTree(capacity)
-        self.ids = np.zeros(self.capacity, dtype=np.object)
+        self.ids = np.zeros(self.capacity, dtype=object)
 
     def __len__(self) -> int:
         """
@@ -93,7 +93,7 @@ class PER(ExperienceReplay):
         # Store individually for faster "zipping"
         for key in experience:
             if key not in self.experiences:
-                self.experiences[key] = np.zeros(self.capacity, dtype=np.object)
+                self.experiences[key] = np.zeros(self.capacity, dtype=object)
 
             self.experiences[key][current_index] = experience[key]
 
