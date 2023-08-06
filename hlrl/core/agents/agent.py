@@ -161,21 +161,36 @@ class RLAgent():
             The transformed terminal.
         """
         return terminal
+    
+    
+    def transform_truncated(self, truncated: Any, info: Any) -> Any:
+        """
+        Transforms the truncated value of an environment step.
 
-    def get_agent_terminal(self, env_terminal: Any, info: Any) -> Any:
+        Args:
+            truncated: The truncated value to transform.
+            info: Additional environment information for the step.
+
+        Returns:
+            The transformed terminal.
+        """
+        return self.transform_terminal(truncated, info)
+
+    def get_terminal_and_truncated(self, terminal: Any, truncated: Any, info: Any) -> tuple[Any, Any]:
         """
         Checks to see if the agent has terminated in the environment. An agent
         may not be terminated when an environment terminates in the case of
         time limits or other external factors.
 
         Args:
-            env_terminal: The environment terminal value.
+            terminal: The environment terminal value.
+            truncated: The environment truncated value.
             info: Additional environment information for the step.
 
         Returns:
             True if the agent is in a terminal state
         """
-        return env_terminal
+        return terminal, truncated
 
     def transform_action(self,
                          action: Any) -> Any:
@@ -264,7 +279,7 @@ class RLAgent():
             The prepared experiences with the bare minimum data needed.
         """
         for experience in experiences:
-            del experience["env_terminal"]
+            del experience["truncated"]
 
         return experiences
 
@@ -356,12 +371,12 @@ class RLAgent():
         next_state = next_algo_inp["next_state"]
 
         reward = self.transform_reward(
-            state, algo_step, reward, env_terminal, next_state
+            state, algo_step, reward, terminal, next_state
         )
 
-        terminal = self.get_agent_terminal(env_terminal, info)
+        terminal, truncated = self.get_terminal_and_truncated(terminal, truncated, info)
         terminal = self.transform_terminal(terminal, info)
-        env_terminal = self.transform_terminal(env_terminal, info)
+        truncated = self.transform_truncated(truncated, info)
     
         experience = OrderedDict({
             **algo_inp,
@@ -369,7 +384,7 @@ class RLAgent():
             "reward": reward,
             **next_algo_inp,
             "terminal": terminal,
-            "env_terminal": env_terminal
+            "truncated": truncated
         })
 
         return experience, next_algo_inp
@@ -546,6 +561,6 @@ class RLAgent():
 
                 episode_reward = 0
                 episode_time = time()
-                print("Terminal, resetting")
+
                 self.reset()
                 self.env.reset()

@@ -114,7 +114,7 @@ class ExperienceSequenceAgent(MethodWrapper):
 
             for i in range(len(self.sequence_starts)):
                 terminal = (
-                    experience["env_terminal"][i] or experience["terminal"][i]
+                    experience["truncated"][i] or experience["terminal"][i]
                 )
                 seq_len = len(self.sequence_experiences["terminal"][i])
 

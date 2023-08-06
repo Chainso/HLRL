@@ -59,7 +59,7 @@ class NStepAgent(MethodWrapper):
         """
         self.om.after_step(experience, next_algo_inp)
 
-        if experience["env_terminal"] and not experience["terminal"]:
+        if experience["truncated"]:
             algo_step = self.algo.step(*next_algo_inp.values())
             algo_step = self.transform_algo_step(algo_step)
 
@@ -87,10 +87,7 @@ class NStepAgent(MethodWrapper):
         for t in reversed(range(len(experiences))):
             # "next_value" supplies the bootstrap if the environment terminated
             # early but the agent didn't
-            non_terminal = (
-                (1 - experiences[t]["env_terminal"])
-                * (1 - experiences[t]["terminal"])
-            )
+            non_terminal = 1 - experiences[t]["terminal"]
 
             discounted_term = self.decay * (
                 experiences[t]["next_value"]

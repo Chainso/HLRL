@@ -59,10 +59,7 @@ class OffPolicyAgent(NStepAgent):
         for t in reversed(range(n_step_idx)):
             # "next_value" supplies the bootstrap if the environment terminated
             # early but the agent didn't
-            non_terminal = (
-                (1 - experiences[t]["env_terminal"])
-                * (1 - experiences[t]["terminal"])
-            )
+            non_terminal = 1 - experiences[t]["terminal"]
 
             discounted_term = self.decay * non_terminal * next_return
             next_return = experiences[t]["reward"] + discounted_term
@@ -80,7 +77,6 @@ class OffPolicyAgent(NStepAgent):
 
         last_is_nonterminal = (
             (n_step_idx == len(experiences) - 1)
-            * (1 - experiences[n_step_idx]["env_terminal"])
             * (1 - experiences[n_step_idx]["terminal"])
         )
         bootstrap_value = (

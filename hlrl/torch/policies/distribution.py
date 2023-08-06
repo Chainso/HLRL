@@ -231,4 +231,4 @@ class MultiCategoricalPolicy(nn.Module):
 
         mean = torch.argmax(probs, dim=-1).values
 
-        return sample, log_prob, None
+        return sample, log_prob, mean

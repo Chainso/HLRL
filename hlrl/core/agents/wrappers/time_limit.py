@@ -29,35 +29,31 @@ class TimeLimitAgent(MethodWrapper):
         self.current_step = 0
         self.om.reset()
 
-    def get_agent_terminal(
-            self,
-            env_terminal: Union[int, bool, np.ndarray],
-            info: Dict[str, Any]
-        ) -> Any:
+    def get_terminal_and_truncated(self, terminal: Any, truncated: Any, info: Any) -> tuple[Any, Any]:
         """
-        Checks to see if the environment has terminated due to time limits.
+        Checks to see if the agent has terminated in the environment. An agent
+        may not be terminated when an environment terminates in the case of
+        time limits or other external factors.
 
         Args:
-            env_terminal: The environment terminal value.
+            terminal: The environment terminal value.
+            truncated: The environment truncated value.
             info: Additional environment information for the step.
 
         Returns:
-            True if the agent terminated due to time limits.
+            True if the agent is in a terminal state
         """
-        terminal = self.om.get_agent_terminal(env_terminal, info)
-
-        truncated = info.get("TimeLimit.truncated") or 0
+        terminal, truncated = self.om.get_terminal_and_truncated(terminal, truncated, info)
         
         if self.max_steps is not None and self.current_step >= self.max_steps:
-            truncated = truncated or (1 - terminal)
-            info["TimeLimit.truncated"] = truncated
+            truncated = True
 
-            # Make sure the set the environment terminal to reset properly
-            self.env.terminal = True
+        truncated = truncated * (1 - terminal)
+        
+        # Make sure the set the environment terminal to reset properly
+        self.env.terminal = terminal or truncated
 
-        terminal = terminal * (1 - truncated)
-
-        return terminal
+        return terminal, truncated
 
     def step(self, *args: Any, **kwargs: Any) -> None:
         """
