@@ -76,7 +76,7 @@ class OffPolicyAgent(NStepAgent):
         experience["n_steps"] = n_step_idx + 1
 
         last_is_nonterminal = (
-            (n_step_idx == len(experiences) - 1)
+            (n_step_idx == len(experiences) - 2)
             * (1 - experiences[n_step_idx]["terminal"])
         )
         bootstrap_value = (
