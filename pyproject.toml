@@ -1,0 +1,49 @@
+[tool.poetry]
+name = "HLRL"
+version = "0.1.0"
+description = "Reinforcement learning in PyTorch made simple"
+authors = ["Chainso <chanzobryan@gmail.com>"]
+license = "MIT License"
+readme = "README.md"
+repository = "https://github.com/Chainso/HLRL"
+keywords = [
+  "reinforcement-learning",
+  "rl",
+  "machine-learning",
+  "ml",
+  "gym",
+  "pytorch",
+  "torch"
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+torch = "^2.4.0"
+torchrl = "^0.5.0"
+tensordict = "^0.5.0"
+tensorboard = "^2.17.1"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+Sphinx = "^8.0.2"
+pytorch-sphinx-theme = "^0.0.19"
+
+[tool.poetry.group.examples]
+optional = true
+
+[tool.poetry.group.examples.dependencies]
+gymnasium = {version = "^0.29.1", extras = ["classic-control"]}
+pyyaml = "^6.0.2"
+tqdm = "^4.66.5"
+
+[tool.poetry.group.vision]
+optional = true
+
+[tool.poetry.group.vision.dependencies]
+d3dshot = "^0.1.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
