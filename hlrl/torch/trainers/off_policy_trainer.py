@@ -219,6 +219,7 @@ class OffPolicyTrainer():
 
             agent = agent_builder(env=env_builder(), logger=agent_logger)
             agent.play(args.episodes)
+            agent.env.close()
         else:
             if args.exploration == "rnd":
                 agent_builder = compose(agent_builder, IntrinsicRewardAgent)
@@ -272,6 +273,7 @@ class OffPolicyTrainer():
                     args.save_interval,
                     exit_condition=lambda: algo.training_steps >= end_steps
                 )
+                agent.env.close()
 
             # Multiple processes
             else:

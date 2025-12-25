@@ -7,7 +7,7 @@ if(__name__ == "__main__"):
     import numpy as np
     import random
 
-    from gymnasium.wrappers import RescaleAction
+    from gymnasium.wrappers import RescaleAction, RecordVideo
     from argparse import ArgumentParser, Namespace
     from functools import partial
     from pathlib import Path
@@ -50,6 +50,10 @@ if(__name__ == "__main__"):
     parser.add_argument(
         "-r", "--render", action="store_true",
         help="render the environment"
+    )
+    parser.add_argument(
+        "-v", "--video", action="store_true",
+        help="record video of the agent"
     )
     parser.add_argument(
         "-e", "--env", default="Pendulum-v1",
@@ -245,7 +249,20 @@ if(__name__ == "__main__"):
 
     # Initialize the environment, and rescale for Tanh policy
     args.vectorized = False
-    env_builder = partial(gym.make, args.env, render_mode="human" if args.render else None)
+    render_mode = "rgb_array" if args.video else ("human" if args.render else None)
+    env_builder = partial(gym.make, args.env, render_mode=render_mode)
+
+    if args.video:
+        video_subpath = Path("videos", "play" if args.play else "train")
+        video_folder = Path(args.experiment_path) / video_subpath if args.experiment_path else video_subpath
+
+        if args.play:
+            trigger = lambda episode_id: True
+            env_builder = compose(env_builder, partial(RecordVideo, video_folder=str(video_folder), episode_trigger=trigger))
+        else:
+            trigger = lambda step_id: step_id % args.save_interval == 0
+            env_builder = compose(env_builder, partial(RecordVideo, video_folder=str(video_folder), step_trigger=trigger))
+
     env_builder = compose(env_builder, partial(RescaleAction, min_action=-1, max_action=1))
     env_builder = compose(env_builder, GymEnv)
     env = env_builder()
@@ -328,6 +345,8 @@ if(__name__ == "__main__"):
 
     if args.load_path is not None:
         algo.load(args.load_path)
+
+    env.close()
 
     off_policy_trainer = OffPolicyTrainer()
     off_policy_trainer.train(args, env_builder, algo)
