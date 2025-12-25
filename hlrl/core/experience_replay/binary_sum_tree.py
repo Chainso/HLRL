@@ -31,6 +31,9 @@ class BinarySumTree():
         index : The index of the new node
         value : The value of the new node
         """
+        if isinstance(value, list) or isinstance(value, np.ndarray):
+            value = np.sum(value)
+
         change_in_value = value - self.tree[index]
         parent = index
 
@@ -74,6 +77,9 @@ class BinarySumTree():
         value : The value of the leaf
         index : The index of the leaf
         """
+        if isinstance(value, list) or isinstance(value, np.ndarray):
+            value = np.sum(value)
+
         tree_index = self._leaf_idx_to_real(index)
         self._update_parents(tree_index, value)
         self.tree[tree_index] = value
